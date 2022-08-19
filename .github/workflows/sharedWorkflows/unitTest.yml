@@ -1,0 +1,19 @@
+on:
+  workflow_call:
+
+jobs:
+  unit-tests:
+    strategy:
+      matrix:
+        os: ["ubuntu-latest", "windows-latest"]
+        node_version: [lts/-1, lts/*, latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node_version }}
+          cache: yarn
+      - run: yarn install
+      - run: yarn build
+      - run: yarn test
