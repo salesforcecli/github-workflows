@@ -16,10 +16,6 @@ on:
         description: Optionally skip ci builds on merges into main
         type: boolean
         default: false
-      repository:
-        required: true
-        description: github organization/repo, like salesforcecli/cli or forcedotcom/source-tracking
-        type: string
 
 jobs:
   dependabot-automerge:
