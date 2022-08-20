@@ -16,6 +16,10 @@ on:
         description: Optionally skip ci builds on merges into main
         type: boolean
         default: false
+      repository:
+        required: true
+        description: github organization/repo, like salesforcecli/cli or forcedotcom/source-tracking
+        type: string
 
 jobs:
   dependabot-automerge:
@@ -27,13 +31,14 @@ jobs:
           node-version: latest
       - run: npm install -g sfdx-cli --omit=dev
       - run: sfdx plugins:install @salesforce/plugin-release-management
+      - run: echo sfdx dependabot:automerge --merge-method ${{ inputs.mergeMethod}} --max-version-bump ${{ inputs.maxVersionBump}} --owner "$(dirname ${{ inputs.repository }})" --repo "$(basename ${{ inputs.repository }})"
       - name: run automerge command
         if: ${{ !inputs.skipCI }}
         env:
           GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
-        run: sfdx dependabot:automerge --merge-method ${{ inputs.mergeMethod}} --max-version-bump ${{ inputs.maxVersionBump}} --owner "$(dirname $GITHUB_REPOSITORY)" --repo "$(basename $GITHUB_REPOSITORY)"
+        run: sfdx dependabot:automerge --merge-method ${{ inputs.mergeMethod}} --max-version-bump ${{ inputs.maxVersionBump}} --owner "$(dirname ${{ inputs.repository }})" --repo "$(basename ${{ inputs.repository }})"
       - name: run automerge command
         if: ${{ inputs.skipCI }}
         env:
           GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
-        run: sfdx dependabot:automerge --merge-method ${{ inputs.mergeMethod}} --max-version-bump ${{ inputs.maxVersionBump}} --owner "$(dirname $GITHUB_REPOSITORY)" --repo "$(basename $GITHUB_REPOSITORY)"
+        run: sfdx dependabot:automerge --merge-method ${{ inputs.mergeMethod}} --max-version-bump ${{ inputs.maxVersionBump}} --owner "$(dirname ${{ inputs.repository }})" --repo "$(basename ${{ inputs.repository }})"
