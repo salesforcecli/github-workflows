@@ -25,7 +25,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: latest
-      - run: npm install -g sfdx-cli --production
+      - run: npm install -g sfdx-cli --omit=dev
       - run: sfdx plugins:install @salesforce/plugin-release-management
       - name: run automerge command
         if: ${{ !inputs.skipCI }}
