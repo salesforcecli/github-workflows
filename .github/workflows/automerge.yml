@@ -31,14 +31,13 @@ jobs:
           node-version: latest
       - run: npm install -g sfdx-cli --omit=dev
       - run: sfdx plugins:install @salesforce/plugin-release-management
-      - run: echo sfdx dependabot:automerge --merge-method ${{ inputs.mergeMethod}} --max-version-bump ${{ inputs.maxVersionBump}} --owner "$(dirname ${{ inputs.repository }})" --repo "$(basename ${{ inputs.repository }})"
       - name: run automerge command
         if: ${{ !inputs.skipCI }}
         env:
           GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
-        run: sfdx dependabot:automerge --merge-method ${{ inputs.mergeMethod}} --max-version-bump ${{ inputs.maxVersionBump}} --owner "$(dirname ${{ inputs.repository }})" --repo "$(basename ${{ inputs.repository }})"
+        run: sfdx dependabot:automerge --merge-method ${{ inputs.mergeMethod}} --max-version-bump ${{ inputs.maxVersionBump}} --owner $GITHUB_REPOSITORY_OWNER --repo $(basename $GITHUB_REPOSITORY)
       - name: run automerge command
         if: ${{ inputs.skipCI }}
         env:
           GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
-        run: sfdx dependabot:automerge --merge-method ${{ inputs.mergeMethod}} --max-version-bump ${{ inputs.maxVersionBump}} --owner "$(dirname ${{ inputs.repository }})" --repo "$(basename ${{ inputs.repository }})"
+        run: sfdx dependabot:automerge --merge-method ${{ inputs.mergeMethod}} --max-version-bump ${{ inputs.maxVersionBump}} --owner $GITHUB_REPOSITORY_OWNER --repo $(basename $GITHUB_REPOSITORY)
