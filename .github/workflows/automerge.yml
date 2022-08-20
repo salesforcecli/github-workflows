@@ -31,9 +31,9 @@ jobs:
         if: ${{ !inputs.skipCI }}
         env:
           GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
-        run: sfdx dependabot:automerge --merge-method ${{ inputs.mergeMethod}} --max-version-bump ${{ inputs.maxVersionBump}} --owner ${{ github.owner }} --repo ${basename ${{ github.owner }}}
+        run: sfdx dependabot:automerge --merge-method ${{ inputs.mergeMethod}} --max-version-bump ${{ inputs.maxVersionBump}} --owner ${{ github.owner }} --repo ${basename ${{ github.repository }}}
       - name: run automerge command
         if: ${{ inputs.skipCI }}
         env:
           GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
-        run: sfdx dependabot:automerge --merge-method ${{ inputs.mergeMethod}} --max-version-bump ${{ inputs.maxVersionBump}} --owner ${{ github.owner }} --repo ${basename ${{ github.owner }}}
+        run: sfdx dependabot:automerge --merge-method ${{ inputs.mergeMethod}} --max-version-bump ${{ inputs.maxVersionBump}} --owner ${{ github.owner }} --repo ${basename ${{ github.repository }}}
