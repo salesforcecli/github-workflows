@@ -1,0 +1,39 @@
+on:
+  workflow_call:
+    inputs:
+      mergeMethod:
+        required: false
+        description: merge, squash, or rebase
+        default: merge
+        type: string
+      maxVersionBump:
+        required: false
+        description: "['patch', 'minor', 'major'] maximum allowed version bump.  You probably don't want to automate major version bumps!"
+        type: string
+        default: "minor"
+      skipCI:
+        required: false
+        description: Optionally skip ci builds on merges into main
+        type: boolean
+        default: false
+
+jobs:
+  dependabot-automerge:
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: latest
+      - run: npm install -g sfdx-cli --production
+      - run: sfdx plugins:install @salesforce/plugin-release-management
+      - name: run automerge command
+        if: ${{ !inputs.skipCI }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
+        run: sfdx dependabot:automerge --merge-method {{ inputs.mergeMethod}}
+      - name: run automerge command
+        if: ${{ inputs.skipCI }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
+        run: sfdx dependabot:automerge --merge-method {{ inputs.mergeMethod}} --skip-ci
