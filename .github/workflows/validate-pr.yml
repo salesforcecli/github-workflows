@@ -1,0 +1,35 @@
+# test push
+
+on: workflow_call
+
+jobs:
+  pr-validation:
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: actions-ecosystem/action-regex-match@9e6c4fb3d5e898f505be7a1fb6e7b0a278f6665b
+        id: regex-match-gus-wi
+        with:
+          text: ${{ github.event.pull_request.body }}
+          regex: '@W-\d{7,8}@'
+          flags: gm
+      - uses: actions-ecosystem/action-regex-match@9e6c4fb3d5e898f505be7a1fb6e7b0a278f6665b
+        id: regex-match-gh-issue
+        with:
+          text: ${{ github.event.pull_request.body }}
+          regex: "#[0-9]+"
+          flags: gm
+      - name: fail
+        if: |
+          github.event.pull_request.user.login != 'dependabot' &&
+          github.event.pull_request.user.login != 'SF-CLI-BOT' &&
+          steps.regex-match-gus-wi.outputs.match == '' &&
+          steps.regex-match-gh-issue.outputs.match == ''
+        run: |
+          echo "PR does not reference work item or github issue"
+          exit 1
+      - name: output success
+        if: |
+          steps.regex-match-gus-wi.outputs.match != '' ||
+          steps.regex-match-gh-issue.outputs.match != ''
+        run: |
+          echo "PR references ${{ steps.regex-match-gus-wi.outputs.match }} ${{ steps.regex-match-gh-issue.outputs.match }}"
