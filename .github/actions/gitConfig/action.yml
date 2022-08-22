@@ -4,5 +4,8 @@ runs:
   using: "composite"
   steps:
     - run: git config --global push.default current
+      shell: bash
     - run: git config --global user.email alm-cli@salesforce.com
+      shell: bash
     - run: git config user.name ${{ github.actor }}
+      shell: bash
