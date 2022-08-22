@@ -17,9 +17,9 @@ on:
         description: "command to execute (ex: yarn test:nuts)"
       nodeVersion:
         required: false
-        description: version of node to run tests against
+        description: version of node to run tests against.  Use things like [lts/-1, lts/*, latest] to avoid hardcoding versions
         type: string
-        default: lts
+        default: lts/*
       os:
         required: false
         description: "runs-on property, ex: ubuntu-latest, windows-latest"
