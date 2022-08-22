@@ -52,7 +52,6 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ inputs.nodeVersion }}
-          cache: yarn
       - run: npm install -g sfdx-cli --omit=dev
       - run: npm install shx -g
       - run: npm install yarn-deduplicate -g
