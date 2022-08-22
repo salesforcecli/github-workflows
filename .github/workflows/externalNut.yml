@@ -61,6 +61,7 @@ jobs:
       - run: npm install yarn-deduplicate -g
       - run: git clone ${{ inputs.externalProjectGitUrl}} $(pwd)
       - name: Cache node modules
+        if: inputs.useCache == 'true'
         id: cache-nodemodules
         uses: actions/cache@v3
         env:
