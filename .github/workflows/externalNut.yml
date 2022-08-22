@@ -49,7 +49,6 @@ jobs:
   external-nut:
     runs-on: ${{ inputs.os }}
     steps:
-      - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ inputs.nodeVersion }}
