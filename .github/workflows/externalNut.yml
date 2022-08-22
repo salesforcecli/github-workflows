@@ -70,10 +70,6 @@ jobs:
           # caching node_modules
           path: node_modules
           key: ${{ runner.os }}-externalNuts-${{ env.cache-name }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
       - run: yarn install
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
       - name: swap this dependency for the version on this branch
