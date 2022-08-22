@@ -68,12 +68,12 @@ jobs:
         run: |
           yarn install
           ${{ inputs.preBuildCommands }}
-          yarn build
+          yarn compile
           ${{ inputs.postBuildCommands }}
       - name: preExternalBuildCommands
         run: ${{ inputs.preExternalBuildCommands }}
       - name: Build the external project (where the NUTs are)
-        run: yarn build
+        run: yarn compile
       - name: NUTs
         run: ${{ inputs.command }}
         if: inputs.sfdxExecutablePath
