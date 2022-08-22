@@ -51,6 +51,7 @@ on:
 
 jobs:
   external-nut:
+    name: ${{command}}
     runs-on: ${{ inputs.os }}
     steps:
       - uses: actions/setup-node@v3
