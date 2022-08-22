@@ -56,7 +56,7 @@ jobs:
       - run: npm install shx -g
       - run: npm install yarn-deduplicate -g
       - run: git clone ${{ inputs.externalProjectGitUrl}} $(pwd)
-      - run: yarn
+      - run: yarn install
       - name: swap this dependency for the version on this branch
         run: |
           yarn remove ${{ inputs.packageName }}
