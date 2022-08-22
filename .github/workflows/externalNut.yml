@@ -79,6 +79,9 @@ jobs:
         if: inputs.sfdxExecutablePath
         env:
           TESTKIT_EXECUTABLE_PATH: ${{ inputs.sfdxExecutablePath }}
+          TESTKIT_AUTH_URL: ${{ secrets.TESTKIT_AUTH_URL}}
       - name: NUTs
         run: ${{ inputs.command }}
         if: ${{ !inputs.sfdxExecutablePath }}
+        env:
+          TESTKIT_AUTH_URL: ${{ secrets.TESTKIT_AUTH_URL}}
