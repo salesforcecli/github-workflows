@@ -1,0 +1,8 @@
+name: "gitConfig"
+description: "Sets git username/email and push behavior"
+runs:
+  using: "composite"
+  steps:
+    - run: git config --global push.default current
+    - run: git config --global user.email alm-cli@salesforce.com
+    - run: git config user.name ${{ github.actor }}
