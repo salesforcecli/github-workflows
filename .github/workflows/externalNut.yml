@@ -74,7 +74,7 @@ jobs:
         run: ${{ inputs.preExternalBuildCommands }}
       - name: Build the external project (where the NUTs are)
         run: yarn compile
-      - name: NUTs
+      - name: NUTs with custom executable
         run: ${{ inputs.command }}
         if: inputs.sfdxExecutablePath
         env:
