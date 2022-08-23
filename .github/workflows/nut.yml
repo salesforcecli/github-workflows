@@ -30,13 +30,14 @@ jobs:
     name: ${{ inputs.command }}
     runs-on: ${{ inputs.os }}
     steps:
+      - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: yarn
       - run: npm install -g sfdx-cli --omit=dev
       - run: yarn install
-      - run: yarn build
+      - run: yarn compile
       - run: ${{ inputs.command }}
         env:
           TESTKIT_EXECUTABLE_PATH: ${{ inputs.sfdxExecutablePath }}
