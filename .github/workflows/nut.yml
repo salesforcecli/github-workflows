@@ -1,0 +1,46 @@
+on:
+  workflow_call:
+    inputs:
+      command:
+        required: false
+        type: string
+        default: yarn test:nuts
+        description: "command to execute (ex: yarn test:nuts)"
+      nodeVersion:
+        required: false
+        description: version of node to run tests against.  Use things like [lts/-1, lts/*, latest] to avoid hardcoding versions
+        type: string
+        default: lts/*
+      os:
+        required: false
+        description: "runs-on property, ex: ubuntu-latest, windows-latest"
+        type: string
+        default: "ubuntu-latest"
+      sfdxExecutablePath:
+        required: false
+        description: "Path to sfdx executable to be used by NUTs, defaults to ''"
+        type: string
+      useCache:
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  nut:
+    name: ${{ inputs.command }}
+    runs-on: ${{ inputs.os }}
+    steps:
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ inputs.nodeVersion }}
+          cache: yarn
+      - run: yarn install
+      - run: yarn build
+      - run: ${{ inputs.command }}
+        env:
+          TESTKIT_EXECUTABLE_PATH: ${{ inputs.sfdxExecutablePath }}
+          TESTKIT_AUTH_URL: ${{ secrets.TESTKIT_AUTH_URL}}
+          TESTKIT_HUB_USERNAME: ${{ secrets.TESTKIT_HUB_USERNAME }}
+          TESTKIT_JWT_CLIENT_ID: ${{ secrets.TESTKIT_JWT_CLIENT_ID }}
+          TESTKIT_JWT_KEY: ${{ secrets.TESTKIT_JWT_KEY }}
+          TESTKIT_HUB_INSTANCE: ${{ secrets.TESTKIT_HUB_INSTANCE }}
