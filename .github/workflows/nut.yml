@@ -34,6 +34,7 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: yarn
+      - run: npm install -g sfdx-cli --omit=dev
       - run: yarn install
       - run: yarn build
       - run: ${{ inputs.command }}
