@@ -15,18 +15,7 @@ jobs:
           git-user-email: alm-cli@salesforce.com
           github-token: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
           output-file: "false"
-
-      # - name: Create Github Release
-      #   uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e
-      #   if: ${{ steps.changelog.outputs.skipped == 'false' }}
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
-      #   with:
-      #     tag_name: ${{ steps.changelog.outputs.tag }}
-      #     release_name: ${{ steps.changelog.outputs.tag }}
-      #     body: ${{ steps.changelog.outputs.clean_changelog }}
       - name: Create Github Release
-        uses: ncipollo/release-action@3d2de22e3d0beab188d8129c27f103d8e91bf13a
-        with:
-          tag: ${{ steps.changelog.outputs.tag }}
-          token: ${{ steps.changelog.outputs.clean_changelog  }}
+        run: gh release create ${{ steps.changelog.outputs.tag }} -f ${{ steps.changelog.outputs.clean_changelog  }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
