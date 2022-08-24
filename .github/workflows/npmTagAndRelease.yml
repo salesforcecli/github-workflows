@@ -103,7 +103,7 @@ jobs:
         uses: ./.github/actions/ctcClose
         with:
           changeCaseId: steps.ctcOpen.outputs.changeCaseId
-      - if: ${{ !inputs.dryrun inputs.ctc && steps.ctcOpen.outputs.changeCaseId && always() && (cancelled() ||  failure())}}
+      - if: ${{ !inputs.dryrun && inputs.ctc && steps.ctcOpen.outputs.changeCaseId && always() && (cancelled() ||  failure())}}
         name: Close CTC case as not implemented
         uses: ./.github/actions/ctcClose
         with:
