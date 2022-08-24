@@ -92,6 +92,7 @@ jobs:
       # when dryrun is false and github-release is true: create the github release
       - if: ${{ !inputs.dryrun && inputs.github-release }}
         name: Github Release
+        run: echo "TODO"
         # TODO: let's try to do this via some public action!
 
       # TODO: original version allows post-job-steps here.  Need to identify the consumers
