@@ -1,7 +1,7 @@
-name: "gitConfig"
+name: gitConfig
 description: "Sets git username/email and push behavior"
 runs:
-  using: "composite"
+  using: composite
   steps:
     - run: git config --global push.default current
       shell: bash
