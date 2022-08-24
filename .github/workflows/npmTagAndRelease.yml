@@ -56,13 +56,13 @@ jobs:
       - run: npm install standard-version sfdx-cli @salesforce/change-case-management -g --omit=dev
       - run: sfdx plugins:install @salesforce/plugin-release-management
         # used for committing back the new pjson version, and maybe git tags if git release is happening
-      - uses: salesforcecli/github-workflows/.github/actions/gitConfig
+      - uses: salesforcecli/github-workflows/.github/actions/gitConfig@main
       # TODO: original version allows pre-job-steps here.  Need to identify the consumers
       - run: yarn install
       - run: yarn build
       - if: inputs.ctc && inputs.tag == 'latest'
         name: create change case
-        uses: salesforcecli/github-workflows/.github/actions/ctcOpen
+        uses: salesforcecli/github-workflows/.github/actions/ctcOpen@npm-publish
         id: ctcOpen
       # when dryrun is true: publish with --dryrun flag
       - if: ${{ inputs.dryrun && !inputs.prerelease }}
@@ -100,12 +100,12 @@ jobs:
       # handle and CTC cases created
       - if: ${{ !inputs.dryrun && inputs.ctc && steps.ctcOpen.outputs.changeCaseId && always() && success()}}
         name: Close CTC case as success
-        uses: salesforcecli/github-workflows/.github/actions/ctcClose
+        uses: salesforcecli/github-workflows/.github/actions/ctcClose@npm-publish
         with:
           changeCaseId: steps.ctcOpen.outputs.changeCaseId
       - if: ${{ !inputs.dryrun && inputs.ctc && steps.ctcOpen.outputs.changeCaseId && always() && (cancelled() ||  failure())}}
         name: Close CTC case as not implemented
-        uses: salesforcecli/github-workflows/.github/actions/ctcClose
+        uses: salesforcecli/github-workflows/.github/actions/ctcClose@npm-publish
         with:
           changeCaseId: steps.ctcOpen.outputs.changeCaseId
           status: "Not Implemented"
