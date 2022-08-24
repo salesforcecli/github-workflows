@@ -1,6 +1,3 @@
-# this workflow is a lift-and-shift of the existing npm publish process,
-# versioning => pack/sign => publish => gh tag/release, with some CTC thrown in
-# a wrapper for the plugin-release-management npm:package:release command
 on:
   workflow_call:
     inputs:
@@ -43,6 +40,10 @@ on:
         default: ubuntu-latest
         required: false
         type: string
+      githubTag:
+        required: true
+        description: git tag, already pushed to github, that needs to be published to npm.
+        type: string
 
 jobs:
   npm-release:
@@ -53,12 +54,8 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: yarn
-      - run: npm install standard-version sfdx-cli @salesforce/change-case-management -g @salesforce/plugin-release-management --omit=dev
-        # used for committing back the new pjson version, and maybe git tags if git release is happening
-      - uses: salesforcecli/github-workflows/.github/actions/gitConfig@main
-      # TODO: original version allows pre-job-steps here.  Need to identify the consumers
-      - run: yarn install
-      - run: yarn build
+      # TODO: switch back to main once QA'd
+      - run: npm install sfdx-cli @salesforce/change-case-management -g @salesforce/plugin-release-management#sm/publish-from-tag --omit=dev
       - if: inputs.ctc && inputs.tag == 'latest'
         name: create change case
         uses: salesforcecli/github-workflows/.github/actions/ctcOpen@sm/npm-publish
@@ -103,12 +100,6 @@ jobs:
         run: sf-release npm:package:release --no-install --npmtag ${{ inputs.tag }} --prerelease ${{ github.ref_name}}
         env:
           NPM_TOKEN: ${{secrets.NPM_TOKEN}}
-
-        # when dryrun is false and githubRelease is true: create the github release
-        # TODO: let's try to do this via some public action!
-      - if: ${{ !inputs.dryrun && inputs.githubRelease }}
-        name: Github Release
-        run: echo "TODO"
 
       # TODO: original version allows post-job-steps here.  Need to identify the consumers
 
