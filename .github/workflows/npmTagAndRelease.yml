@@ -53,8 +53,7 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: yarn
-      - run: npm install standard-version sfdx-cli @salesforce/change-case-management -g --omit=dev
-      - run: sfdx plugins:install @salesforce/plugin-release-management
+      - run: npm install standard-version sfdx-cli @salesforce/change-case-management -g @salesforce/plugin-release-management --omit=dev
         # used for committing back the new pjson version, and maybe git tags if git release is happening
       - uses: salesforcecli/github-workflows/.github/actions/gitConfig@main
       # TODO: original version allows pre-job-steps here.  Need to identify the consumers
