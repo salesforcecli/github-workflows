@@ -1,0 +1,110 @@
+# this workflow is a lift-and-shift of the existing npm publish process,
+# versioning => pack/sign => publish => gh tag/release, with some CTC thrown in
+# a wrapper for the plugin-release-management npm:package:release command
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: false
+        description: tag used to publish to npm
+        default: latest
+        type: string
+      sign:
+        required: false
+        description: signs the package using sf-release if set to true
+        default: false
+        type: boolean
+      dryrun:
+        required: false
+        description: if true, the job will run but will not publish to npm or push to git
+        default: false
+        type: boolean
+      github-release:
+        required: false
+        description: if true, job will create a release in github
+        type: boolean
+        default: false
+      prerelease:
+        required: false
+        description: if true, it will use the version <version>-<branch>.0
+        type: boolean
+        default: false
+      nodeVersion:
+        description: version of node to use.  It's better to specify latest, lts/* or lts/-1 than to hardode numbers
+        type: string
+        default: lts/*
+        required: false
+      ctc:
+        description: Use CTC.  Requires environment to contain SF_CHANGE_CASE_SFDX_AUTH_URL, SF_CHANGE_CASE_TEMPLATE_ID, SF_CHANGE_CASE_CONFIGURATION_ITEM
+        type: boolean
+        required: false
+      runs-on:
+        description: the runner.  Only needed if you need a non-public runner (ex, for git checkout from IP restricted private repo)
+        default: ubuntu-latest
+        required: false
+        type: string
+
+jobs:
+  npm-release:
+    runs-on: ${{ inputs.runsOn }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ inputs.nodeVersion }}
+          cache: yarn
+      - run: npm install standard-version sfdx-cli @salesforce/change-case-management -g --omit=dev
+      - run: sfdx plugins:install @salesforce/plugin-release-management
+        # used for committing back the new pjson version, and maybe git tags if git release is happening
+      - uses: ./.github/actions/gitConfig
+      # TODO: original version allows pre-job-steps here.  Need to identify the consumers
+      - run: yarn install
+      - run: yarn build
+      - if: inputs.ctc && inputs.tag == 'latest'
+        name: create change case
+        uses: ./.github/actions/ctcOpen
+        id: ctcOpen
+      # when dryrun is true: publish with --dryrun flag
+      - if: ${{ inputs.dryrun && !inputs.prerelease }}
+        name: Release Dryrun
+        run: sf-release npm:package:release --dryrun --no-install --npmtag ${{ inputs.tag }}
+        # when dryrun and prerelease is true: publish with --dryrun and --prerelease flags
+      - if: ${{ inputs.dryrun && inputs.prerelease }}
+        name: PreRelease Dryrun
+        run: sf-release npm:package:release --dryrun --no-install --npmtag ${{ inputs.tag }} --prerelease ${{ github.ref_name}}
+        # when dryrun is false and sign is true: sign and publish package
+      - if: ${{ !inputs.dryrun && inputs.sign && !inputs.prerelease}}
+        name: Sign and Release
+        run: sf-release npm:package:release --sign --no-install --npmtag ${{ inputs.tag }}
+        # when dryrun is false and sign is true and prerelease is true: sign and publish prerelease package
+      - if: ${{ !inputs.dryrun && inputs.sign && inputs.prerelease}}
+        name: Sign and PreRelease
+        run: sf-release npm:package:release --sign --no-install --npmtag ${{ inputs.tag }} --prerelease ${{ github.ref_name}}
+        # when dryrun is false and sign is false: publish package
+      - if: ${{ !inputs.dryrun && !inputs.sign && !inputs.prerelease}}
+        name: Release
+        run: sf-release npm:package:release --no-install --npmtag ${{ inputs.tag }}
+        # when dryrun is false and sign is false and prerelease is true: publish prerelease package
+      - if: ${{ !inputs.sign && !inputs.dryrun && inputs.prerelease }}
+        name: PreRelease
+        run: sf-release npm:package:release --no-install --npmtag ${{ inputs.tag }} --prerelease ${{ github.ref_name}}
+
+      # when dryrun is false and github-release is true: create the github release
+      - if: ${{ !inputs.dryrun && inputs.github-release }}
+        name: Github Release
+        # TODO: let's try to do this via some public action!
+
+      # TODO: original version allows post-job-steps here.  Need to identify the consumers
+
+      # handle and CTC cases created
+      - if: ${{ !inputs.dryrun && inputs.ctc && steps.ctcOpen.outputs.changeCaseId && always() && success()}}
+        name: Close CTC case as success
+        uses: ./.github/actions/ctcClose
+        with:
+          changeCaseId: steps.ctcOpen.outputs.changeCaseId
+      - if: ${{ !inputs.dryrun inputs.ctc && steps.ctcOpen.outputs.changeCaseId && always() && (cancelled() ||  failure())}}
+        name: Close CTC case as not implemented
+        uses: ./.github/actions/ctcClose
+        with:
+          changeCaseId: steps.ctcOpen.outputs.changeCaseId
+          status: "Not Implemented"
