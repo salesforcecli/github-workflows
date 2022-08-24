@@ -16,6 +16,6 @@ jobs:
           github-token: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
           output-file: "false"
       - name: Create Github Release
-        run: gh release create ${{ steps.changelog.outputs.tag }} -n "${{ steps.changelog.outputs.clean_changelog  }}"
+        run: gh release create ${{ steps.changelog.outputs.tag }} -F changelog.md
         env:
           GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
