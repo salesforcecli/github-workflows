@@ -10,6 +10,8 @@ jobs:
         id: changelog
         uses: TriPSs/conventional-changelog-action@d360fad3a42feca6462f72c97c165d60a02d4bf2
         with:
+          git-user-name: ${{ github.actor }}
+          git-user-email: alm-cli@salesforce.com
           github-token: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
           output-file: "false"
 
