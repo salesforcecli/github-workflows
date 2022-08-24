@@ -19,7 +19,7 @@ on:
         description: if true, the job will run but will not publish to npm or push to git
         default: false
         type: boolean
-      github-release:
+      githubRelease:
         required: false
         description: if true, job will create a release in github
         type: boolean
@@ -38,7 +38,7 @@ on:
         description: Use CTC.  Requires environment to contain SF_CHANGE_CASE_SFDX_AUTH_URL, SF_CHANGE_CASE_TEMPLATE_ID, SF_CHANGE_CASE_CONFIGURATION_ITEM
         type: boolean
         required: false
-      runs-on:
+      runsOn:
         description: the runner.  Only needed if you need a non-public runner (ex, for git checkout from IP restricted private repo)
         default: ubuntu-latest
         required: false
@@ -89,8 +89,8 @@ jobs:
         name: PreRelease
         run: sf-release npm:package:release --no-install --npmtag ${{ inputs.tag }} --prerelease ${{ github.ref_name}}
 
-      # when dryrun is false and github-release is true: create the github release
-      - if: ${{ !inputs.dryrun && inputs.github-release }}
+      # when dryrun is false and githubRelease is true: create the github release
+      - if: ${{ !inputs.dryrun && inputs.githubRelease }}
         name: Github Release
         run: echo "TODO"
         # TODO: let's try to do this via some public action!
