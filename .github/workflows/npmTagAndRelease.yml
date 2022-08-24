@@ -63,36 +63,52 @@ jobs:
         name: create change case
         uses: salesforcecli/github-workflows/.github/actions/ctcOpen@sm/npm-publish
         id: ctcOpen
+        env:
+          SF_CHANGE_CASE_SFDX_AUTH_URL: ${{ secrets.SF_CHANGE_CASE_SFDX_AUTH_URL}}
+          SF_CHANGE_CASE_TEMPLATE_ID: ${{ secrets.SF_CHANGE_CASE_TEMPLATE_ID}}
+          SF_CHANGE_CASE_CONFIGURATION_ITEM: ${{ secrets.SF_CHANGE_CASE_CONFIGURATION_ITEM}}
       # when dryrun is true: publish with --dryrun flag
       - if: ${{ inputs.dryrun && !inputs.prerelease }}
         name: Release Dryrun
         run: sf-release npm:package:release --dryrun --no-install --npmtag ${{ inputs.tag }}
+        env:
+          NPM_TOKEN: ${{secrets.NPM_TOKEN}}
         # when dryrun and prerelease is true: publish with --dryrun and --prerelease flags
       - if: ${{ inputs.dryrun && inputs.prerelease }}
         name: PreRelease Dryrun
         run: sf-release npm:package:release --dryrun --no-install --npmtag ${{ inputs.tag }} --prerelease ${{ github.ref_name}}
+        env:
+          NPM_TOKEN: ${{secrets.NPM_TOKEN}}
         # when dryrun is false and sign is true: sign and publish package
       - if: ${{ !inputs.dryrun && inputs.sign && !inputs.prerelease}}
         name: Sign and Release
         run: sf-release npm:package:release --sign --no-install --npmtag ${{ inputs.tag }}
+        env:
+          NPM_TOKEN: ${{secrets.NPM_TOKEN}}
         # when dryrun is false and sign is true and prerelease is true: sign and publish prerelease package
       - if: ${{ !inputs.dryrun && inputs.sign && inputs.prerelease}}
         name: Sign and PreRelease
         run: sf-release npm:package:release --sign --no-install --npmtag ${{ inputs.tag }} --prerelease ${{ github.ref_name}}
+        env:
+          NPM_TOKEN: ${{secrets.NPM_TOKEN}}
         # when dryrun is false and sign is false: publish package
       - if: ${{ !inputs.dryrun && !inputs.sign && !inputs.prerelease}}
         name: Release
         run: sf-release npm:package:release --no-install --npmtag ${{ inputs.tag }}
+        env:
+          NPM_TOKEN: ${{secrets.NPM_TOKEN}}
         # when dryrun is false and sign is false and prerelease is true: publish prerelease package
       - if: ${{ !inputs.sign && !inputs.dryrun && inputs.prerelease }}
         name: PreRelease
         run: sf-release npm:package:release --no-install --npmtag ${{ inputs.tag }} --prerelease ${{ github.ref_name}}
+        env:
+          NPM_TOKEN: ${{secrets.NPM_TOKEN}}
 
-      # when dryrun is false and githubRelease is true: create the github release
+        # when dryrun is false and githubRelease is true: create the github release
+        # TODO: let's try to do this via some public action!
       - if: ${{ !inputs.dryrun && inputs.githubRelease }}
         name: Github Release
         run: echo "TODO"
-        # TODO: let's try to do this via some public action!
 
       # TODO: original version allows post-job-steps here.  Need to identify the consumers
 
@@ -102,9 +118,17 @@ jobs:
         uses: salesforcecli/github-workflows/.github/actions/ctcClose@sm/npm-publish
         with:
           changeCaseId: steps.ctcOpen.outputs.changeCaseId
+        env:
+          SF_CHANGE_CASE_SFDX_AUTH_URL: ${{ secrets.SF_CHANGE_CASE_SFDX_AUTH_URL}}
+          SF_CHANGE_CASE_TEMPLATE_ID: ${{ secrets.SF_CHANGE_CASE_TEMPLATE_ID}}
+          SF_CHANGE_CASE_CONFIGURATION_ITEM: ${{ secrets.SF_CHANGE_CASE_CONFIGURATION_ITEM}}
       - if: ${{ !inputs.dryrun && inputs.ctc && steps.ctcOpen.outputs.changeCaseId && always() && (cancelled() ||  failure())}}
         name: Close CTC case as not implemented
         uses: salesforcecli/github-workflows/.github/actions/ctcClose@sm/npm-publish
         with:
           changeCaseId: steps.ctcOpen.outputs.changeCaseId
           status: "Not Implemented"
+        env:
+          SF_CHANGE_CASE_SFDX_AUTH_URL: ${{ secrets.SF_CHANGE_CASE_SFDX_AUTH_URL}}
+          SF_CHANGE_CASE_TEMPLATE_ID: ${{ secrets.SF_CHANGE_CASE_TEMPLATE_ID}}
+          SF_CHANGE_CASE_CONFIGURATION_ITEM: ${{ secrets.SF_CHANGE_CASE_CONFIGURATION_ITEM}}
