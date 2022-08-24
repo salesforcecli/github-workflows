@@ -16,11 +16,6 @@ on:
         description: if true, the job will run but will not publish to npm or push to git
         default: false
         type: boolean
-      githubRelease:
-        required: false
-        description: if true, job will create a release in github
-        type: boolean
-        default: false
       prerelease:
         required: false
         description: if true, it will use the version <version>-<branch>.0
