@@ -2,15 +2,17 @@
 
 Reusable workflows and actions
 
-## Opinionated Publish Process for npm
+## Opinionated publish process for npm
 
-1. use conventional commits to work on a feature branch
+> github is the source of truth for code AND releases. Get the version/tag/release right on github, then publish based on that.
+
+1. work on a feature branch, commiting with conventional-commits
 2. merge to main
-3. A push to main produces a tagged Github Release via `githubRelease`
-4. The release should cause `npmPublish` to run.
+3. A push to main produces (if your commits warrant it) a bumped package.json and a tagged github release via `githubRelease`
+4. A release cause `npmPublish` to run.
 
-Just need to publish to npm? Use a public action!
-Use this repo's publish if you need one of the following features
+Just need to publish to npm? Use a public action to do step 4.
+Use this repo's `npmPublish` if you need either
 
 1. codesigning for Salesforce CLIs
 2. integration with CTC
@@ -32,8 +34,7 @@ jobs:
     with:
       tag: latest
       githubTag: ${{ github.event.release.tag_name }}
-    secrets:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN}}
+    secrets: inherit
 ```
 
 ## Opinionated Testing Process
