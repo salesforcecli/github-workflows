@@ -1,3 +1,51 @@
 # Github Workflows
 
-Reusable workflows and actions (aimed for salesforce user)
+Reusable workflows and actions
+
+## Opinionated Publish Process for npm
+
+1. use conventional commits to work on a feature branch
+2. merge to main
+3. A push to main produces a tagged Github Release via `githubRelease`
+4. The release should cause `npmPublish` to run.
+
+Just need to publish to npm? Use a public action!
+Use this repo's publish if you need one of the following features
+
+1. codesigning for Salesforce CLIs
+2. integration with CTC
+   or if you own other repos that need those features and just want consistency.
+
+### npmPublish
+
+example usage
+
+```yml
+on:
+  release:
+    # the result of the githubRelease workflow
+    types: [published]
+
+jobs:
+  my-publish:
+    uses: salesforcecli/github-workflows/.github/workflows/npmPublish.yml
+    with:
+      tag: latest
+      githubTag: ${{ github.event.release.tag_name }}
+    secrets:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN}}
+```
+
+## Opinionated Testing Process
+
+## Other Tooling
+
+### validatePR
+
+### unitTest
+
+### nut
+
+### externalNut
+
+### automerge
