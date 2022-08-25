@@ -40,7 +40,7 @@ on:
         required: true
         type: string
 jobs:
-  npm-release:
+  npm-publish:
     runs-on: ${{ inputs.runsOn }}
     steps:
       - uses: actions/checkout@v3
