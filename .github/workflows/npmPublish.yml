@@ -52,7 +52,7 @@ jobs:
           cache: yarn
       # TODO: switch back to main once QA'd
       # - run: npm install sfdx-cli @salesforce/change-case-management -g @salesforce/plugin-release-management --omit=dev
-      - run: npm install sfdx-cli @salesforce/change-case-management -g salesforcecli/plugin-release-management#sm/publish-from-tag --omit=dev --save
+      - run: npm install sfdx-cli @salesforce/change-case-management -g @salesforce/plugin-release-management@dev --omit=dev
       - if: inputs.ctc && inputs.tag == 'latest'
         name: create change case
         uses: salesforcecli/github-workflows/.github/actions/ctcOpen@sm/npm-publish
