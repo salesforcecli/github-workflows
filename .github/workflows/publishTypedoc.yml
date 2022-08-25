@@ -10,6 +10,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: latest
+      - run: yarn install
       - run: yarn ci-docs
         env:
           GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
