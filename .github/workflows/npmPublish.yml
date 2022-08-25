@@ -81,12 +81,16 @@ jobs:
         run: sf-release npm:package:release --githubtag ${{ inputs.githubTag}} --sign --no-install --npmtag ${{ inputs.tag }}
         env:
           NPM_TOKEN: ${{secrets.NPM_TOKEN}}
+          AWS_ACCESS_KEY_ID: ${{secrests.AWS_ACCESS_KEY_ID}}
+          AWS_SECRET_ACCESS_KEY: ${{secrests.AWS_SECRET_ACCESS_KEY}}
         # when dryrun is false and sign is true and prerelease is true: sign and publish prerelease package
       - if: ${{ !inputs.dryrun && inputs.sign && inputs.prerelease}}
         name: Sign and PreRelease
         run: sf-release npm:package:release --githubtag ${{ inputs.githubTag}} --sign --no-install --npmtag ${{ inputs.tag }} --prerelease ${{ github.ref_name}}
         env:
           NPM_TOKEN: ${{secrets.NPM_TOKEN}}
+          AWS_ACCESS_KEY_ID: ${{secrests.AWS_ACCESS_KEY_ID}}
+          AWS_SECRET_ACCESS_KEY: ${{secrests.AWS_SECRET_ACCESS_KEY}}
         # when dryrun is false and sign is false: publish package
       - if: ${{ !inputs.dryrun && !inputs.sign && !inputs.prerelease}}
         name: Release
