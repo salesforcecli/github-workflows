@@ -50,6 +50,8 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: yarn
+      - run: yarn install
+      - run: yarn build
       # TODO: switch back to main once QA'd
       # - run: npm install sfdx-cli @salesforce/change-case-management -g @salesforce/plugin-release-management --omit=dev
       - run: npm install sfdx-cli @salesforce/change-case-management -g @salesforce/plugin-release-management@dev --omit=dev
