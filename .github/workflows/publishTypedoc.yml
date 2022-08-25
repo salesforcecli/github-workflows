@@ -1,0 +1,15 @@
+on:
+  workflow_call:
+
+jobs:
+  publish:
+    # todo: parameterize this as input if anyone ever needs ip-restricted runner
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: latest
+      - run: yarn ci-docs
+        env:
+          GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
