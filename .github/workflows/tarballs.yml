@@ -1,0 +1,37 @@
+on:
+  workflow_call:
+    inputs:
+      upload:
+        type: boolean
+        description: true means test, then upload them AWS
+        required: false
+      cli:
+        type: string
+        required: false
+        description: only needed if upload. sfdx or sf
+      version:
+        type: string
+        required: false
+        description: version for upload. do not include the 'v'
+      channel:
+        type: string
+        required: false
+        description: channel that the uploaded tarballs get promoted to
+
+jobs:
+  tarballs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: lts/*
+          cache: yarn
+      - run: yarn install
+      - run: yarn pack:tarballs
+      - run: yarn pack:verify
+      - run: yarn test:smoke-unix
+      - if: inputs.upload
+        run: yarn upload:tarballs
+      - if: inputs.upload && inputs.cli && inputs.version && inputs.channel
+        run: yarn channel:promote --cli ${{ inputs.cli }} --version ${{ inputs.version }} --target ${{ inputs.channel }}
