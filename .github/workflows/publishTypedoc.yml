@@ -24,6 +24,7 @@ jobs:
           yarn docs
       - name: send to git
         run: |
-          git add .
+          cd docs
+          git add
           git commit -m 'docs: publishing gh-pages [skip ci]' --no-verify
           git push origin gh-pages --no-verify
