@@ -1,5 +1,5 @@
 name: ctcClose
-description: "opens a change case in GUS. Will throw and provide a message if env is misconfigured"
+description: "closes a given change case in GUS. Will throw and provide a message if env is misconfigured"
 inputs:
   changeCaseId:
     description: "Id for the change case created"
