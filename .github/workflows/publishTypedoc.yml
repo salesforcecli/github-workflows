@@ -13,6 +13,6 @@ jobs:
           cache: yarn
       - run: yarn install
       - uses: salesforcecli/github-workflows/.github/actions/gitConfig@main
-      - run: yarn ci-docs
+      - run: yarn ci-docs --no-verify
         env:
           GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
