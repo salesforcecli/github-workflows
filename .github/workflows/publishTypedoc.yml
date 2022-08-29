@@ -25,6 +25,6 @@ jobs:
       - name: send to git
         run: |
           cd docs
-          git add
+          git add .
           git commit -m 'docs: publishing gh-pages [skip ci]' --no-verify
           git push origin gh-pages --no-verify
