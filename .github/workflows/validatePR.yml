@@ -25,7 +25,8 @@ jobs:
           steps.regex-match-gus-wi.outputs.match == '' &&
           steps.regex-match-gh-issue.outputs.match == ''
         run: |
-          echo "PR does not reference work item or github issue"
+          echo "PR does not reference work item or github issue."
+          echo "GUS WIs should be wrapped in @s, ex: @W-12345678@ or [@W-12345678@](https://some-url)"
           exit 1
       - name: output success
         if: |
