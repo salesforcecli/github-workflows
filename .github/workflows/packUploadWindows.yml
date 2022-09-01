@@ -17,6 +17,12 @@ on:
 jobs:
   win:
     runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      WINDOWS_SIGNING_KEY: ${{ secrets.WINDOWS_SIGNING_KEY }}
+      SFDX_WINDOWS_SIGNING_PASS: ${{ secrets.SFDX_WINDOWS_SIGNING_PASS }}
+      SF_WINDOWS_SIGNING_PASS: ${{ secrets.SF_WINDOWS_SIGNING_PASS }}
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
