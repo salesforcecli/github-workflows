@@ -30,8 +30,8 @@ jobs:
           node-version: lts/*
           cache: yarn
       - run: |
-          apt-get update
-          apt-get install osslsigncode nsis
+          sudo apt-get update
+          sudo apt-get install osslsigncode nsis
       - run: yarn install
       - run: |
           echo $WINDOWS_SIGNING_KEY | base64 --decode > /tmp/windows-signing.pfx
