@@ -25,15 +25,14 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: latest
-      - run: npm install -g sfdx-cli --omit=dev
-      - run: sfdx plugins:install @salesforce/plugin-release-management
+      - run: npm install -g sfdx-cli @salesforce/plugin-release-management --omit=dev
       - name: run automerge command
         if: ${{ !inputs.skipCI }}
         env:
           GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
-        run: sfdx dependabot:automerge --merge-method ${{ inputs.mergeMethod}} --max-version-bump ${{ inputs.maxVersionBump}} --owner $GITHUB_REPOSITORY_OWNER --repo $(basename $GITHUB_REPOSITORY)
+        run: sf-release dependabot:automerge --merge-method ${{ inputs.mergeMethod}} --max-version-bump ${{ inputs.maxVersionBump}} --owner $GITHUB_REPOSITORY_OWNER --repo $(basename $GITHUB_REPOSITORY)
       - name: run automerge command
         if: ${{ inputs.skipCI }}
         env:
           GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
-        run: sfdx dependabot:automerge --merge-method ${{ inputs.mergeMethod}} --max-version-bump ${{ inputs.maxVersionBump}} --owner $GITHUB_REPOSITORY_OWNER --repo $(basename $GITHUB_REPOSITORY) --skip-ci
+        run: sf-release dependabot:automerge --merge-method ${{ inputs.mergeMethod}} --max-version-bump ${{ inputs.maxVersionBump}} --owner $GITHUB_REPOSITORY_OWNER --repo $(basename $GITHUB_REPOSITORY) --skip-ci
