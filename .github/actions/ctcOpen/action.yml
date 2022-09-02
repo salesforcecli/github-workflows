@@ -1,5 +1,5 @@
 name: ctcOpen
-description: opens a change case in GUS. Will throw and provide a message if env is misconfigured
+description: opens a change case in GUS. Will throw and provide a message if env is misconfigured.  Requires jq to exist in the environment
 outputs:
   changeCaseId:
     description: Id for the change case created
