@@ -3,7 +3,7 @@ description: opens a change case in GUS. Will throw and provide a message if env
 outputs:
   changeCaseId:
     description: Id for the change case created
-    value: ${{ fromJSON(steps.ctc.outputs.ctcResult).result.change.Id }}
+    value: ${{ fromJSON(steps.ctc.outputs.ctcResult).result.Id }}
 
 runs:
   using: "composite"
