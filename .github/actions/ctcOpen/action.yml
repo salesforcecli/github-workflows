@@ -17,3 +17,9 @@ runs:
           echo "::set-output name=ctcResult::$(sfchangecase create --location ${{ github.repositoryUrl }} --release ${{github.repository}}.$(date +%F) --json)"
         fi
       shell: bash
+    - run: echo "${{steps.ctc.outputs.ctcResult}}"
+      shell: bash
+    - run: echo "${{fromJSON(steps.ctc.outputs.ctcResult)}}"
+      shell: bash
+    - run: echo "${{fromJSON(steps.ctc.outputs.ctcResult).result.Id}}"
+      shell: bash
