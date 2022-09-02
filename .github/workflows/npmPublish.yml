@@ -27,7 +27,10 @@ on:
         default: lts/*
         required: false
       ctc:
-        description: Use CTC.  Requires environment to contain SF_CHANGE_CASE_SFDX_AUTH_URL, SF_CHANGE_CASE_TEMPLATE_ID, SF_CHANGE_CASE_CONFIGURATION_ITEM
+        description: |
+          Use CTC.  Requires environment to contain
+          SF_CHANGE_CASE_SFDX_AUTH_URL, SF_CHANGE_CASE_TEMPLATE_ID, SF_CHANGE_CASE_CONFIGURATION_ITEM.
+          Also requires a static ip runner (you can't use ubuntu-latest)
         type: boolean
         required: false
       runsOn:
