@@ -3,7 +3,7 @@ description: opens a change case in GUS. Will throw and provide a message if env
 outputs:
   changeCaseId:
     description: Id for the change case created
-    value: ${{ fromJSON(steps.ctc.outputs.ctcResult).result.Id }}
+    value: ${{ steps.ctc.outputs.ctcResult }}
 
 runs:
   using: "composite"
@@ -14,12 +14,8 @@ runs:
           echo "Environment not configured for CTC.  Your environment needs SF_CHANGE_CASE_SFDX_AUTH_URL, SF_CHANGE_CASE_TEMPLATE_ID, and SF_CHANGE_CASE_CONFIGURATION_ITEM"
           exit 1
         else
-          echo "::set-output name=ctcResult::$(sfchangecase create --location ${{ github.repositoryUrl }} --release ${{github.repository}}.$(date +%F) --json)"
+          echo "::set-output name=ctcResult::$(sfchangecase create --location ${{ github.repositoryUrl }} --release ${{github.repository}}.$(date +%F) --json | jq -r '.result.id')"
         fi
       shell: bash
-    - run: echo "${{steps.ctc.outputs.ctcResult}}"
-      shell: bash
-    - run: echo "${{fromJSON(steps.ctc.outputs.ctcResult)}}"
-      shell: bash
-    - run: echo "${{fromJSON(steps.ctc.outputs.ctcResult).result.Id}}"
+    - run: echo "case id is ${{steps.ctc.outputs.ctcResult}}"
       shell: bash
