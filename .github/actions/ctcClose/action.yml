@@ -18,6 +18,6 @@ runs:
           echo "Environment not configured for CTC.  Your environment needs SF_CHANGE_CASE_SFDX_AUTH_URL, SF_CHANGE_CASE_TEMPLATE_ID, and SF_CHANGE_CASE_CONFIGURATION_ITEM"
           exit 1
         else
-          sfchangecase close --location ${{ github.repositoryUrl }} --changecaseid ${{ inputs.changeCaseId}} --status "${{ inputs.status }}"
+          sfchangecase close --location ${{ github.repositoryUrl }} --release ${{github.repository}}.$(date +%F) --changecaseid ${{ inputs.changeCaseId}} --status "${{ inputs.status }}"
         fi
       shell: bash
