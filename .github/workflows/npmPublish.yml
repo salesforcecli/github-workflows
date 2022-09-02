@@ -127,7 +127,7 @@ jobs:
         name: Close CTC case as success
         uses: salesforcecli/github-workflows/.github/actions/ctcClose@main
         with:
-          changeCaseId: steps.ctcOpen.outputs.changeCaseId
+          changeCaseId: ${{steps.ctcOpen.outputs.changeCaseId}}
         env:
           SF_CHANGE_CASE_SFDX_AUTH_URL: ${{ secrets.SF_CHANGE_CASE_SFDX_AUTH_URL}}
           SF_CHANGE_CASE_TEMPLATE_ID: ${{ secrets.SF_CHANGE_CASE_TEMPLATE_ID}}
@@ -136,7 +136,7 @@ jobs:
         name: Close CTC case as not implemented
         uses: salesforcecli/github-workflows/.github/actions/ctcClose@main
         with:
-          changeCaseId: steps.ctcOpen.outputs.changeCaseId
+          changeCaseId: ${{steps.ctcOpen.outputs.changeCaseId}}
           status: "Not Implemented"
         env:
           SF_CHANGE_CASE_SFDX_AUTH_URL: ${{ secrets.SF_CHANGE_CASE_SFDX_AUTH_URL}}
