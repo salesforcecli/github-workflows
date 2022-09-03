@@ -33,9 +33,12 @@ jobs:
           cache: yarn
       - run: yarn install
       - run: yarn pack:tarballs
+        if: ${{!inputs.upload}}
+      - run: yarn pack:tarballs:sequential
+        if: ${{inputs.upload}}
       - run: yarn pack:verify
       - run: yarn test:smoke-unix
       - if: inputs.upload
-        run: yarn upload:tarballs:sequential
+        run: yarn upload:tarballs
       - if: inputs.upload && inputs.cli && inputs.version && inputs.channel
         run: yarn channel:promote --cli ${{ inputs.cli }} --version ${{ inputs.version }} --target ${{ inputs.channel }}
