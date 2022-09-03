@@ -36,6 +36,6 @@ jobs:
       - run: yarn pack:verify
       - run: yarn test:smoke-unix
       - if: inputs.upload
-        run: yarn upload:tarballs
+        run: yarn upload:tarballs:sequential
       - if: inputs.upload && inputs.cli && inputs.version && inputs.channel
         run: yarn channel:promote --cli ${{ inputs.cli }} --version ${{ inputs.version }} --target ${{ inputs.channel }}
