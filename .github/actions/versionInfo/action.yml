@@ -30,7 +30,7 @@ runs:
     - id: versionCurl
       if: ${{ steps.isNumericalVersion.outputs.match }}
       name: Get url for version
-      run: echo "::set-output name=url::$(curl -s 'https://developer.salesforce.com/media/salesforce-cli/sfdx/versions/sfdx-linux-x64-tar-xz.json' | jq -r '.[\"${{ inputs.version }}\"]')"
+      run: echo "::set-output name=url::$(curl -s 'https://developer.salesforce.com/media/salesforce-cli/sfdx/versions/sfdx-linux-x64-tar-xz.json' | jq -r '.["${{ inputs.version }}"]')"
       shell: bash
 
     - id: rcCurl
