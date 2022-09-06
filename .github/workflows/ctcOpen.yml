@@ -1,0 +1,26 @@
+on:
+  workflow_call:
+    outputs:
+      changeCaseId:
+        description: Id for the change case created
+        value: ${{ steps.ctc.outputs.ctcResult }}
+
+jobs:
+  ctcOpen:
+    runs-on: static-ip-ubuntu-runners
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: latest
+          cache: npm
+      - run: npm install -g @salesforce/change-case-management --omit=dev
+      - id: ctc
+        run: |
+          if [ -z "${SF_CHANGE_CASE_SFDX_AUTH_URL}" ] || [ -z "${SF_CHANGE_CASE_TEMPLATE_ID}" ] || [ -z "${SF_CHANGE_CASE_CONFIGURATION_ITEM}" ] ; then
+            echo "Environment not configured for CTC.  Your environment needs SF_CHANGE_CASE_SFDX_AUTH_URL, SF_CHANGE_CASE_TEMPLATE_ID, and SF_CHANGE_CASE_CONFIGURATION_ITEM"
+            exit 1
+          else
+            echo "::set-output name=ctcResult::$(sfchangecase create --location ${{ github.repositoryUrl }} --release ${{github.repository}}.$(date +%F) --json | jq -r '.result.id')"
+          fi
+      - run: echo "case id is ${{steps.ctc.outputs.ctcResult}}"
