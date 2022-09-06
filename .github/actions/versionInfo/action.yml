@@ -46,7 +46,7 @@ runs:
         regex: '(\d+\.\d+\.\d+)'
         flags: g
 
-    - run: echo "regex found version ${{steps.regex.outputs.group1}}"
+    - run: echo "regex found version ${{steps.regex-version.outputs.group1}}"
       shell: bash
 
     - id: regex-sha
