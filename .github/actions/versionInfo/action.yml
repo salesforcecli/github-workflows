@@ -19,15 +19,22 @@ outputs:
 runs:
   using: composite
   steps:
+    - id: isNumericalVersion
+      uses: actions-ecosystem/action-regex-match@9e6c4fb3d5e898f505be7a1fb6e7b0a278f6665b
+      with:
+        text: ${{ inputs.version }}
+        regex: '(\d+\.\d+\.\d+)'
+        flags: g
+
     # Limitation: versions file will contain the last 20 releases and NOT rc until it's promoted to latest
     - id: versionCurl
-      if: inputs.version != 'latest-rc'
+      if: ${{ steps.isNumericalVersion.outputs.match }}
       name: Get url for version
       run: echo "::set-output name=url::$(curl -s 'https://developer.salesforce.com/media/salesforce-cli/sfdx/versions/sfdx-linux-x64-tar-xz.json' | jq -r '.[\"${{ inputs.version }}\"]')"
       shell: bash
 
     - id: rcCurl
-      if: inputs.version == 'latest-rc'
+      if: ${{ !steps.isNumericalVersion.outputs.match }}
       name: Get url for latest-rc
       run: echo "::set-output name=url::$(curl -s 'https://developer.salesforce.com/media/salesforce-cli/sfdx/channels/stable-rc/sfdx-linux-x64-buildmanifest' | jq -r '.xz')"
       shell: bash
