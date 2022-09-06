@@ -3,10 +3,12 @@ on:
     outputs:
       changeCaseId:
         description: Id for the change case created
-        value: ${{ steps.ctc.outputs.ctcResult }}
+        value: ${{ jobs.ctcOpen.outputs.ctcResult }}
 
 jobs:
   ctcOpen:
+    outputs:
+      changeCaseId: ${{ steps.ctc.outputs.ctcResult }}
     runs-on: static-ip-ubuntu-runners
     steps:
       - uses: actions/checkout@v3
