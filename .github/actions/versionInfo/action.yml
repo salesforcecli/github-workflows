@@ -5,56 +5,39 @@ inputs:
   version:
     required: true
     description: an npm version number (like 7.180.8) or an npm tag like latest/latest-rc
+  npmPackage:
+    required: false
+    default: sfdx-cli
+    description: full npm package name, including namespace if one exists
+
 outputs:
   version:
-    value: ${{ steps.regex-version.outputs.group1 }}
+    value: ${{ steps.getNumericalVersion.outputs.version }}
     description: guaranteed to be an npm number, even if a tag was passed in
   url:
-    value: ${{ steps.versionCurl.outputs.url || steps.rcCurl.outputs.url }}
+    value: https://developer.salesforce.com/media/salesforce-cli/${{ steps.getCli.outputs.cli }}/versions/${{ steps.getNumericalVersion.outputs.version }}/${{ steps.getSha.outputs.sha }}/${{ steps.getCli.outputs.cli }}-v${{ steps.getNumericalVersion.outputs.version }}-${{ steps.getSha.outputs.sha }}-linux-x64.tar.xz
     description: url where the xz tarball for this version can be downloaded
   sha:
     description: short sha for the matching version
-    value: ${{ steps.regex-sha.outputs.group1 }}
+    value: ${{ steps.getSha.outputs.sha }}
 
 runs:
   using: composite
   steps:
-    - id: isNumericalVersion
-      uses: actions-ecosystem/action-regex-match@9e6c4fb3d5e898f505be7a1fb6e7b0a278f6665b
-      with:
-        text: ${{ inputs.version }}
-        regex: '(\d+\.\d+\.\d+)'
-        flags: g
+    - id: getSha
+      shell: bash
+      run: echo "::set-output name=sha::$(npm view ${{ inputs.npmPackage }}@${{ inputs.version }} --json | jq -r '.gitHead[0:7]')"
 
-    # Limitation: versions file will contain the last 20 releases and NOT rc until it's promoted to latest
-    - id: versionCurl
-      if: ${{ steps.isNumericalVersion.outputs.match }}
-      name: Get url for version
-      run: echo "::set-output name=url::$(curl -s 'https://developer.salesforce.com/media/salesforce-cli/sfdx/versions/sfdx-linux-x64-tar-xz.json' | jq -r '.["${{ inputs.version }}"]')"
+    - id: getNumericalVersion
+      shell: bash
+      run: echo "::set-output name=version::$(npm view ${{ inputs.npmPackage }}@${{ inputs.version }} --json | jq -r '.version')"
+
+    - id: getCli
+      shell: bash
+      run: echo "::set-output name=cli::$(npm view ${{ inputs.npmPackage }}@${{ inputs.version }} --json | jq -r '.oclif.bin')"
+
+    - run: echo "regex found version ${{ steps.getNumericalVersion.outputs.version }} with sha ${{ steps.getSha.outputs.sha }} for cli ${{ steps.getCli.outputs.cli }}"
       shell: bash
 
-    - id: rcCurl
-      if: ${{ !steps.isNumericalVersion.outputs.match }}
-      name: Get url for latest-rc
-      run: echo "::set-output name=url::$(curl -s 'https://developer.salesforce.com/media/salesforce-cli/sfdx/channels/stable-rc/sfdx-linux-x64-buildmanifest' | jq -r '.xz')"
-      shell: bash
-
-    - id: regex-version
-      uses: actions-ecosystem/action-regex-match@9e6c4fb3d5e898f505be7a1fb6e7b0a278f6665b
-      with:
-        text: ${{ steps.versionCurl.outputs.url || steps.rcCurl.outputs.url }}
-        regex: '(\d+\.\d+\.\d+)'
-        flags: g
-
-    - run: echo "regex found version ${{steps.regex-version.outputs.group1}}"
-      shell: bash
-
-    - id: regex-sha
-      uses: actions-ecosystem/action-regex-match@9e6c4fb3d5e898f505be7a1fb6e7b0a278f6665b
-      with:
-        text: ${{ steps.versionCurl.outputs.url || steps.rcCurl.outputs.url }}
-        regex: '(?<=\d+\.\d+\.\d+\/)(.+)(?=\/)'
-        flags: g
-
-    - run: echo "regex found sha ${{steps.regex-sha.outputs.group1}}"
+    - run: echo "xz url is https://developer.salesforce.com/media/salesforce-cli/${{ steps.getCli.outputs.cli }}/versions/${{ steps.getNumericalVersion.outputs.version }}/${{ steps.getSha.outputs.sha }}/${{ steps.getCli.outputs.cli }}-v${{ steps.getNumericalVersion.outputs.version }}-${{ steps.getSha.outputs.sha }}-linux-x64.tar.xz"
       shell: bash
