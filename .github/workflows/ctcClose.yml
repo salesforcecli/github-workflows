@@ -1,15 +1,18 @@
 on:
   workflow_call:
-    changeCaseId:
-      description: "Id for the change case created"
-      required: true
-    status:
-      required: false
-      description: CTC status, like "Implemented - per plan", "Not Implemented"
-      default: Implemented - per plan
+    inputs:
+      changeCaseId:
+        description: "Id for the change case created"
+        type: string
+        required: true
+      status:
+        required: false
+        description: CTC status, like "Implemented - per plan", "Not Implemented"
+        default: Implemented - per plan
+        type: string
 
 jobs:
-  ctcOpen:
+  ctcClose:
     runs-on: static-ip-ubuntu-runners
     steps:
       - uses: actions/checkout@v3
