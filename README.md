@@ -47,6 +47,28 @@ jobs:
 
 ### nut
 
+### nut conditional on commit message
+
 ### externalNut
 
 ### automerge
+
+### versionInfo
+
+> requires npm to exist. Use in a workflow that has already done that
+
+given an npmTag (ex: `7.100.0` or `latest`) returns the numeric version (`foo` => `7.100.0`) plus the xz linux tarball url and the short (7 char) sha.
+
+Intended for releasing CLIs, not for general use on npm packages.
+
+```yml
+# inside steps
+- uses: salesforcecli/github-workflows/.github/actions/versionInfo@main
+  id: version-info
+  with:
+    version: ${{ inputs.version }}
+    npmPackage: sfdx-cli
+- run: echo "version is ${{ steps.version-info.outputs.version }}
+- run: echo "sha is ${{ steps.version-info.outputs.sha }}
+- run: echo "url is ${{ steps.version-info.outputs.url }}
+```
