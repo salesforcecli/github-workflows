@@ -25,4 +25,8 @@ jobs:
           else
             echo "::set-output name=ctcResult::$(sfchangecase create --location ${{ github.repositoryUrl }} --release ${{github.repository}}.$(date +%F) --json | jq -r '.result.id')"
           fi
+        env:
+          SF_CHANGE_CASE_SFDX_AUTH_URL: ${{ secrets.SF_CHANGE_CASE_SFDX_AUTH_URL}}
+          SF_CHANGE_CASE_TEMPLATE_ID: ${{ secrets.SF_CHANGE_CASE_TEMPLATE_ID}}
+          SF_CHANGE_CASE_CONFIGURATION_ITEM: ${{ secrets.SF_CHANGE_CASE_CONFIGURATION_ITEM}}
       - run: echo "case id is ${{steps.ctc.outputs.ctcResult}}"
