@@ -3,7 +3,7 @@ on:
     outputs:
       changeCaseId:
         description: Id for the change case created
-        value: ${{ jobs.ctcOpen.outputs.ctcResult }}
+        value: ${{ jobs.ctcOpen.outputs.changeCaseId }}
 
 jobs:
   ctcOpen:
