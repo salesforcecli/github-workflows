@@ -68,7 +68,7 @@ jobs:
 
   npm-publish:
     needs: [check-publish, ctc-open]
-    if: ${{ needs.check-publish.outputs.published == 'false' }}
+    if: ${{ always() && needs.check-publish.outputs.published == 'false' }}
     runs-on: ${{ inputs.runsOn }}
     steps:
       - uses: actions/checkout@v3
