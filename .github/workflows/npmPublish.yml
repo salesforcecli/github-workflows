@@ -59,9 +59,16 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: echo "published said ${{ steps.is-published.outputs.published }}"
-  npm-publish:
+
+  ctc-open:
     needs: [check-publish]
-    if: ${{ needs.check-publish.outputs.published == 'false' }}
+    if: inputs.ctc && needs.check-publish.outputs.published == 'false'
+    uses: salesforcecli/github-workflows/.github/workflows/ctcOpen.yml@main
+    secrets: inherit
+
+  npm-publish:
+    needs: [check-publish, ctc-open]
+    if: ${{ always() && needs.check-publish.outputs.published == 'false' }}
     runs-on: ${{ inputs.runsOn }}
     steps:
       - uses: actions/checkout@v3
@@ -73,15 +80,8 @@ jobs:
           cache: yarn
       - run: yarn install
       - run: yarn build
-      - run: npm install sfdx-cli @salesforce/change-case-management -g @salesforce/plugin-release-management --omit=dev
-      - if: inputs.ctc && inputs.tag == 'latest'
-        name: create change case
-        uses: salesforcecli/github-workflows/.github/actions/ctcOpen@main
-        id: ctcOpen
-        env:
-          SF_CHANGE_CASE_SFDX_AUTH_URL: ${{ secrets.SF_CHANGE_CASE_SFDX_AUTH_URL}}
-          SF_CHANGE_CASE_TEMPLATE_ID: ${{ secrets.SF_CHANGE_CASE_TEMPLATE_ID}}
-          SF_CHANGE_CASE_CONFIGURATION_ITEM: ${{ secrets.SF_CHANGE_CASE_CONFIGURATION_ITEM}}
+      - run: npm install sfdx-cli -g @salesforce/plugin-release-management --omit=dev
+
       # when dryrun is true: publish with --dryrun flag
       - if: ${{ inputs.dryrun && !inputs.prerelease }}
         name: Release Dryrun
@@ -123,25 +123,19 @@ jobs:
         env:
           NPM_TOKEN: ${{secrets.NPM_TOKEN}}
 
-      # TODO: original version allows post-job-steps here.  Need to identify the consumers
+  ctcCloseSuccess:
+    needs: [ctc-open, npm-publish]
+    if: needs.ctc-open.result == 'success' && needs.npm-publish.result == 'success'
+    uses: salesforcecli/github-workflows/.github/workflows/ctcClose.yml@main
+    secrets: inherit
+    with:
+      changeCaseId: ${{needs.ctc-open.outputs.changeCaseId}}
 
-      # handle and CTC cases created
-      - if: ${{ !inputs.dryrun && inputs.ctc && steps.ctcOpen.outputs.changeCaseId && always() && success()}}
-        name: Close CTC case as success
-        uses: salesforcecli/github-workflows/.github/actions/ctcClose@main
-        with:
-          changeCaseId: ${{steps.ctcOpen.outputs.changeCaseId}}
-        env:
-          SF_CHANGE_CASE_SFDX_AUTH_URL: ${{ secrets.SF_CHANGE_CASE_SFDX_AUTH_URL}}
-          SF_CHANGE_CASE_TEMPLATE_ID: ${{ secrets.SF_CHANGE_CASE_TEMPLATE_ID}}
-          SF_CHANGE_CASE_CONFIGURATION_ITEM: ${{ secrets.SF_CHANGE_CASE_CONFIGURATION_ITEM}}
-      - if: ${{ !inputs.dryrun && inputs.ctc && steps.ctcOpen.outputs.changeCaseId && always() && (cancelled() ||  failure())}}
-        name: Close CTC case as not implemented
-        uses: salesforcecli/github-workflows/.github/actions/ctcClose@main
-        with:
-          changeCaseId: ${{steps.ctcOpen.outputs.changeCaseId}}
-          status: "Not Implemented"
-        env:
-          SF_CHANGE_CASE_SFDX_AUTH_URL: ${{ secrets.SF_CHANGE_CASE_SFDX_AUTH_URL}}
-          SF_CHANGE_CASE_TEMPLATE_ID: ${{ secrets.SF_CHANGE_CASE_TEMPLATE_ID}}
-          SF_CHANGE_CASE_CONFIGURATION_ITEM: ${{ secrets.SF_CHANGE_CASE_CONFIGURATION_ITEM}}
+  ctcCloseFail:
+    needs: [ctc-open, npm-publish]
+    if: always() && inputs.ctc && (needs.ctc-open.result != 'success' || needs.npm-publish.result != 'success')
+    uses: salesforcecli/github-workflows/.github/workflows/ctcClose.yml@main
+    secrets: inherit
+    with:
+      changeCaseId: ${{ needs.ctc-open.outputs.changeCaseId }}
+      status: Not Implemented

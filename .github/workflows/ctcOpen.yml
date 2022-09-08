@@ -26,7 +26,7 @@ jobs:
             echo "Environment not configured for CTC.  Your environment needs SF_CHANGE_CASE_SFDX_AUTH_URL, SF_CHANGE_CASE_TEMPLATE_ID, and SF_CHANGE_CASE_CONFIGURATION_ITEM"
             exit 1
           else
-            echo "::set-output name=ctcResult::$(sfchangecase create --location ${{ github.repositoryUrl }} --release ${{github.repository}}.$(date +%F) --json | jq -r '.result.id')"
+            echo "::set-output name=ctcResult::$(sfchangecase create --location ${{github.repository}} --release ${{github.repository}}.$(date +%F) --json | jq -r '.result.id')"
           fi
         env:
           SF_CHANGE_CASE_SFDX_AUTH_URL: ${{ secrets.SF_CHANGE_CASE_SFDX_AUTH_URL}}
