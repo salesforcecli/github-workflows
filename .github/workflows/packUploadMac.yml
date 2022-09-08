@@ -28,6 +28,7 @@ jobs:
           node-version: lts/*
           cache: yarn
       - run: yarn install
+      # todo: download the macos tarball and pass that to the oclif pack:macos command
       - run: yarn pack:macos
       - run: yarn upload:macos
       - run: yarn channel:promote --cli ${{ inputs.cli }} --version ${{ inputs.version }} --target ${{ inputs.channel }} --platform macos
