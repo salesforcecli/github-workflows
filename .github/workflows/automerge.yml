@@ -28,6 +28,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: latest
+          cache: npm
       - run: npm install -g @salesforce/plugin-release-management --omit=dev
       - name: run automerge command
         if: ${{ !inputs.skipCI }}
