@@ -57,9 +57,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ inputs.nodeVersion }}
-      - run: npm install -g sfdx-cli --omit=dev
-      - run: npm install shx -g
-      - run: npm install yarn-deduplicate -g
+      - run: npm install -g sfdx-cli shx yarn-deduplicate --omit=dev
       - run: git clone ${{ inputs.externalProjectGitUrl}} $(pwd)
       - name: Cache node modules
         if: inputs.useCache
@@ -112,4 +110,3 @@ jobs:
           TESTKIT_HUB_INSTANCE: ${{ secrets.TESTKIT_HUB_INSTANCE }}
           TESTKIT_JWT_CLIENT_ID: ${{ secrets.TESTKIT_JWT_CLIENT_ID }}
           TESTKIT_JWT_KEY: ${{ secrets.TESTKIT_JWT_KEY }}
-
