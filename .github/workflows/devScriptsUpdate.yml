@@ -1,0 +1,40 @@
+on:
+  workflow_call:
+
+jobs:
+  updateDevScripts:
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
+      - uses: salesforcecli/github-workflows/.github/actions/gitConfig@main
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: latest
+          cache: yarn
+      - run: npm install -g yarn-deduplicate
+      - run: yarn upgrade @salesforce/dev-scripts@latest
+      # this may fail because that's how dev-scripts does things
+      - run: yarn install
+        continue-on-error: true
+
+      - run: yarn install
+      - run: npx yarn-deduplicate
+      - run: yarn install
+
+      # are there any changes from these operations so far?
+      - uses: jitterbit/get-changed-files@d06c756e3609dd3dd5d302dde8d1339af3f790f2
+        id: files
+
+      # if changes, make branch and open a new PR
+      - if: steps.files.outputs.all
+        run: |
+          git checkout -b devScripts$(date +%F)
+          git add .
+          git commit -m 'chore: updates from devScripts'
+          git push origin
+          PR_URL="$(gh pr create --title 'devScripts update')"
+          # mark as automergable so that if CI passes, it merges
+          gh merge $PR_URL --auto
