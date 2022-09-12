@@ -18,6 +18,7 @@ jobs:
           github-token: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
           output-file: "false"
           tag-prefix: ""
+          config-file-path: ".versionrc.json"
       - name: Create Github Release
         uses: actions/create-release@v1
         if: ${{ steps.changelog.outputs.skipped == 'false' }}
