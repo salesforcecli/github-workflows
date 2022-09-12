@@ -20,7 +20,7 @@ jobs:
           flags: gm
       - name: fail
         if: |
-          github.event.pull_request.user.login != 'dependabot' &&
+          github.event.pull_request.user.login != 'dependabot[bot]' &&
           github.event.pull_request.user.login != 'SF-CLI-BOT' &&
           steps.regex-match-gus-wi.outputs.match == '' &&
           steps.regex-match-gh-issue.outputs.match == ''
