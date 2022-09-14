@@ -4,7 +4,7 @@ Reusable workflows and actions
 
 ## Opinionated publish process for npm
 
-> github is the source of truth for code AND releases. Get the version/tag/release right on github, then publish based on that.
+> github is the source of truth for code AND releases. Get the version/tag/release right on github, then publish to npm based on that.
 
 1. work on a feature branch, commiting with conventional-commits
 2. merge to main
@@ -19,6 +19,8 @@ Use this repo's `npmPublish` if you need either
    or if you own other repos that need those features and just want consistency.
 
 ### npmPublish
+
+> This will verify that the version has not already been published. There are additional params for signing your plugin and integrating with Change Traffic Control (release moratoriums) that you probably only care about if your work for Salesforce.
 
 example usage
 
@@ -39,13 +41,51 @@ jobs:
 
 ## Opinionated Testing Process
 
+Write unit tests to tests units of code (a function/method)
+Write not-unit-tests to tests larger parts of code (a command) against real environments/APIs
+Run the UT first (faster, less expensive for infrastructure/limits)
+
+```yml
+name: tests
+on:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+
+jobs:
+  unit-tests:
+    uses: salesforcecli/github-workflows/.github/workflows/unitTest.yml@main
+  nuts:
+    needs: unit-tests
+    uses: salesforcecli/github-workflows/.github/workflows/nut.yml@main
+    secrets: inherit
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+      fail-fast: false
+    with:
+      os: ${{ matrix.os }}
+```
+
 ## Other Tooling
 
 ### validatePR
 
-### unitTest
+requires PR reference a github issue url or a GUS WI surrounded by `@` (`@W-xxxxxxxx@`)
 
-### nut
+```yml
+name: pr-validation
+
+on:
+  pull_request:
+    types: [opened, reopened, edited]
+    # only applies to PRs that want to merge to main
+    branches: [main]
+
+jobs:
+  pr-validation:
+    uses: salesforcecli/github-workflows/.github/workflows/validatePR.yml@main
+```
 
 ### nut conditional on commit message
 
