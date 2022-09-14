@@ -49,6 +49,18 @@ jobs:
 
 ### nut conditional on commit message
 
+```yml
+# conditional nuts based on commit message includes a certain string
+sandbox-nuts:
+  needs: [nuts, unit-tests]
+  if: contains(github.event.push.head_commit.message,'[sb-nuts]')
+  uses: salesforcecli/github-workflows/.github/workflows/nut.yml@main
+  secrets: inherit
+  with:
+    command: test:nuts:sandbox
+    os: ubuntu-latest
+```
+
 ### externalNut
 
 ### automerge
