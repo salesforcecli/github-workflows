@@ -64,11 +64,11 @@ jobs:
         id: cache-nodemodules
         uses: actions/cache@v3
         env:
-          cache-name: cache-node-modules-${{ inputs.externalProjectGitUrl}}
+          cache-name: cache-node-modules
         with:
           # caching node_modules
           path: node_modules
-          key: ${{ runner.os }}-externalNuts-${{ env.cache-name }}-${{ github.sha }}
+          key: ${{ runner.os }}-externalNuts-${{ env.cache-name }}-${{ inputs.externalProjectGitUrl}}-${{ github.sha }}
       - run: yarn install
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
       - name: swap this dependency for the version on this branch
