@@ -4,6 +4,7 @@ on: workflow_call
 
 jobs:
   pr-validation:
+    if: ${{ !contains(github.event.pull_request.body, '[skip-validate-pr]') && !contains(github.event.pull_request.title, '[skip-validate-pr]') }}
     runs-on: "ubuntu-latest"
     steps:
       - uses: actions-ecosystem/action-regex-match@9e6c4fb3d5e898f505be7a1fb6e7b0a278f6665b
