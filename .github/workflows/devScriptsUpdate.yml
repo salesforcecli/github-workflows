@@ -17,12 +17,12 @@ jobs:
       - run: npm install -g yarn-deduplicate
       - run: yarn upgrade @salesforce/dev-scripts@latest
       # this may fail because that's how dev-scripts does things
-      - run: yarn install
+      - run: yarn install --network-timeout 600000
         continue-on-error: true
 
-      - run: yarn install
+      - run: yarn install --network-timeout 600000
       - run: npx yarn-deduplicate
-      - run: yarn install
+      - run: yarn install --network-timeout 600000
 
       # are there any changes from these operations so far?
       - uses: jitterbit/get-changed-files@d06c756e3609dd3dd5d302dde8d1339af3f790f2
