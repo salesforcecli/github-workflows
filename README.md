@@ -8,10 +8,10 @@ Reusable workflows and actions
 
 1. work on a feature branch, commiting with conventional-commits
 2. merge to main
-3. A push to main produces (if your commits warrant it) a bumped package.json and a tagged github release via `githubRelease`
+3. A push to main produces (if your commits have `fix:` or `feat:`) a bumped package.json and a tagged github release via `githubRelease`
 4. A release cause `npmPublish` to run.
 
-Just need to publish to npm? Use a public action to do step 4.
+Just need to publish to npm? You could use any public action to do step 4.
 Use this repo's `npmPublish` if you need either
 
 1. codesigning for Salesforce CLIs
@@ -103,7 +103,42 @@ sandbox-nuts:
 
 ### externalNut
 
+Scenario
+
+1. you have NUTs on a plugin that uses a library
+2. you want to check changes to the library against those NUTs
+
+see https://github.com/forcedotcom/source-deploy-retrieve/blob/e09d635a7b852196701e71a4b2fba401277da313/.github/workflows/test.yml#L25 for an example
+
 ### automerge
+
+This example calls the automerge job. It'll merge PRs from dependabot that are
+
+1. up to date with main
+2. mergeable (per github)
+3. all checks have completed and none failed (skipped may not have run)
+
+```yml
+name: automerge
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "56 2,5,8,11 * * *"
+
+jobs:
+  automerge:
+    uses: salesforcecli/github-workflows/.github/workflows/automerge.yml@main
+    # secrets are needed
+    secrets: inherit
+```
+
+need squash?
+
+```yml
+automerge:
+  with:
+    mergeMethod: squash
+```
 
 ### versionInfo
 
@@ -123,4 +158,22 @@ Intended for releasing CLIs, not for general use on npm packages.
 - run: echo "version is ${{ steps.version-info.outputs.version }}
 - run: echo "sha is ${{ steps.version-info.outputs.sha }}
 - run: echo "url is ${{ steps.version-info.outputs.url }}
+```
+
+### validatePR
+
+Checks PRs have a link to a github issue OR a GUS WI in the form of `@W-12456789@` (the `@` are to be compatible with [git2gus](https://github.com/forcedotcom/git2gus))
+
+```yml
+name: pr-validation
+
+on:
+  pull_request:
+    types: [opened, reopened, edited]
+    # only applies to PRs that want to merge to main
+    branches: [main]
+
+jobs:
+  pr-validation:
+    uses: salesforcecli/github-workflows/.github/workflows/validatePR.yml@main
 ```
