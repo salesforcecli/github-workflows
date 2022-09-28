@@ -6,13 +6,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          repository: salesforcecli/cli
       - uses: actions/setup-node@v3
         with:
           node-version: lts/*
-      - run: git clone https://github.com/salesforcecli/cli
       - run: |
           yarn install --network-timeout 600000
           yarn add ${{ github.repository }}#${{ github.sha }} --network-concurrency 1
           yarn pack:tarballs -t linux-x64 --no-xz
           yarn pack:verify
-        working-directory: cli
