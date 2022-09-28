@@ -6,6 +6,8 @@ Reusable workflows and actions
 
 > github is the source of truth for code AND releases. Get the version/tag/release right on github, then publish to npm based on that.
 
+![](./images/plugin-release.png)
+
 1. work on a feature branch, commiting with conventional-commits
 2. merge to main
 3. A push to main produces (if your commits have `fix:` or `feat:`) a bumped package.json and a tagged github release via `githubRelease`
@@ -17,6 +19,23 @@ Use this repo's `npmPublish` if you need either
 1. codesigning for Salesforce CLIs
 2. integration with CTC
    or if you own other repos that need those features and just want consistency.
+
+### githubRelease
+
+> creates a github release based on conventional commit prefixes. Using commits like `fix: etc` (patch version) and `feat: wow` (minor version) or any valid prefix with a `!` like `feat!:` (major version) will cause the action to update the packageVersion, produce a changelog, tag and release.
+
+```yml
+name: version, tag and github release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  release:
+    uses: salesforcecli/github-workflows/.github/workflows/githubRelease.yml@main
+    secrets: inherit
+```
 
 ### npmPublish
 
@@ -71,7 +90,7 @@ jobs:
 
 ### validatePR
 
-requires PR reference a github issue url or a GUS WI surrounded by `@` (`@W-xxxxxxxx@`)
+> requires PR reference a github issue url or a GUS WI surrounded by `@` (`@W-xxxxxxxx@`)
 
 ```yml
 name: pr-validation
@@ -103,20 +122,20 @@ sandbox-nuts:
 
 ### externalNut
 
-Scenario
+> Scenario
+>
+> 1. you have NUTs on a plugin that uses a library
+> 2. you want to check changes to the library against those NUTs
 
-1. you have NUTs on a plugin that uses a library
-2. you want to check changes to the library against those NUTs
-
-see https://github.com/forcedotcom/source-deploy-retrieve/blob/e09d635a7b852196701e71a4b2fba401277da313/.github/workflows/test.yml#L25 for an example
+see https://github.com/forcedotcom/source-deploy-retrieve/blob/> e09d635a7b852196701e71a4b2fba401277da313/.github/workflows/test.yml#L25 for an example
 
 ### automerge
 
-This example calls the automerge job. It'll merge PRs from dependabot that are
-
-1. up to date with main
-2. mergeable (per github)
-3. all checks have completed and none failed (skipped may not have run)
+> This example calls the automerge job. It'll merge PRs from dependabot that are
+>
+> 1. up to date with main
+> 2. mergeable (per github)
+> 3. all checks have completed and none failed (skipped may not have run)
 
 ```yml
 name: automerge
@@ -143,10 +162,10 @@ automerge:
 ### versionInfo
 
 > requires npm to exist. Use in a workflow that has already done that
-
-given an npmTag (ex: `7.100.0` or `latest`) returns the numeric version (`foo` => `7.100.0`) plus the xz linux tarball url and the short (7 char) sha.
-
-Intended for releasing CLIs, not for general use on npm packages.
+>
+> given an npmTag (ex: `7.100.0` or `latest`) returns the numeric version (`foo` => `7.100.0`) plus > the xz linux tarball url and the short (7 char) sha.
+>
+> Intended for releasing CLIs, not for general use on npm packages.
 
 ```yml
 # inside steps
@@ -162,7 +181,7 @@ Intended for releasing CLIs, not for general use on npm packages.
 
 ### validatePR
 
-Checks PRs have a link to a github issue OR a GUS WI in the form of `@W-12456789@` (the `@` are to be compatible with [git2gus](https://github.com/forcedotcom/git2gus))
+> Checks PRs have a link to a github issue OR a GUS WI in the form of `@W-12456789@` (the `@` are to be compatible with [git2gus](https://github.com/forcedotcom/git2gus))
 
 ```yml
 name: pr-validation
