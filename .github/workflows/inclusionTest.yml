@@ -1,0 +1,20 @@
+on:
+  workflow_call:
+
+jobs:
+  tarballs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
+      - uses: actions/setup-node@v3
+        with:
+          node-version: lts/*
+          cache: yarn
+      - run: git clone https://github.com/salesforcecli/cli
+      - run: |
+          yarn add ${{ github.repository }}#${{ github.sha }} --network-concurrency 1
+          yarn pack:tarballs -t linux-x64 --no-xz
+          yarn pack:verify
+        working-directory: cli
