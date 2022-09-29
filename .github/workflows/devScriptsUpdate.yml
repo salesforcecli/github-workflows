@@ -26,7 +26,7 @@ jobs:
 
   updateDevScripts:
     needs: [compareVersions]
-    if: needs.compareVersions.outputs.shouldUpdate
+    if: needs.compareVersions.outputs.shouldUpdate == true
     runs-on: "ubuntu-latest"
     steps:
       - uses: actions/checkout@v3
