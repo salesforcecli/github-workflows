@@ -33,7 +33,7 @@ jobs:
           git add .
           git commit -m 'chore: updates from devScripts' --no-verify
           git push origin --no-verify
-          sleep 30
+          sleep 60
           gh pr create --title 'devScripts update' --body 'created via github action.' -l dependencies
         env:
           GH_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
