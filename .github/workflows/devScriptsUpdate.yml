@@ -29,6 +29,7 @@ jobs:
     if: needs.compareVersions.outputs.shouldUpdate == true
     runs-on: "ubuntu-latest"
     steps:
+      - run: echo "previous job output was ${{ needs.compareVersions.outputs.shouldUpdate }}"
       - uses: actions/checkout@v3
         with:
           token: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
