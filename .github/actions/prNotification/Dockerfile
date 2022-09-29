@@ -1,7 +1,8 @@
 FROM node:current-alpine
 
+WORKDIR /usr/app/
 RUN npm install node-fetch@^3 --production
-ADD notification.js /
-RUN chmod +x /notification.js
+COPY notification.js ./
+RUN chmod +x ./notification.js
 
-ENTRYPOINT ["node", "/notification.js"]
+ENTRYPOINT ["node", "./notification.js"]
