@@ -12,8 +12,18 @@ const PRUrl = process.env.PULL_REQUEST_URL;
 const webhookUrl = process.env.WEBHOOK_URL;
 
 const message = {
-    type: 'home',
     blocks: [
+        {
+			type: 'header',
+			text: {
+				"type": "plain_text",
+				"text": `Pull Request Opened in ${PRRepo}`,
+				"emoji": true
+			}
+		},
+        {
+            "type": "divider"
+        },
         {
             type: 'section',
             fields: [
@@ -22,16 +32,6 @@ const message = {
                     text: `*<${PRUrl}|#${PRNum} ${PRTitle}>*`
                 }
             ]
-        },
-        {
-            "type": "divider"
-        },
-        {
-            type: 'section',
-            text: {
-                type: 'plain_text',
-                text: PRRepo
-            }
         },
         {
             type: 'context',
