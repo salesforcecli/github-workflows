@@ -27,8 +27,9 @@ jobs:
       - run: |
           git checkout -b devScripts$(date +%F)
           yarn lint --fix
+        continue-on-error: true
+      - run: |
           git add .
           git commit -m 'chore: updates from devScripts'
           git push origin
           gh pr create --title 'devScripts update'
-        continue-on-error: true
