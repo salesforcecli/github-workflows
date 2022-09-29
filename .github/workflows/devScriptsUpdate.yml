@@ -16,7 +16,7 @@ jobs:
         with:
           version: latest
           npmPackage: "@salesforce/dev-scripts"
-        run: echo "dev scripts latest is ${{ steps.version-info.outputs.version }}"
+      - run: echo "dev scripts latest is ${{ steps.version-info.outputs.version }}"
       - uses: notiz-dev/github-action-json-property@2192e246737701f108a4571462b76c75e7376216
         id: packageVersion
         with:
