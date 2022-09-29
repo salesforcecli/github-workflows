@@ -200,7 +200,7 @@ jobs:
 ### prNotification
 > Mainly used to notify Slack when Pull Requests are opened.
 >
-> For more info see [.github\actions\prNotification\README.md](.github/actions/prNotification/README.md)
+> For more info see [.github/actions/prNotification/README.md](.github/actions/prNotification/README.md)
 
 ```yaml
 name: Slack Pull Request Notification
