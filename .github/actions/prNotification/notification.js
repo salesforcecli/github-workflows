@@ -17,7 +17,7 @@ const message = {
 			type: 'header',
 			text: {
 				"type": "plain_text",
-				"text": `Pull Request Opened in ${PRRepo}`,
+				"text": `:pr: Pull Request Opened in ${PRRepo}`,
 				"emoji": true
 			}
 		},
