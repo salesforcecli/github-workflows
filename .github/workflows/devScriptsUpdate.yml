@@ -21,7 +21,7 @@ jobs:
         id: packageVersion
         with:
           path: "package.json"
-          prop_path: "version"
+          prop_path: "devDependencies.@salesforce/dev-scripts"
       - run: echo "this repo has version is ${{ steps.packageVersion.outputs.prop }}"
 
   updateDevScripts:
