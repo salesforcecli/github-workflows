@@ -23,6 +23,7 @@ jobs:
           path: "package.json"
           prop_path: "devDependencies.@salesforce/dev-scripts"
       - run: echo "this repo has version is ${{ steps.packageVersion.outputs.prop }}"
+      - run: echo "output value will be ${{!endsWith(steps.version-info.outputs.version, steps.packageVersion.outputs.prop ) }}"
 
   updateDevScripts:
     needs: [compareVersions]
@@ -59,6 +60,6 @@ jobs:
           git commit -m 'chore: updates from devScripts' --no-verify
           git push origin --no-verify
           sleep 60
-          gh pr create --title 'devScripts update' --body 'created via github action.' -l dependencies
+          gh pr create --title 'refactor: devScripts update' --body 'created via github action.' -l dependencies
         env:
           GH_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
