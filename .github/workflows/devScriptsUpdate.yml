@@ -5,7 +5,7 @@ jobs:
   # what is the RC version, numerically?
   compareVersions:
     outputs:
-      shouldUpdate: ${{steps.packageVersion.outputs.prop != steps.version-info.outputs.version}}
+      shouldUpdate: ${{!endsWith(steps.version-info.outputs.version,  steps.packageVersion.outputs.prop ) }}
 
     runs-on: ubuntu-latest
     steps:
