@@ -33,7 +33,7 @@ jobs:
         PULL_REQUEST_REPO: ${{ github.event.pull_request.head.repo.name }}
         PULL_REQUEST_TITLE : ${{ github.event.pull_request.title }}
         PULL_REQUEST_URL : ${{ github.event.pull_request.html_url }}
-      uses: salesforcecli/github-workflows/.github/actions/prNotification/action.yml@main
+      uses: salesforcecli/github-workflows/.github/actions/prNotification@main
 ```
 
 ### Arguments
