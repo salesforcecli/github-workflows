@@ -72,7 +72,7 @@ const message = {
     ]
 };
 
-if (authorName !== 'SF-CLI-BOT' && authorName !== 'dependabot[bot]') {
+if (authorName !== 'SF-CLI-BOT' && authorName !== 'dependabot[bot]' && authorName !== 'svc-cli-bot') {
     fetch(webhookUrl, {
         method: 'post',
         body: JSON.stringify(message),
