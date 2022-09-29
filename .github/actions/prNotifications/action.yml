@@ -1,0 +1,9 @@
+name: "Salesforce CLI PR Notifications"
+author: "RodEsp"
+description: "Notifies a webhook URL about PR events."
+runs:
+  using: "docker"
+  image: "Dockerfile"
+branding:
+  icon: "git-pull-request"
+  color: "green"
