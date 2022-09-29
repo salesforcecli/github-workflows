@@ -2,7 +2,29 @@ on:
   workflow_call:
 
 jobs:
+  # what is the RC version, numerically?
+  compareVersions:
+    outputs:
+      shouldUpdate: ${{steps.packageVersion.outputs.prop != steps.versionInfo.outputs.version}}
+
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+      - uses: salesforcecli/github-workflows/.github/actions/versionInfo@main
+        id: version-info
+        with:
+          version: latest
+          npmPackage: "@salesforce/dev-scripts"
+      - uses: notiz-dev/github-action-json-property@2192e246737701f108a4571462b76c75e7376216
+        id: packageVersion
+        with:
+          path: "package.json"
+          prop_path: "version"
+
   updateDevScripts:
+    needs: [compareVersions]
+    if: needs.compareVersions.outputs.shouldUpdate
     runs-on: "ubuntu-latest"
     steps:
       - uses: actions/checkout@v3
