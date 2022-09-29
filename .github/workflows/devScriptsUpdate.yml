@@ -30,6 +30,5 @@ jobs:
           git add .
           git commit -m 'chore: updates from devScripts'
           git push origin
-          PR_URL="$(gh pr create --title 'devScripts update')"
-          # mark as automergable so that if CI passes, it merges
-          gh merge $PR_URL --auto
+          gh pr create --title 'devScripts update'
+        continue-on-error: true
