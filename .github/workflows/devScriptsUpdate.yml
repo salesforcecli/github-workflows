@@ -26,6 +26,7 @@ jobs:
 
       - run: |
           git checkout -b devScripts$(date +%F)
+          yarn lint --fix
           git add .
           git commit -m 'chore: updates from devScripts'
           git push origin
