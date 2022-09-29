@@ -22,7 +22,7 @@ jobs:
         with:
           path: "package.json"
           prop_path: "version"
-        run: echo "this repo has version is ${{ steps.packageVersion.outputs.prop }}"
+      - run: echo "this repo has version is ${{ steps.packageVersion.outputs.prop }}"
 
   updateDevScripts:
     needs: [compareVersions]
