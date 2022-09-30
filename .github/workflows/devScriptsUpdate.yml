@@ -5,7 +5,7 @@ jobs:
   # what is the RC version, numerically?
   compareVersions:
     outputs:
-      shouldUpdate: ${{!endsWith(steps.version-info.outputs.version,  steps.packageVersion.outputs.prop ) }}
+      shouldUpdate: ${{ !endsWith(steps.packageVersion.outputs.prop, steps.version-info.outputs.version) }}
 
     runs-on: ubuntu-latest
     steps:
@@ -23,7 +23,7 @@ jobs:
           path: "package.json"
           prop_path: "devDependencies.@salesforce/dev-scripts"
       - run: echo "this repo has version is ${{ steps.packageVersion.outputs.prop }}"
-      - run: echo "output value will be ${{!endsWith(steps.version-info.outputs.version, steps.packageVersion.outputs.prop ) }}"
+      - run: echo "output value will be ${{ !endsWith(steps.packageVersion.outputs.prop, steps.version-info.outputs.version) }}
 
   updateDevScripts:
     needs: [compareVersions]
