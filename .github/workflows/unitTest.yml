@@ -18,3 +18,11 @@ jobs:
       - run: yarn install --network-timeout 600000
       - run: yarn build
       - run: yarn test
+  lockfile-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+      - run: |
+          npm install -g lockfile-lint
+          lockfile-lint --path yarn.lock --allowed-hosts npm yarn --validate-https
