@@ -2,10 +2,22 @@ on:
   workflow_call:
 
 jobs:
+  # is there already a PR open?
+  checkPRs:
+    outputs:
+      shouldUpdate: ${{ !contains(steps.currentOpenPRs.outputs.alreadyOpen, 'devScripts update') }}
+    runs-on: ubuntu-latest
+    steps:
+      - id: currentOpenPRs
+        run: echo "::set-output name=alreadyOpen::$(gh pr list -R ${{ github.repository }})"
+      - run: echo "command output - ${{steps.currentOpenPRs.outputs.alreadyOpen}}"
+      - run: echo "should open - ${{ !contains(steps.currentOpenPRs.outputs.alreadyOpen, 'devScripts update' )}}"
   # what is the RC version, numerically?
   compareVersions:
+    needs: [checkPRs]
+    if: ${{ needs.checkPRs.outputs.shouldUpdate == 'true' }}
     outputs:
-      shouldUpdate: ${{ !endsWith(steps.packageVersion.outputs.prop, steps.version-info.outputs.version) && !contains(steps.currentOpenPRs.outputs.alreadyOpen, 'devScripts update') }}
+      shouldUpdate: ${{ !endsWith(steps.packageVersion.outputs.prop, steps.version-info.outputs.version) }}
 
     runs-on: ubuntu-latest
     steps:
@@ -22,8 +34,7 @@ jobs:
         with:
           path: "package.json"
           prop_path: "devDependencies.@salesforce/dev-scripts"
-      - id: currentOpenPRs
-        run: echo "::set-output name=alreadyOpen::$(gh pr list -R ${{ github.repository }})"
+
       - run: echo "this repo has version is ${{ steps.packageVersion.outputs.prop }}"
       - run: echo "output value will be ${{ !endsWith(steps.packageVersion.outputs.prop, steps.version-info.outputs.version) }}"
 
