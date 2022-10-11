@@ -34,6 +34,7 @@ jobs:
           git push
 
       - uses: notiz-dev/github-action-json-property@2192e246737701f108a4571462b76c75e7376216
+        if: ${{ steps.getPreReleaseTag.outputs.tag }}
         id: packageVersion
         with:
           path: "package.json"
@@ -42,7 +43,7 @@ jobs:
       - name: Create Github Release
         uses: actions/create-release@v1
         # not empty
-        if: ${{ steps.bump.outputs.newTag }}
+        if: ${{ steps.getPreReleaseTag.outputs.tag }}
         env:
           GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
         with:
