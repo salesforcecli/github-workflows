@@ -1,6 +1,12 @@
 name: tag and github release
 on:
   workflow_call:
+    inputs:
+      prerelease:
+        type: boolean
+        required: false
+        default: false
+        description: use a prerelease instead of a regular release
 
 jobs:
   release:
@@ -27,3 +33,4 @@ jobs:
           tag_name: ${{ steps.changelog.outputs.tag }}
           release_name: ${{ steps.changelog.outputs.tag }}
           body: ${{ steps.changelog.outputs.clean_changelog }}
+          prerelease: ${{ inputs.prerelease }}
