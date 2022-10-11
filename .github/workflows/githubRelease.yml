@@ -40,7 +40,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          version-type: prerelease
+          version-type: rc
           preid: ${{ steps.getPreReleaseTag.outputs.tag}}
           tag-prefix: ""
           commit-message: "CI: bumps version to {{version}} [skip ci]"
