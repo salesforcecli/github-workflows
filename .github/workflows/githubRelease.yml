@@ -21,23 +21,12 @@ jobs:
       - id: getPreReleaseTag
         uses: salesforcecli/github-workflows/.github/actions/getPreReleaseTag@prerelease
 
-      - name: Conventional Changelog Action (Prerelease)
-        if: ${{ steps.getPreReleaseTag.outputs.tag }}
-        id: changelog
-        uses: TriPSs/conventional-changelog-action@d360fad3a42feca6462f72c97c165d60a02d4bf2
-        with:
-          git-user-name: SF-CLI-BOT
-          git-user-email: alm-cli@salesforce.com
-          github-token: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
-          output-file: "false"
-          # we'll modify this manually
-          skip-version-file: true
-          skip-commit: true
-          tag-prefix: ""
       - run: yarn install
-        # bump the last digit
+        if: ${{ steps.getPreReleaseTag.outputs.tag }}
+
+        # bump the package version
       - id: bump
-        if: ${{ steps.changelog.outputs.clean_changelog }}
+        if: ${{ steps.getPreReleaseTag.outputs.tag }}
         uses: "phips28/gh-action-bump-version@39d361ef0720e31299059657e22093f5c2b7ea17"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -50,7 +39,7 @@ jobs:
       - name: Create Github Release
         uses: actions/create-release@v1
         # not empty
-        if: ${{ steps.changelog.outputs.clean_changelog }}
+        if: ${{ steps.bump.outputs.newTag }}
         env:
           GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
         with:
