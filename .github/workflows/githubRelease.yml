@@ -30,7 +30,7 @@ jobs:
       - id: bump
         if: ${{ steps.getPreReleaseTag.outputs.tag }}
         run: |
-          npm version preminor --git-tag-version --preid ${{steps.getPreReleaseTag.outputs.tag}} -m 'chore: bump prerelease version [no ci]'
+          npm version preminor --git-tag-version --preid ${{steps.getPreReleaseTag.outputs.tag}} --no-commit-hooks -m 'chore: bump prerelease version [no ci]'
           git push
 
       - uses: notiz-dev/github-action-json-property@2192e246737701f108a4571462b76c75e7376216
