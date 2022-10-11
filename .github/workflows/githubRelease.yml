@@ -17,24 +17,27 @@ jobs:
         with:
           token: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
       - uses: actions/setup-node@v3
-
       - id: getPreReleaseTag
         uses: salesforcecli/github-workflows/.github/actions/getPreReleaseTag@prerelease
 
       - run: yarn install
         if: ${{ steps.getPreReleaseTag.outputs.tag }}
 
+      - uses: salesforcecli/github-workflows/.github/actions/gitConfig@main
+        if: ${{ steps.getPreReleaseTag.outputs.tag }}
+
         # bump the package version
       - id: bump
         if: ${{ steps.getPreReleaseTag.outputs.tag }}
-        uses: "phips28/gh-action-bump-version@39d361ef0720e31299059657e22093f5c2b7ea17"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npm version preminor --git-tag-version -m 'chore: bump prerelease version'
+          git push
+
+      - uses: notiz-dev/github-action-json-property@2192e246737701f108a4571462b76c75e7376216
+        id: packageVersion
         with:
-          version-type: rc
-          preid: ${{ steps.getPreReleaseTag.outputs.tag}}
-          tag-prefix: ""
-          commit-message: "CI: bumps version to {{version}} [skip ci]"
+          path: "package.json"
+          prop_path: "version"
 
       - name: Create Github Release
         uses: actions/create-release@v1
@@ -43,8 +46,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.bump.outputs.newTag }}
-          release_name: ${{ steps.bump.outputs.newTag }}
+          tag_name: ${{ steps.packageVersion.outputs.prop }}
+          release_name: ${{ steps.packageVersion.outputs.prop }}
           body: ${{ steps.changelog.outputs.clean_changelog }}
           prerelease: true
 
