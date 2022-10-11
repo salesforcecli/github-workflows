@@ -21,7 +21,7 @@ jobs:
       - id: getPreReleaseTag
         uses: salesforcecli/github-workflows/.github/actions/getPreReleaseTag@prerelease
 
-      - name: Conventional Changelog Action
+      - name: Conventional Changelog Action (Prerelease)
         if: ${{ steps.getPreReleaseTag.outputs.tag }}
         id: changelog
         uses: TriPSs/conventional-changelog-action@d360fad3a42feca6462f72c97c165d60a02d4bf2
