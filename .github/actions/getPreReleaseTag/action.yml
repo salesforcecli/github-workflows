@@ -1,0 +1,34 @@
+name: get prerelease tag
+description: read package.json and return the version suffix (ex 'beta' if x.y.z-beta.0)
+
+outputs:
+  tag:
+    value: ${{ steps.versionSuffix.outputs.match }}
+    description: version suffix (ex 'beta' if x.y.z-beta.0 ), if exists in package.json
+  version:
+    value: ${{ steps.packageVersion.outputs.prop }}
+    description: version from pjson
+  nextVersion:
+    value: ${{ steps.nextVersion.outputs.nextVersion }}
+    description: pjson version with the last digit incremented
+
+runs:
+  using: composite
+  steps:
+    - uses: notiz-dev/github-action-json-property@2192e246737701f108a4571462b76c75e7376216
+      id: packageVersion
+      with:
+        path: "package.json"
+        prop_path: "version"
+
+    - run: echo "found version ${{ steps.packageVersion.outputs.prop  }}"
+      shell: bash
+
+    - uses: actions-ecosystem/action-regex-match@9e6c4fb3d5e898f505be7a1fb6e7b0a278f6665b
+      id: versionSuffix
+      with:
+        text: ${{ steps.packageVersion.outputs.prop }}
+        regex: '(?<=\d*\.\d*\.\d*-).*(?=\.\d)'
+
+    - run: echo "found tag ${{ steps.versionSuffix.outputs.match }}"
+      shell: bash

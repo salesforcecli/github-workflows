@@ -9,12 +9,62 @@ on:
         description: use a prerelease instead of a regular release
 
 jobs:
-  release:
+  prerelease:
+    if: ${{ inputs.prerelease }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
           token: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
+      - if: inputs.prerelease
+        id: getPreReleaseTag
+        uses: salesforcecli/github-workflows/.github/actions/getPreReleaseTag@prerelease
+
+      - name: Conventional Changelog Action
+        if: ${{ steps.getPreReleaseTag.outputs.tag }}
+        id: changelog
+        uses: TriPSs/conventional-changelog-action@d360fad3a42feca6462f72c97c165d60a02d4bf2
+        with:
+          git-user-name: SF-CLI-BOT
+          git-user-email: alm-cli@salesforce.com
+          github-token: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
+          output-file: "false"
+          # we'll modify this manually
+          skip-version-file: true
+          skip-commit: true
+          tag-prefix: ""
+
+        # bump the last digit
+      - id: bump
+        uses: "phips28/gh-action-bump-version@39d361ef0720e31299059657e22093f5c2b7ea17"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          version-type: prerelease
+          preid: ${{ steps.getPreReleaseTag.outputs.tag}}
+          tag-prefix: ""
+          commit-message: "CI: bumps version to {{version}} [skip ci]"
+
+      - name: Create Github Release
+        uses: actions/create-release@v1
+        # not empty
+        if: ${{ steps.changelog.outputs.clean_changelog }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.bump.outputs.newTag }}
+          release_name: ${{ steps.bump.outputs.newTag }}
+          body: ${{ steps.changelog.outputs.clean_changelog }}
+          prerelease: true
+
+  release:
+    if: ${{ !inputs.prerelease }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
+
       - name: Conventional Changelog Action
         id: changelog
         uses: TriPSs/conventional-changelog-action@d360fad3a42feca6462f72c97c165d60a02d4bf2
@@ -24,6 +74,7 @@ jobs:
           github-token: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
           output-file: "false"
           tag-prefix: ""
+
       - name: Create Github Release
         uses: actions/create-release@v1
         if: ${{ steps.changelog.outputs.skipped == 'false' }}
