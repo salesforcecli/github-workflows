@@ -57,19 +57,22 @@ on:
         required: true
 jobs:
   getDistTag:
+    outputs:
+      tag: ${{ steps.distTag.outputs.tag }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
           ref: ${{ github.event.release.tag_name || inputs.tag  }}
       # derive an npm dist tag fro the package.json version (ex: beta or dev)
-      - uses: salesforcecli/github-workflows/.github/actions/getPreReleaseTag@main
+      - uses: salesforcecli/github-workflows/.github/actions/getPreReleaseTag@prerelease-cca
+        id: distTag
   npm:
     uses: salesforcecli/github-workflows/.github/workflows/npmPublish.yml@main
     needs: [getDistTag]
     with:
       # usually true or false, but this says, "only use ctc when publishing latest, not a prerelease"
-      ctc: ${{ needs.getDistTag.outputs.tag }}
+      ctc: ${{ !needs.getDistTag.outputs.tag }}
       sign: true
       tag: ${{ needs.getDistTag.outputs.tag || latest }}
       githubTag: ${{ github.event.release.tag_name || inputs.tag }}
