@@ -92,7 +92,15 @@ name: version, tag and github release
 
 on:
   push:
-    branches: [main, other-branch]
+    branches:
+      - main,
+      # specify branches
+      - some-other-branch,
+      # use a naming convention
+      - prerelease/*
+    # don't respond when tags push
+    tags-ignore:
+      - '*'
 
 jobs:
   release:
