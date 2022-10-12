@@ -9,51 +9,7 @@ on:
         description: use a prerelease instead of a regular release
 
 jobs:
-  prerelease:
-    if: ${{ inputs.prerelease }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
-      - uses: actions/setup-node@v3
-      - id: getPreReleaseTag
-        uses: salesforcecli/github-workflows/.github/actions/getPreReleaseTag@prerelease
-
-      - run: yarn install
-        if: ${{ steps.getPreReleaseTag.outputs.tag }}
-
-      - uses: salesforcecli/github-workflows/.github/actions/gitConfig@main
-        if: ${{ steps.getPreReleaseTag.outputs.tag }}
-
-        # bump the package version
-      - id: bump
-        if: ${{ steps.getPreReleaseTag.outputs.tag }}
-        run: |
-          npm version preminor --git-tag-version --preid ${{steps.getPreReleaseTag.outputs.tag}} --no-commit-hooks -m 'chore: bump prerelease version [no ci]'
-          git push
-
-      - uses: notiz-dev/github-action-json-property@2192e246737701f108a4571462b76c75e7376216
-        if: ${{ steps.getPreReleaseTag.outputs.tag }}
-        id: packageVersion
-        with:
-          path: "package.json"
-          prop_path: "version"
-
-      - name: Create Github Release
-        uses: actions/create-release@v1
-        # not empty
-        if: ${{ steps.getPreReleaseTag.outputs.tag }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.packageVersion.outputs.prop }}
-          release_name: ${{ steps.packageVersion.outputs.prop }}
-          body: ${{ steps.changelog.outputs.clean_changelog }}
-          prerelease: true
-
   release:
-    if: ${{ !inputs.prerelease }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -62,7 +18,7 @@ jobs:
 
       - name: Conventional Changelog Action
         id: changelog
-        uses: TriPSs/conventional-changelog-action@d360fad3a42feca6462f72c97c165d60a02d4bf2
+        uses: salesforcecli/conventional-changelog-action@prereleases
         with:
           git-user-name: SF-CLI-BOT
           git-user-email: alm-cli@salesforce.com
