@@ -8,9 +8,6 @@ outputs:
   version:
     value: ${{ steps.packageVersion.outputs.prop }}
     description: version from pjson
-  nextVersion:
-    value: ${{ steps.nextVersion.outputs.nextVersion }}
-    description: pjson version with the last digit incremented
 
 runs:
   using: composite
