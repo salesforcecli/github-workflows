@@ -11,7 +11,7 @@ Reusable workflows and actions
 1. work on a feature branch, commiting with conventional-commits
 2. merge to main
 3. A push to main produces (if your commits have `fix:` or `feat:`) a bumped package.json and a tagged github release via `githubRelease`
-4. A release cause `npmPublish` to run, releasing the package as `latest`
+4. A release cause `npmPublish` to run.
 
 Just need to publish to npm? You could use any public action to do step 4.
 Use this repo's `npmPublish` if you need either
@@ -46,80 +46,16 @@ example usage
 ```yml
 on:
   release:
-    # both release and prereleases
+    # the result of the githubRelease workflow
     types: [published]
-  # support manual release in case something goes wrong and needs to be repeated or tested
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: github tag that needs to publish
-        type: string
-        required: true
-jobs:
-  getDistTag:
-    outputs:
-      tag: ${{ steps.distTag.outputs.tag }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.release.tag_name || inputs.tag  }}
-      # derive an npm dist tag fro the package.json version (ex: beta or dev)
-      - uses: salesforcecli/github-workflows/.github/actions/getPreReleaseTag@prerelease-cca
-        id: distTag
-  npm:
-    uses: salesforcecli/github-workflows/.github/workflows/npmPublish.yml@main
-    needs: [getDistTag]
-    with:
-      # usually true or false, but this says, "only use ctc when publishing latest, not a prerelease"
-      ctc: ${{ !needs.getDistTag.outputs.tag }}
-      sign: true
-      tag: ${{ needs.getDistTag.outputs.tag || latest }}
-      githubTag: ${{ github.event.release.tag_name || inputs.tag }}
-
-    secrets: inherit
-```
-
-### supporting npm prereleases
-
-Modify your `package.json`'s version to be `x.y.z-beta` where `beta` is the dist tag you want to publish under.
-Modify the above 2 files to accommodate pre-releases on non-main branch.
-
-`onPushToMain`
-
-```yml
-name: version, tag and github release
-
-on:
-  push:
-    branches:
-      - main,
-      # specify branches
-      - some-other-branch,
-      # use a naming convention
-      - prerelease/*
-    # don't respond when tags push
-    tags-ignore:
-      - '*'
 
 jobs:
-  release:
-    uses: salesforcecli/github-workflows/.github/workflows/githubRelease.yml@main
-    secrets: inherit
+  my-publish:
+    uses: salesforcecli/github-workflows/.github/workflows/npmPublish.yml
     with:
-      prerelease: ${{ github.ref_name != 'main' }}
-  ...
-```
-
-if you use the docs job, also modify it to not do docs off of main
-
-`onPushToMain`
-
-```
-  ...
-  docs:
-    if: ${{ github.ref_name == 'main' }}
-    ...
+      tag: latest
+      githubTag: ${{ github.event.release.tag_name }}
+    secrets: inherit
 ```
 
 ## Opinionated Testing Process
@@ -262,7 +198,6 @@ jobs:
 ```
 
 ### prNotification
-
 > Mainly used to notify Slack when Pull Requests are opened.
 >
 > For more info see [.github/actions/prNotification/README.md](.github/actions/prNotification/README.md)
@@ -278,17 +213,17 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Notify Slack on PR open
-        env:
-          WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          PULL_REQUEST_AUTHOR_ICON_URL: ${{ github.event.pull_request.user.avatar_url }}
-          PULL_REQUEST_AUTHOR_NAME: ${{ github.event.pull_request.user.login }}
-          PULL_REQUEST_AUTHOR_PROFILE_URL: ${{ github.event.pull_request.user.html_url }}
-          PULL_REQUEST_BASE_BRANCH_NAME: ${{ github.event.pull_request.base.ref }}
-          PULL_REQUEST_COMPARE_BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
-          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
-          PULL_REQUEST_REPO: ${{ github.event.pull_request.head.repo.name }}
-          PULL_REQUEST_TITLE: ${{ github.event.pull_request.title }}
-          PULL_REQUEST_URL: ${{ github.event.pull_request.html_url }}
-        uses: salesforcecli/github-workflows/.github/actions/prNotification@main
+    - name: Notify Slack on PR open
+      env: 
+        WEBHOOK_URL : ${{ secrets.SLACK_WEBHOOK_URL }}
+        PULL_REQUEST_AUTHOR_ICON_URL : ${{ github.event.pull_request.user.avatar_url }}
+        PULL_REQUEST_AUTHOR_NAME : ${{ github.event.pull_request.user.login }}
+        PULL_REQUEST_AUTHOR_PROFILE_URL: ${{ github.event.pull_request.user.html_url }}
+        PULL_REQUEST_BASE_BRANCH_NAME : ${{ github.event.pull_request.base.ref }}
+        PULL_REQUEST_COMPARE_BRANCH_NAME : ${{ github.event.pull_request.head.ref }}
+        PULL_REQUEST_NUMBER : ${{ github.event.pull_request.number }}
+        PULL_REQUEST_REPO: ${{ github.event.pull_request.head.repo.name }}
+        PULL_REQUEST_TITLE : ${{ github.event.pull_request.title }}
+        PULL_REQUEST_URL : ${{ github.event.pull_request.html_url }}
+      uses: salesforcecli/github-workflows/.github/actions/prNotification@main
 ```
