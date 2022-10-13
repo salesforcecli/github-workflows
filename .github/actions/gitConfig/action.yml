@@ -5,7 +5,7 @@ runs:
   steps:
     - run: git config --global push.default current
       shell: bash
-    - run: git config --global user.email alm-cli@salesforce.com
+    - run: git config --global user.email svc_cli_bot@salesforce.com
       shell: bash
-    - run: git config --global user.name SF-CLI-BOT
+    - run: git config --global user.name svc-cli-bot
       shell: bash
