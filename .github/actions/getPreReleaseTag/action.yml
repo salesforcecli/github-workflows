@@ -32,7 +32,7 @@ runs:
     - uses: actions-ecosystem/action-regex-match@9e6c4fb3d5e898f505be7a1fb6e7b0a278f6665b
       id: tag
       with:
-        text: ${{ steps.packageVersion.outputs.prop }}
+        text: ${{ steps.versionSuffix.outputs.prerelease }}
         # at this point, we have just the prerelease section, but it includes the final .0 or whatever
         regex: '.*(?=.\d+)'
 
