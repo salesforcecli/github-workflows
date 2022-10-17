@@ -26,7 +26,7 @@ runs:
       with:
         text: ${{ steps.packageVersion.outputs.prop }}
         # handle both 1.1.1-beta.0 and 1.1.1-beta
-        regex: '(?<=\d*\.\d*\.\d*-)\w+'
+        regex: '(?<=\d*\.\d*\.\d*-)[\w]*[a-z|A-Z]+[\w]*'
 
     - run: echo "found tag ${{ steps.versionSuffix.outputs.match }}"
       shell: bash
