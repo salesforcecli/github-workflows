@@ -3,7 +3,7 @@ description: read package.json and return the version suffix (ex 'beta' if x.y.z
 
 outputs:
   tag:
-    value: ${{ steps.versionSuffix.outputs.prerelease }}
+    value: ${{ steps.tag.outputs.match }}
     description: version suffix (ex 'beta' if x.y.z-beta.0 ), if exists in package.json
   version:
     value: ${{ steps.packageVersion.outputs.prop }}
@@ -26,5 +26,15 @@ runs:
       with:
         input_string: ${{ steps.packageVersion.outputs.prop }}
 
-    - run: echo "found tag ${{ steps.versionSuffix.outputs.prerelease }}"
+    - run: echo "found prerelease ${{ steps.versionSuffix.outputs.prerelease }}"
+      shell: bash
+
+    - uses: actions-ecosystem/action-regex-match@9e6c4fb3d5e898f505be7a1fb6e7b0a278f6665b
+      id: tag
+      with:
+        text: ${{ steps.packageVersion.outputs.prop }}
+        # at this point, we have just the prerelease section, but it includes the final .0 or whatever
+        regex: '.*(?=.\d+)'
+
+    - run: echo "found tag ${{ steps.tag.outputs.match }}"
       shell: bash
