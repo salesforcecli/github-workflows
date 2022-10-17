@@ -22,7 +22,8 @@ Use this repo's `npmPublish` if you need either
 
 ### githubRelease
 
-> creates a github release based on conventional commit prefixes. Using commits like `fix: etc` (patch version) and `feat: wow` (minor version) or any valid prefix with a `!` like `feat!:` (major version) will cause the action to update the packageVersion, produce a changelog, tag and release.
+> creates a github release based on conventional commit prefixes. Using commits like `fix: etc` (patch version) and `feat: wow` (minor version).
+> A commit whose **body** (not the title) contains `BREAKING CHANGES:` will cause the action to update the packageVersion to the next major version, produce a changelog, tag and release.
 
 ```yml
 name: version, tag and github release
@@ -198,6 +199,7 @@ jobs:
 ```
 
 ### prNotification
+
 > Mainly used to notify Slack when Pull Requests are opened.
 >
 > For more info see [.github/actions/prNotification/README.md](.github/actions/prNotification/README.md)
@@ -213,17 +215,17 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Notify Slack on PR open
-      env: 
-        WEBHOOK_URL : ${{ secrets.SLACK_WEBHOOK_URL }}
-        PULL_REQUEST_AUTHOR_ICON_URL : ${{ github.event.pull_request.user.avatar_url }}
-        PULL_REQUEST_AUTHOR_NAME : ${{ github.event.pull_request.user.login }}
-        PULL_REQUEST_AUTHOR_PROFILE_URL: ${{ github.event.pull_request.user.html_url }}
-        PULL_REQUEST_BASE_BRANCH_NAME : ${{ github.event.pull_request.base.ref }}
-        PULL_REQUEST_COMPARE_BRANCH_NAME : ${{ github.event.pull_request.head.ref }}
-        PULL_REQUEST_NUMBER : ${{ github.event.pull_request.number }}
-        PULL_REQUEST_REPO: ${{ github.event.pull_request.head.repo.name }}
-        PULL_REQUEST_TITLE : ${{ github.event.pull_request.title }}
-        PULL_REQUEST_URL : ${{ github.event.pull_request.html_url }}
-      uses: salesforcecli/github-workflows/.github/actions/prNotification@main
+      - name: Notify Slack on PR open
+        env:
+          WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          PULL_REQUEST_AUTHOR_ICON_URL: ${{ github.event.pull_request.user.avatar_url }}
+          PULL_REQUEST_AUTHOR_NAME: ${{ github.event.pull_request.user.login }}
+          PULL_REQUEST_AUTHOR_PROFILE_URL: ${{ github.event.pull_request.user.html_url }}
+          PULL_REQUEST_BASE_BRANCH_NAME: ${{ github.event.pull_request.base.ref }}
+          PULL_REQUEST_COMPARE_BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+          PULL_REQUEST_REPO: ${{ github.event.pull_request.head.repo.name }}
+          PULL_REQUEST_TITLE: ${{ github.event.pull_request.title }}
+          PULL_REQUEST_URL: ${{ github.event.pull_request.html_url }}
+        uses: salesforcecli/github-workflows/.github/actions/prNotification@main
 ```
