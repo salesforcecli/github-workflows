@@ -126,9 +126,11 @@ jobs:
 
 ## Opinionated Testing Process
 
-Write unit tests to tests units of code (a function/method)
-Write not-unit-tests to tests larger parts of code (a command) against real environments/APIs
-Run the UT first (faster, less expensive for infrastructure/limits)
+Write unit tests to tests units of code (a function/method).
+
+Write not-unit-tests to tests larger parts of code (a command) against real environments/APIs.
+
+Run the UT first (faster, less expensive for infrastructure/limits).
 
 ```yml
 name: tests
@@ -153,24 +155,6 @@ jobs:
 ```
 
 ## Other Tooling
-
-### validatePR
-
-> requires PR reference a github issue url or a GUS WI surrounded by `@` (`@W-xxxxxxxx@`)
-
-```yml
-name: pr-validation
-
-on:
-  pull_request:
-    types: [opened, reopened, edited]
-    # only applies to PRs that want to merge to main
-    branches: [main]
-
-jobs:
-  pr-validation:
-    uses: salesforcecli/github-workflows/.github/workflows/validatePR.yml@main
-```
 
 ### nut conditional on commit message
 
@@ -247,7 +231,7 @@ automerge:
 
 ### validatePR
 
-> Checks PRs have a link to a github issue OR a GUS WI in the form of `@W-12456789@` (the `@` are to be compatible with [git2gus](https://github.com/forcedotcom/git2gus))
+> Checks that PRs have a link to a github issue OR a GUS WI in the form of `@W-12456789@` (the `@` are to be compatible with [git2gus](https://github.com/forcedotcom/git2gus))
 
 ```yml
 name: pr-validation
