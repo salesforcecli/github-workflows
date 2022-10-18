@@ -59,6 +59,71 @@ jobs:
     secrets: inherit
 ```
 
+### Prereleases
+
+`main` will release to latest. Other branches can create github prereleases and publish to other npm dist tags
+
+1. Configure the branch rules for wherever you want to release from
+1. Set your branch's package.json version like `4.4.4-beta.0`
+1. Modify your release and publish workflows like the following
+
+```yml
+name: version, tag and github release
+
+on:
+  push:
+    push:
+    branches:
+      - main
+      # point at specific branches, or a naming convention via wildcard
+      - prerelease/*
+    tags-ignore:
+      - "*"
+
+jobs:
+  release:
+    # this job will throw if prerelease is true but it doesn't have a prerelease-looking package.json version
+    uses: salesforcecli/github-workflows/.github/workflows/githubRelease.yml@main
+    secrets: inherit
+    with:
+      prerelease: ${{ github.ref_name != 'main' }}
+```
+
+```yml
+name: publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: tag that needs to publish
+        type: string
+        required: true
+
+jobs:
+  # parses the package.json version and detects prerelease tag (ex: beta from 4.4.4-beta.0)
+  getDistTag:
+    outputs:
+      tag: ${{ steps.distTag.outputs.tag }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag  }}
+      - uses: salesforcecli/github-workflows/.github/actions/getPreReleaseTag@main
+        id: distTag
+
+  npm:
+    uses: salesforcecli/github-workflows/.github/workflows/npmPublish.yml@main
+    needs: [getDistTag]
+    with:
+      tag: ${{ needs.getDistTag.outputs.tag || 'latest' }}
+      githubTag: ${{ github.event.release.tag_name || inputs.tag }}
+    secrets: inherit
+```
+
 ## Opinionated Testing Process
 
 Write unit tests to tests units of code (a function/method)
