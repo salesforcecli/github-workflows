@@ -15,6 +15,18 @@ jobs:
       - uses: actions/checkout@v3
         with:
           token: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
+
+      - uses: salesforcecli/github-workflows/.github/actions/getPreReleaseTag@prereleases-semver
+        id: distTag
+        if: inputs.prerelease
+
+      - name: prerelease package.json validation
+        if: inputs.prerelease && !steps.distTag.outputs.tag
+        uses: actions/github-script@v3
+        with:
+          script: |
+            core.setFailed('Prerelease requires a dist tag name in your package.json like beta in 1.1.1-beta.0')
+
       - name: Conventional Changelog Action
         id: changelog
         uses: salesforcecli/conventional-changelog-action@prereleases
