@@ -15,7 +15,7 @@ jobs:
         with:
           node-version: lts/*
           cache: yarn
-      - run: yarn install --network-timeout 600000
+      - run: yarn install --ignore-engines --network-timeout 600000
       - uses: salesforcecli/github-workflows/.github/actions/gitConfig@main
       - name: build docs
         run: |

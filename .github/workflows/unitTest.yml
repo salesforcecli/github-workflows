@@ -15,7 +15,7 @@ jobs:
         with:
           node-version: ${{ matrix.node_version }}
           cache: yarn
-      - run: yarn install --network-timeout 600000
+      - run: yarn install --ignore-engines --network-timeout 600000
       - run: yarn build
       - run: yarn test
   lockfile-check:

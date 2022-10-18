@@ -12,7 +12,7 @@ jobs:
         with:
           node-version: lts/*
       - run: |
-          yarn install --network-timeout 600000
+          yarn install --ignore-engines --network-timeout 600000
           yarn add ${{ github.repository }}#${{ github.sha }} --network-concurrency 1
           yarn pack:tarballs -t linux-x64 --no-xz
           yarn pack:verify

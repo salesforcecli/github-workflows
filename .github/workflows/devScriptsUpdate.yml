@@ -58,12 +58,12 @@ jobs:
       - run: npm install -g yarn-deduplicate
       - run: yarn upgrade @salesforce/dev-scripts@latest
       # this may fail because that's how dev-scripts does things
-      - run: yarn install --network-timeout 600000
+      - run: yarn install --ignore-engines --network-timeout 600000
         continue-on-error: true
 
-      - run: yarn install --network-timeout 600000
+      - run: yarn install --ignore-engines --network-timeout 600000
       - run: npx yarn-deduplicate
-      - run: yarn install --network-timeout 600000
+      - run: yarn install --ignore-engines --network-timeout 600000
 
       # this may fail but we still want a PR with partial fix
       - run: |
