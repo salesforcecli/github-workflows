@@ -21,7 +21,7 @@ jobs:
 
       - uses: actions/setup-node@v3
         with:
-          node-version: latest
+          node-version: lts/*
           cache: npm
       - run: npm install -g @salesforce/change-case-management --omit=dev
       - id: ctc

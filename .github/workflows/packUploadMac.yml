@@ -27,7 +27,7 @@ jobs:
         with:
           node-version: lts/*
           cache: yarn
-      - run: yarn install --ignore-engines --network-timeout 600000
+      - run: yarn install  --network-timeout 600000
       # todo: download the macos tarball and pass that to the oclif pack:macos command
       - run: yarn pack:macos
       - run: yarn upload:macos
