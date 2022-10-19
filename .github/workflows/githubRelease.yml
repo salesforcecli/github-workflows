@@ -16,7 +16,7 @@ jobs:
         with:
           token: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
 
-      - uses: salesforcecli/github-workflows/.github/actions/getPreReleaseTag@prereleases-semver
+      - uses: salesforcecli/github-workflows/.github/actions/getPreReleaseTag@main
         id: distTag
         if: inputs.prerelease
 
