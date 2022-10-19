@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          token: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
       - uses: actions/setup-node@v3
         with:
           node-version: lts/*
@@ -32,10 +32,10 @@ jobs:
       - name: run automerge command
         if: ${{ !inputs.skipCI }}
         env:
-          GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN}}
+          GITHUB_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN}}
         run: sf-release dependabot:automerge --merge-method ${{ inputs.mergeMethod}} --max-version-bump ${{ inputs.maxVersionBump}} --owner $GITHUB_REPOSITORY_OWNER --repo $(basename $GITHUB_REPOSITORY)
       - name: run automerge command
         if: ${{ inputs.skipCI }}
         env:
-          GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN}}
+          GITHUB_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN}}
         run: sf-release dependabot:automerge --merge-method ${{ inputs.mergeMethod}} --max-version-bump ${{ inputs.maxVersionBump}} --owner $GITHUB_REPOSITORY_OWNER --repo $(basename $GITHUB_REPOSITORY) --skip-ci

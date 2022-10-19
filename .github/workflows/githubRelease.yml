@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          token: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
+          token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
 
       - uses: salesforcecli/github-workflows/.github/actions/getPreReleaseTag@main
         id: distTag
@@ -31,16 +31,16 @@ jobs:
         id: changelog
         uses: salesforcecli/conventional-changelog-action@prereleases
         with:
-          git-user-name: SF-CLI-BOT
-          git-user-email: alm-cli@salesforce.com
-          github-token: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
+          git-user-name: svc-cli-bot
+          git-user-email: svc_cli_bot@salesforce.com
+          github-token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
           output-file: "false"
           tag-prefix: ""
       - name: Create Github Release
         uses: actions/create-release@v1
         if: ${{ steps.changelog.outputs.skipped == 'false' }}
         env:
-          GITHUB_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.changelog.outputs.tag }}
           release_name: ${{ steps.changelog.outputs.tag }}

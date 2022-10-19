@@ -48,7 +48,7 @@ jobs:
       - run: echo "previous job output was ${{ needs.compareVersions.outputs.shouldUpdate }}"
       - uses: actions/checkout@v3
         with:
-          token: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
+          token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
       - uses: salesforcecli/github-workflows/.github/actions/gitConfig@main
 
       - uses: actions/setup-node@v3
@@ -77,4 +77,4 @@ jobs:
           sleep 60
           gh pr create --title 'refactor: devScripts update' --body 'created via github action.' -l dependencies
         env:
-          GH_TOKEN: ${{ secrets.SF_CLI_BOT_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
