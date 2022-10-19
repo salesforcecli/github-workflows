@@ -22,7 +22,8 @@ Use this repo's `npmPublish` if you need either
 
 ### githubRelease
 
-> creates a github release based on conventional commit prefixes. Using commits like `fix: etc` (patch version) and `feat: wow` (minor version) or any valid prefix with a `!` like `feat!:` (major version) will cause the action to update the packageVersion, produce a changelog, tag and release.
+> creates a github release based on conventional commit prefixes. Using commits like `fix: etc` (patch version) and `feat: wow` (minor version).
+> A commit whose **body** (not the title) contains `BREAKING CHANGES:` will cause the action to update the packageVersion to the next major version, produce a changelog, tag and release.
 
 ```yml
 name: version, tag and github release
@@ -58,11 +59,78 @@ jobs:
     secrets: inherit
 ```
 
+### Prereleases
+
+`main` will release to latest. Other branches can create github prereleases and publish to other npm dist tags
+
+1. Configure the branch rules for wherever you want to release from
+1. Set your branch's package.json version like `4.4.4-beta.0`
+1. Modify your release and publish workflows like the following
+
+```yml
+name: version, tag and github release
+
+on:
+  push:
+    push:
+    branches:
+      - main
+      # point at specific branches, or a naming convention via wildcard
+      - prerelease/*
+    tags-ignore:
+      - "*"
+
+jobs:
+  release:
+    # this job will throw if prerelease is true but it doesn't have a prerelease-looking package.json version
+    uses: salesforcecli/github-workflows/.github/workflows/githubRelease.yml@main
+    secrets: inherit
+    with:
+      prerelease: ${{ github.ref_name != 'main' }}
+```
+
+```yml
+name: publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: tag that needs to publish
+        type: string
+        required: true
+
+jobs:
+  # parses the package.json version and detects prerelease tag (ex: beta from 4.4.4-beta.0)
+  getDistTag:
+    outputs:
+      tag: ${{ steps.distTag.outputs.tag }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag  }}
+      - uses: salesforcecli/github-workflows/.github/actions/getPreReleaseTag@main
+        id: distTag
+
+  npm:
+    uses: salesforcecli/github-workflows/.github/workflows/npmPublish.yml@main
+    needs: [getDistTag]
+    with:
+      tag: ${{ needs.getDistTag.outputs.tag || 'latest' }}
+      githubTag: ${{ github.event.release.tag_name || inputs.tag }}
+    secrets: inherit
+```
+
 ## Opinionated Testing Process
 
-Write unit tests to tests units of code (a function/method)
-Write not-unit-tests to tests larger parts of code (a command) against real environments/APIs
-Run the UT first (faster, less expensive for infrastructure/limits)
+Write unit tests to tests units of code (a function/method).
+
+Write not-unit-tests to tests larger parts of code (a command) against real environments/APIs.
+
+Run the UT first (faster, less expensive for infrastructure/limits).
 
 ```yml
 name: tests
@@ -87,24 +155,6 @@ jobs:
 ```
 
 ## Other Tooling
-
-### validatePR
-
-> requires PR reference a github issue url or a GUS WI surrounded by `@` (`@W-xxxxxxxx@`)
-
-```yml
-name: pr-validation
-
-on:
-  pull_request:
-    types: [opened, reopened, edited]
-    # only applies to PRs that want to merge to main
-    branches: [main]
-
-jobs:
-  pr-validation:
-    uses: salesforcecli/github-workflows/.github/workflows/validatePR.yml@main
-```
 
 ### nut conditional on commit message
 
@@ -181,7 +231,7 @@ automerge:
 
 ### validatePR
 
-> Checks PRs have a link to a github issue OR a GUS WI in the form of `@W-12456789@` (the `@` are to be compatible with [git2gus](https://github.com/forcedotcom/git2gus))
+> Checks that PRs have a link to a github issue OR a GUS WI in the form of `@W-12456789@` (the `@` are to be compatible with [git2gus](https://github.com/forcedotcom/git2gus))
 
 ```yml
 name: pr-validation
@@ -198,6 +248,7 @@ jobs:
 ```
 
 ### prNotification
+
 > Mainly used to notify Slack when Pull Requests are opened.
 >
 > For more info see [.github/actions/prNotification/README.md](.github/actions/prNotification/README.md)
@@ -213,17 +264,17 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Notify Slack on PR open
-      env: 
-        WEBHOOK_URL : ${{ secrets.SLACK_WEBHOOK_URL }}
-        PULL_REQUEST_AUTHOR_ICON_URL : ${{ github.event.pull_request.user.avatar_url }}
-        PULL_REQUEST_AUTHOR_NAME : ${{ github.event.pull_request.user.login }}
-        PULL_REQUEST_AUTHOR_PROFILE_URL: ${{ github.event.pull_request.user.html_url }}
-        PULL_REQUEST_BASE_BRANCH_NAME : ${{ github.event.pull_request.base.ref }}
-        PULL_REQUEST_COMPARE_BRANCH_NAME : ${{ github.event.pull_request.head.ref }}
-        PULL_REQUEST_NUMBER : ${{ github.event.pull_request.number }}
-        PULL_REQUEST_REPO: ${{ github.event.pull_request.head.repo.name }}
-        PULL_REQUEST_TITLE : ${{ github.event.pull_request.title }}
-        PULL_REQUEST_URL : ${{ github.event.pull_request.html_url }}
-      uses: salesforcecli/github-workflows/.github/actions/prNotification@main
+      - name: Notify Slack on PR open
+        env:
+          WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          PULL_REQUEST_AUTHOR_ICON_URL: ${{ github.event.pull_request.user.avatar_url }}
+          PULL_REQUEST_AUTHOR_NAME: ${{ github.event.pull_request.user.login }}
+          PULL_REQUEST_AUTHOR_PROFILE_URL: ${{ github.event.pull_request.user.html_url }}
+          PULL_REQUEST_BASE_BRANCH_NAME: ${{ github.event.pull_request.base.ref }}
+          PULL_REQUEST_COMPARE_BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+          PULL_REQUEST_REPO: ${{ github.event.pull_request.head.repo.name }}
+          PULL_REQUEST_TITLE: ${{ github.event.pull_request.title }}
+          PULL_REQUEST_URL: ${{ github.event.pull_request.html_url }}
+        uses: salesforcecli/github-workflows/.github/actions/prNotification@main
 ```

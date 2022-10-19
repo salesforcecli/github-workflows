@@ -13,9 +13,9 @@ jobs:
           token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
       - uses: actions/setup-node@v3
         with:
-          node-version: latest
+          node-version: lts/*
           cache: yarn
-      - run: yarn install --network-timeout 600000
+      - run: yarn install  --network-timeout 600000
       - uses: salesforcecli/github-workflows/.github/actions/gitConfig@main
       - name: build docs
         run: |

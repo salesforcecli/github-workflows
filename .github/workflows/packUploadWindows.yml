@@ -33,7 +33,7 @@ jobs:
       - run: |
           sudo apt-get update
           sudo apt-get install osslsigncode nsis
-      - run: yarn install --network-timeout 600000
+      - run: yarn install  --network-timeout 600000
       - run: |
           echo $WINDOWS_SIGNING_KEY | base64 --decode > /tmp/windows-signing.pfx
       # todo: download the macos tarball and pass that to the oclif pack:macos command
