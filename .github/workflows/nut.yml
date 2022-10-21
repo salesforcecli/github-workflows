@@ -35,9 +35,8 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: yarn
-      - run: npm install -g sfdx-cli --omit=dev
-      - run: npm install -g @salesforce/cli --omit=dev
-      - run: yarn install  --network-timeout 600000
+      - run: npm install -g sfdx-cli @salesforce/cli --omit=dev
+      - run: yarn install --network-timeout 600000
       - run: yarn compile
       - run: ${{ inputs.command }}
         env:
