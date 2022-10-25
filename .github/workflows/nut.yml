@@ -27,6 +27,13 @@ on:
 
 jobs:
   nut:
+    env:
+      TESTKIT_AUTH_URL: ${{ secrets.TESTKIT_AUTH_URL}}
+      TESTKIT_HUB_USERNAME: ${{ secrets.TESTKIT_HUB_USERNAME }}
+      TESTKIT_JWT_CLIENT_ID: ${{ secrets.TESTKIT_JWT_CLIENT_ID }}
+      TESTKIT_JWT_KEY: ${{ secrets.TESTKIT_JWT_KEY }}
+      TESTKIT_HUB_INSTANCE: ${{ secrets.TESTKIT_HUB_INSTANCE }}
+      ONEGP_TESTKIT_AUTH_URL: ${{ secrets.ONEGP_TESTKIT_AUTH_URL }}
     name: ${{ inputs.command }}
     runs-on: ${{ inputs.os }}
     steps:
@@ -39,11 +46,8 @@ jobs:
       - run: yarn install --network-timeout 600000
       - run: yarn compile
       - run: ${{ inputs.command }}
+        if: inputs.sfdxExecutablePath != ''
         env:
           TESTKIT_EXECUTABLE_PATH: ${{ inputs.sfdxExecutablePath }}
-          TESTKIT_AUTH_URL: ${{ secrets.TESTKIT_AUTH_URL}}
-          TESTKIT_HUB_USERNAME: ${{ secrets.TESTKIT_HUB_USERNAME }}
-          TESTKIT_JWT_CLIENT_ID: ${{ secrets.TESTKIT_JWT_CLIENT_ID }}
-          TESTKIT_JWT_KEY: ${{ secrets.TESTKIT_JWT_KEY }}
-          TESTKIT_HUB_INSTANCE: ${{ secrets.TESTKIT_HUB_INSTANCE }}
-          ONEGP_TESTKIT_AUTH_URL: ${{ secrets.ONEGP_TESTKIT_AUTH_URL }}
+      - run: ${{ inputs.command }}
+        if: inputs.sfdxExecutablePath == ''
