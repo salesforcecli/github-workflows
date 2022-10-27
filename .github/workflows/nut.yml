@@ -43,13 +43,6 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: yarn
-      # dynamically get the os-specific locations for the yarn global installs of the CLI
-      - run: echo "yarnGlobalDir=$(yarn global dir)" >> $GITHUB_OUTPUT
-        id: yarnGlobalDir
-      - run: echo "yarnGlobalBin=$(yarn global bin)" >> $GITHUB_OUTPUT
-        id: yarnGlobalBin
-      - run: echo "dir ${{ steps.yarnGlobalDir.outputs.yarnGlobalDir}}"
-      - run: echo "bin ${{ steps.yarnGlobalBin.outputs.yarnGlobalBin}}"
       - name: Cache node modules
         id: cache-nodemodules
         uses: actions/cache@v3
@@ -58,18 +51,7 @@ jobs:
         with:
           path: "**/node_modules"
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/yarn.lock') }}
-      - name: Cache yarn globals
-        id: cache-yarnGlobals
-        uses: actions/cache@v3
-        env:
-          cache-name: cache-yarn-globals
-        with:
-          path: |
-            ${{ steps.yarnGlobalDir.outputs.yarnGlobalDir}}
-            ${{ steps.yarnGlobalBin.outputs.yarnGlobalBin}}
-          key: ${{ runner.os }}-${{ env.cache-name }}
       - run: yarn global add sfdx-cli @salesforce/cli
-        if: ${{ steps.cache-yarnGlobals.outputs.cache-hit != 'true' }}
       - run: yarn install --network-timeout 600000
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
 
