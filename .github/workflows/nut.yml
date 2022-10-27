@@ -48,6 +48,8 @@ jobs:
         id: yarnGlobalDir
       - run: echo "yarnGlobalBin=$(yarn global bin)" >> $GITHUB_OUTPUT
         id: yarnGlobalBin
+      - run: echo "dir ${{ steps.yarnGlobalDir.outputs.yarnGlobalDir}}"
+      - run: echo "bin ${{ steps.yarnGlobalBin.outputs.yarnGlobalBin}}"
       - name: Cache node modules
         id: cache-nodemodules
         uses: actions/cache@v3
