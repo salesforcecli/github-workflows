@@ -57,15 +57,9 @@ jobs:
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
 
       - run: yarn compile
-      - run: (echo "NUTs attempt 1:" && ${{ inputs.command }}) || \
-          (echo "NUTs attempt 2:" && ${{ inputs.command }}) || \
-          (echo "NUTs attempt 3:" && ${{ inputs.command }}) || \
-          (echo "NUTs failed!" && exit 1)
+      - run: (echo "NUTs attempt 1:" && ${{ inputs.command }}) || (echo "NUTs attempt 2:" && ${{ inputs.command }}) || (echo "NUTs attempt 3:" && ${{ inputs.command }}) || (echo "NUTs failed!" && exit 1)
         if: inputs.sfdxExecutablePath != ''
         env:
           TESTKIT_EXECUTABLE_PATH: ${{ inputs.sfdxExecutablePath }}
-      - run: (echo "NUTs attempt 1:" && ${{ inputs.command }}) || \
-          (echo "NUTs attempt 2:" && ${{ inputs.command }}) || \
-          (echo "NUTs attempt 3:" && ${{ inputs.command }}) || \
-          (echo "NUTs failed!" && exit 1)
+      - run: (echo "NUTs attempt 1:" && ${{ inputs.command }}) || (echo "NUTs attempt 2:" && ${{ inputs.command }}) || (echo "NUTs attempt 3:" && ${{ inputs.command }}) || (echo "NUTs failed!" && exit 1)
         if: inputs.sfdxExecutablePath == ''
