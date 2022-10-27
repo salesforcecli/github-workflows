@@ -51,6 +51,13 @@ on:
 
 jobs:
   external-nut:
+    env:
+      TESTKIT_AUTH_URL: ${{ secrets.TESTKIT_AUTH_URL }}
+      TESTKIT_HUB_USERNAME: ${{ secrets.TESTKIT_HUB_USERNAME }}
+      TESTKIT_HUB_INSTANCE: ${{ secrets.TESTKIT_HUB_INSTANCE }}
+      TESTKIT_JWT_CLIENT_ID: ${{ secrets.TESTKIT_JWT_CLIENT_ID }}
+      TESTKIT_JWT_KEY: ${{ secrets.TESTKIT_JWT_KEY }}
+      TESTKIT_SETUP_RETRIES: 2
     name: ${{ inputs.command }}
     runs-on: ${{ inputs.os }}
     steps:
@@ -96,17 +103,7 @@ jobs:
         if: inputs.sfdxExecutablePath
         env:
           TESTKIT_EXECUTABLE_PATH: ${{ inputs.sfdxExecutablePath }}
-          TESTKIT_AUTH_URL: ${{ secrets.TESTKIT_AUTH_URL }}
-          TESTKIT_HUB_USERNAME: ${{ secrets.TESTKIT_HUB_USERNAME }}
-          TESTKIT_HUB_INSTANCE: ${{ secrets.TESTKIT_HUB_INSTANCE }}
-          TESTKIT_JWT_CLIENT_ID: ${{ secrets.TESTKIT_JWT_CLIENT_ID }}
-          TESTKIT_JWT_KEY: ${{ secrets.TESTKIT_JWT_KEY }}
+
       - name: NUTs
         run: ${{ inputs.command }}
         if: ${{ !inputs.sfdxExecutablePath }}
-        env:
-          TESTKIT_AUTH_URL: ${{ secrets.TESTKIT_AUTH_URL }}
-          TESTKIT_HUB_USERNAME: ${{ secrets.TESTKIT_HUB_USERNAME }}
-          TESTKIT_HUB_INSTANCE: ${{ secrets.TESTKIT_HUB_INSTANCE }}
-          TESTKIT_JWT_CLIENT_ID: ${{ secrets.TESTKIT_JWT_CLIENT_ID }}
-          TESTKIT_JWT_KEY: ${{ secrets.TESTKIT_JWT_KEY }}
