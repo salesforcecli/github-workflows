@@ -13,7 +13,7 @@ on:
         description: run unit tests on windows
 
 jobs:
-  unit-tests-linux:
+  linux-unit-tests:
     if: inputs.linux
     strategy:
       matrix:
@@ -40,7 +40,7 @@ jobs:
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
       - run: yarn build
       - run: yarn test
-  unit-tests-windows:
+  windows-unit-tests:
     if: inputs.windows
     strategy:
       matrix:
