@@ -52,13 +52,20 @@ jobs:
         id: cache-nodemodules
         uses: actions/cache@v3
         env:
-          cache-name: cache-node-modules-yarn-globals
+          cache-name: cache-node-modules
+        with:
+          path: "**/node_modules"
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/yarn.lock') }}
+      - name: Cache yarn globals
+        id: cache-yarnGlobals
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-yarn-globals
         with:
           path: |
-            "**/node_modules"
             ${{ steps.yarnGlobalDir.outputs.yarnGlobalDir}}
             ${{ steps.yarnGlobalBin.outputs.yarnGlobalBin}}
-          key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('**/yarn.lock') }}
+          key: ${{ runner.os }}-${{ env.cache-name }}
       - run: yarn global add sfdx-cli @salesforce/cli
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
       - run: yarn install --network-timeout 600000
