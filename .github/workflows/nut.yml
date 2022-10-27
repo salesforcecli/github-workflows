@@ -44,9 +44,9 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
           cache: yarn
       # dynamically get the os-specific locations for the yarn global installs of the CLI
-      - run: echo "yarnGlobalDir=yarn global dir" >> $GITHUB_OUTPUT
+      - run: echo "yarnGlobalDir=$(yarn global dir)" >> $GITHUB_OUTPUT
         id: yarnGlobalDir
-      - run: echo "yarnGlobalBin=yarn global bin" >> $GITHUB_OUTPUT
+      - run: echo "yarnGlobalBin=$(yarn global bin)" >> $GITHUB_OUTPUT
         id: yarnGlobalBin
       - name: Cache node modules
         id: cache-nodemodules
