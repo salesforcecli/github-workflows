@@ -98,12 +98,21 @@ jobs:
         run: ${{ inputs.preExternalBuildCommands }}
       - name: Build the external project (where the NUTs are)
         run: yarn compile
-      - name: NUTs with custom executable
-        run: ${{ inputs.command }}
+      - run: echo "TESTKIT_EXECUTABLE_PATH=${{inputs.sfdxExecutablePath}}" >> $GITHUB_ENV
         if: inputs.sfdxExecutablePath
-        env:
-          TESTKIT_EXECUTABLE_PATH: ${{ inputs.sfdxExecutablePath }}
-
-      - name: NUTs
+      - name: NUTs attempt 1
+        continue-on-error: true
+        id: nut1
         run: ${{ inputs.command }}
-        if: ${{ !inputs.sfdxExecutablePath }}
+      - name: NUTs attempt 2
+        continue-on-error: true
+        id: nut2
+        if: steps.nut1.outcome == 'failure'
+        run: |
+          echo "::notice title=NUT Retry::NUT '${{input.command}}' failed and was retried."
+          ${{ inputs.command }}
+      - name: NUTs attempt 3
+        if: steps.nut2.outcome == 'failure'
+        run: |
+          echo "::warning title=NUT Retry 2::NUT '${{input.command}}' failed twice and was retried."
+          ${{ inputs.command }}

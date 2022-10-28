@@ -55,11 +55,22 @@ jobs:
       - run: yarn global add sfdx-cli @salesforce/cli
       - run: yarn install --network-timeout 600000
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
-
       - run: yarn compile
-      - run: (echo "NUTs attempt 1:" && ${{ inputs.command }}) || (echo "NUTs attempt 2:" && ${{ inputs.command }}) || (echo "NUTs attempt 3:" && ${{ inputs.command }}) || (echo "NUTs failed!" && exit 1)
-        if: inputs.sfdxExecutablePath != ''
-        env:
-          TESTKIT_EXECUTABLE_PATH: ${{ inputs.sfdxExecutablePath }}
-      - run: (echo "NUTs attempt 1:" && ${{ inputs.command }}) || (echo "NUTs attempt 2:" && ${{ inputs.command }}) || (echo "NUTs attempt 3:" && ${{ inputs.command }}) || (echo "NUTs failed!" && exit 1)
-        if: inputs.sfdxExecutablePath == ''
+      - run: echo "TESTKIT_EXECUTABLE_PATH=${{inputs.sfdxExecutablePath}}" >> $GITHUB_ENV
+        if: inputs.sfdxExecutablePath
+      - name: NUTs attempt 1
+        continue-on-error: true
+        id: nut1
+        run: ${{ inputs.command }}
+      - name: NUTs attempt 2
+        continue-on-error: true
+        id: nut2
+        if: steps.nut1.outcome == 'failure'
+        run: |
+          echo "::notice title=NUT Retry::NUT '${{input.command}}' failed and was retried."
+          ${{ inputs.command }}
+      - name: NUTs attempt 3
+        if: steps.nut2.outcome == 'failure'
+        run: |
+          echo "::warning title=NUT Retry 2::NUT '${{input.command}}' failed twice and was retried."
+          ${{ inputs.command }}
