@@ -1,70 +1,8 @@
 on:
   workflow_call:
-    inputs:
-      linux:
-        type: boolean
-        required: false
-        default: true
-        description: run unit tests on linux
-      windows:
-        type: boolean
-        required: false
-        default: true
-        description: run unit tests on windows
 
 jobs:
   linux-unit-tests:
-    if: inputs.linux
-    strategy:
-      matrix:
-        # node_version: [lts/-1, lts/*, latest]
-        node_version: [lts/-1, lts/*]
-      fail-fast: false
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node_version }}
-          cache: yarn
-      - name: Cache node modules
-        id: cache-nodemodules
-        uses: actions/cache@v3
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: "**/node_modules"
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/yarn.lock') }}
-
-      - run: yarn install  --network-timeout 600000
-        if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
-      - run: yarn build
-      - run: yarn test
+    uses: salesforcecli/github-workflows/.github/workflows/unitTestsLinux.yml@main
   windows-unit-tests:
-    if: inputs.windows
-    strategy:
-      matrix:
-        # node_version: [lts/-1, lts/*, latest]
-        node_version: [lts/-1, lts/*]
-      fail-fast: false
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: salesforcecli/github-workflows/.github/actions/windowsCachePerf@main
-      - uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node_version }}
-          cache: yarn
-      - name: Cache node modules
-        id: cache-nodemodules
-        uses: actions/cache@v3
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: "**/node_modules"
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/yarn.lock') }}
-
-      - run: yarn install  --network-timeout 600000
-        if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
-      - run: yarn build
-      - run: yarn test
+    uses: salesforcecli/github-workflows/.github/workflows/unitTestsWindows.yml@main
