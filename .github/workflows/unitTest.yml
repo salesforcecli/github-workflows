@@ -1,21 +1,8 @@
 on:
   workflow_call:
-    inputs:
-      linux:
-        type: boolean
-        required: false
-        default: true
-        description: run unit tests on linux
-      windows:
-        type: boolean
-        required: false
-        default: true
-        description: run unit tests on windows
 
 jobs:
   linux-unit-tests:
-    if: inputs.linux
     uses: salesforcecli/github-workflows/.github/workflows/unitTestsLinux.yml@ew/split-unit-tests
   windows-unit-tests:
-    if: inputs.windows
     uses: salesforcecli/github-workflows/.github/workflows/unitTestsWindows.yml@ew/split-unit-tests
