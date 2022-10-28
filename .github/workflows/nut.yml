@@ -67,10 +67,10 @@ jobs:
         id: nut2
         if: steps.nut1.outcome == 'failure'
         run: |
-          echo "::notice title=NUT Retry::NUT '${{input.command}}' failed and was retried."
+          echo "::notice title=NUT Retry::NUT '${{inputs.command}}' failed and was retried."
           ${{ inputs.command }}
       - name: NUTs attempt 3
         if: steps.nut2.outcome == 'failure'
         run: |
-          echo "::warning title=NUT Retry 2::NUT '${{input.command}}' failed twice and was retried."
+          echo "::warning title=NUT Retry 2::NUT '${{inputs.command}}' failed twice and was retried."
           ${{ inputs.command }}
