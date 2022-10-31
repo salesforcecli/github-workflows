@@ -2,7 +2,7 @@ on:
   workflow_call:
 
 jobs:
-  linux-unit-tests:
+  windows-unit-tests:
     strategy:
       matrix:
         # node_version: [lts/-1, lts/*, latest]
