@@ -44,7 +44,7 @@ jobs:
       AWS_EC2_METADATA_DISABLED: true
     needs: [macos]
     steps:
-      - uses: salesforcecli/github-workflows/.github/actions/renameMacPkg@main
+      - uses: salesforcecli/github-workflows/.github/actions/renameMacPkg@re/rename-mac-pkg
         with:
           cli: ${{ inputs.cli }}
           channel: ${{ inputs.channel }}
