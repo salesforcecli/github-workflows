@@ -14,9 +14,9 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - id: download & rename -x64.pkg
+    - id: download-and-rename-x64-pkg
       shell: bash
       run: aws s3 cp s3://dfc-data-production/media/salesforce-cli/${{ inputs.cli }}/channels/${{ inputs.channel }}/sfdx-x64.pkg ./sfdx.pkg
-    - id: upload renamed .pkg
+    - id: upload-renamed-pkg
       shell: bash
       run: aws s3 cp ./sfdx.pkg s3://dfc-data-production/media/salesforce-cli/${{ inputs.cli }}/channels/${{ inputs.channel }}/
