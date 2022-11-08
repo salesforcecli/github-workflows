@@ -33,6 +33,7 @@ jobs:
       - run: yarn upload:macos
       - run: yarn channel:promote --cli ${{ inputs.cli }} --version ${{ inputs.version }} --target ${{ inputs.channel }} --platform macos
         name: Promote macos to ${{ inputs.channel }} channel
+  
   # The rename-mac-pkg job is only needed as long as the developer site is linking to the old sfdx.pkg file and the mac signing job is only signing the old file as well.
   # It can be removed once those are updated to use the new name, sfdx-x64.pkg.
   rename-mac-pkg:
@@ -43,5 +44,7 @@ jobs:
       AWS_EC2_METADATA_DISABLED: true
     needs: [macos]
     steps:
-      - run: aws s3 cp s3://dfc-data-production/media/salesforce-cli/${{ inputs.cli }}/channels/${{ inputs.channel }}/sfdx-x64.pkg ./sfdx.pkg
-      - run: aws s3 cp ./sfdx.pkg s3://dfc-data-production/media/salesforce-cli/${{ inputs.cli }}/channels/${{ inputs.channel }}/
+      - uses: salesforcecli/github-workflows/.github/actions/renameMacPkg@main
+        with:
+          cli: ${{ inputs.cli }}
+          channel: ${{ inputs.channel }}
