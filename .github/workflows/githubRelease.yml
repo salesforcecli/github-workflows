@@ -7,6 +7,11 @@ on:
         required: false
         default: false
         description: use a prerelease instead of a regular release
+      githubToken:
+        type: string
+        required: false
+        default: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
+        description: github token used for repo interactions
 
 jobs:
   release:
@@ -14,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
+          token: inputs.githubToken
 
       - uses: salesforcecli/github-workflows/.github/actions/getPreReleaseTag@main
         id: distTag
@@ -33,14 +38,14 @@ jobs:
         with:
           git-user-name: svc-cli-bot
           git-user-email: svc_cli_bot@salesforce.com
-          github-token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
+          github-token: inputs.githubToken
           output-file: "false"
           tag-prefix: ""
       - name: Create Github Release
         uses: actions/create-release@v1
         if: ${{ steps.changelog.outputs.skipped == 'false' }}
         env:
-          GITHUB_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
+          GITHUB_TOKEN: inputs.githubToken
         with:
           tag_name: ${{ steps.changelog.outputs.tag }}
           release_name: ${{ steps.changelog.outputs.tag }}
