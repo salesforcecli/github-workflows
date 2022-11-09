@@ -7,6 +7,9 @@ on:
         required: false
         default: false
         description: use a prerelease instead of a regular release
+    secrets:
+      ALT_GITHUB_TOKEN:
+        required: false
 
 jobs:
   release:
