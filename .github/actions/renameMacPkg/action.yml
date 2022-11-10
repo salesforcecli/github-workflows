@@ -16,7 +16,7 @@ runs:
   steps:
     - id: download-and-rename-x64-pkg
       shell: bash
-      run: aws s3 cp s3://dfc-data-production/media/salesforce-cli/${{ inputs.cli }}/channels/${{ inputs.channel }}/${{ inputs.cli }}-x64.pkg ./${{ inputs.cli }}
+      run: aws s3 cp s3://dfc-data-production/media/salesforce-cli/${{ inputs.cli }}/channels/${{ inputs.channel }}/${{ inputs.cli }}-x64.pkg ./${{ inputs.cli }}.pkg
     - id: upload-renamed-pkg
       shell: bash
       run: aws s3 cp ./${{ inputs.cli }}.pkg s3://dfc-data-production/media/salesforce-cli/${{ inputs.cli }}/channels/${{ inputs.channel }}/
