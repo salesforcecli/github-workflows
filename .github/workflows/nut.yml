@@ -34,20 +34,43 @@ jobs:
       TESTKIT_JWT_KEY: ${{ secrets.TESTKIT_JWT_KEY }}
       TESTKIT_HUB_INSTANCE: ${{ secrets.TESTKIT_HUB_INSTANCE }}
       ONEGP_TESTKIT_AUTH_URL: ${{ secrets.ONEGP_TESTKIT_AUTH_URL }}
+      TESTKIT_SETUP_RETRIES: 2
     name: ${{ inputs.command }}
     runs-on: ${{ inputs.os }}
     steps:
       - uses: actions/checkout@v3
+      - uses: salesforcecli/github-workflows/.github/actions/windowsCachePerf@main
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: yarn
-      - run: npm install -g sfdx-cli @salesforce/cli --omit=dev
-      - run: yarn install --network-timeout 600000
-      - run: yarn compile
-      - run: ${{ inputs.command }}
-        if: inputs.sfdxExecutablePath != ''
+      - name: Cache node modules
+        id: cache-nodemodules
+        uses: actions/cache@v3
         env:
-          TESTKIT_EXECUTABLE_PATH: ${{ inputs.sfdxExecutablePath }}
-      - run: ${{ inputs.command }}
-        if: inputs.sfdxExecutablePath == ''
+          cache-name: cache-node-modules
+        with:
+          path: "**/node_modules"
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/yarn.lock') }}
+      - run: yarn global add sfdx-cli @salesforce/cli
+      - run: yarn install --network-timeout 600000
+        if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
+      - run: yarn compile
+      - run: echo "TESTKIT_EXECUTABLE_PATH=${{inputs.sfdxExecutablePath}}" >> $GITHUB_ENV
+        if: inputs.sfdxExecutablePath
+      - name: NUTs attempt 1
+        continue-on-error: true
+        id: nut1
+        run: ${{ inputs.command }}
+      - name: NUTs attempt 2
+        continue-on-error: true
+        id: nut2
+        if: steps.nut1.outcome == 'failure'
+        run: |
+          echo "::notice title=NUT Retry::NUT '${{inputs.command}}' failed and was retried."
+          ${{ inputs.command }}
+      - name: NUTs attempt 3
+        if: steps.nut2.outcome == 'failure'
+        run: |
+          echo "::warning title=NUT Retry 2::NUT '${{inputs.command}}' failed twice and was retried."
+          ${{ inputs.command }}

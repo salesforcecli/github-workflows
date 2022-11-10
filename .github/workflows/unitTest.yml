@@ -2,28 +2,7 @@ on:
   workflow_call:
 
 jobs:
-  unit-tests:
-    strategy:
-      matrix:
-        os: ["ubuntu-latest", "windows-latest"]
-        # node_version: [lts/-1, lts/*, latest]
-        node_version: [lts/-1, lts/*]
-      fail-fast: false
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node_version }}
-          cache: yarn
-      - run: yarn install  --network-timeout 600000
-      - run: yarn build
-      - run: yarn test
-  lockfile-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-      - run: |
-          npm install -g lockfile-lint
-          lockfile-lint --path yarn.lock --allowed-hosts npm yarn --validate-https
+  linux-unit-tests:
+    uses: salesforcecli/github-workflows/.github/workflows/unitTestsLinux.yml@main
+  windows-unit-tests:
+    uses: salesforcecli/github-workflows/.github/workflows/unitTestsWindows.yml@main
