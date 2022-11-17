@@ -25,7 +25,8 @@ jobs:
           path: "**/node_modules"
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/yarn.lock') }}
 
-      - run: git config --global core.autocrlf false
+      - name: Git config check for carriage returns
+        run: git config --global core.autocrlf false
         shell: bash
       - run: yarn install  --network-timeout 600000
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
