@@ -72,7 +72,6 @@ name: version, tag and github release
 
 on:
   push:
-    push:
     branches:
       - main
       # point at specific branches, or a naming convention via wildcard
