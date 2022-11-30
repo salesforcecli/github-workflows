@@ -35,9 +35,6 @@ jobs:
           cache: yarn
       - run: yarn install  --network-timeout 600000
       - run: yarn pack:tarballs
-        if: ${{!inputs.upload}}
-      - run: yarn pack:tarballs:sequential
-        if: ${{inputs.upload}}
       - run: yarn pack:verify
       - run: yarn test:smoke-unix
       - if: inputs.upload
