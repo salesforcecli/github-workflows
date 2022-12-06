@@ -15,7 +15,7 @@ outputs:
     value: ${{ steps.getNumericalVersion.outputs.version }}
     description: guaranteed to be an npm number, even if a tag was passed in
   url:
-    value: https://developer.salesforce.com/media/salesforce-cli/${{ steps.getCli.outputs.cli }}/versions/${{ steps.getNumericalVersion.outputs.version }}/${{ steps.getSha.outputs.sha }}/${{ steps.getCli.outputs.cli }}-v${{ steps.getNumericalVersion.outputs.version }}-${{ steps.getSha.outputs.sha }}-linux-x64.tar.xz
+    value: https://developer.salesforce.com/${{ steps.getS3Folder.outputs.folder }}/versions/${{ steps.getNumericalVersion.outputs.version }}/${{ steps.getSha.outputs.sha }}/${{ steps.getCli.outputs.cli }}-v${{ steps.getNumericalVersion.outputs.version }}-${{ steps.getSha.outputs.sha }}-linux-x64.tar.xz
     description: url where the xz tarball for this version can be downloaded
   sha:
     description: short sha for the matching version
@@ -36,8 +36,12 @@ runs:
       shell: bash
       run: echo "::set-output name=cli::$(npm view ${{ inputs.npmPackage }}@${{ inputs.version }} --json | jq -r '.oclif.bin')"
 
+    - id: getS3Folder
+      shell: bash
+      run: echo "::set-output name=folder::$(npm view ${{ inputs.npmPackage }}@${{ inputs.version }} --json | jq -r '.oclif.update.s3.folder')"
+
     - run: echo "regex found version ${{ steps.getNumericalVersion.outputs.version }} with sha ${{ steps.getSha.outputs.sha }} for cli ${{ steps.getCli.outputs.cli }}"
       shell: bash
 
-    - run: echo "xz url is https://developer.salesforce.com/media/salesforce-cli/${{ steps.getCli.outputs.cli }}/versions/${{ steps.getNumericalVersion.outputs.version }}/${{ steps.getSha.outputs.sha }}/${{ steps.getCli.outputs.cli }}-v${{ steps.getNumericalVersion.outputs.version }}-${{ steps.getSha.outputs.sha }}-linux-x64.tar.xz"
+    - run: echo "xz url is https://developer.salesforce.com/${{ steps.getS3Folder.outputs.folder }}/versions/${{ steps.getNumericalVersion.outputs.version }}/${{ steps.getSha.outputs.sha }}/${{ steps.getCli.outputs.cli }}-v${{ steps.getNumericalVersion.outputs.version }}-${{ steps.getSha.outputs.sha }}-linux-x64.tar.xz"
       shell: bash
