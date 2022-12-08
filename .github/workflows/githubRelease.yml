@@ -35,6 +35,7 @@ jobs:
           git-user-email: svc_cli_bot@salesforce.com
           github-token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
           tag-prefix: ""
+          release-count: "0"
       - name: Create Github Release
         uses: actions/create-release@v1
         if: ${{ steps.changelog.outputs.skipped == 'false' }}
