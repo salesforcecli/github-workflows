@@ -52,8 +52,9 @@ jobs:
         with:
           path: "**/node_modules"
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/yarn.lock') }}
+      - run: yarn config set network-timeout 600000
       - run: yarn global add sfdx-cli @salesforce/cli
-      - run: yarn install --network-timeout 600000
+      - run: yarn install
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
       - run: yarn compile
       - run: echo "TESTKIT_EXECUTABLE_PATH=${{inputs.sfdxExecutablePath}}" >> $GITHUB_ENV
