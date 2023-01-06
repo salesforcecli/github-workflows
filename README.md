@@ -123,6 +123,43 @@ jobs:
     secrets: inherit
 ```
 
+### Publishing from multiple long-lived branches
+
+> In this example `main` publishes to npm on a 1.x.x version and uses `latest`. `some-other-branch` publishes version 2.x.x and uses the `v2` dist tag
+
+```yml
+name: version, tag and github release
+
+on:
+  push:
+    # add the other branch so that it causes github releases just like main does
+    branches: [main, some-other-branch]
+
+jobs:
+  release:
+    uses: salesforcecli/github-workflows/.github/workflows/githubRelease.yml@main
+    secrets: inherit
+```
+
+```yml
+on:
+  release:
+    # the result of the githubRelease workflow
+    types: [published]
+
+jobs:
+  my-publish:
+    uses: salesforcecli/github-workflows/.github/workflows/npmPublish.yml
+    with:
+      # ternary-ish https://github.com/actions/runner/issues/409#issuecomment-752775072
+      # if the version is 2.x we release it on the `v2` dist tag
+      tag: ${{ startsWith( github.event.release.tag_name || inputs.tag, '1.') && 'latest' || 'v2'}}
+      githubTag: ${{ github.event.release.tag_name }}
+    secrets: inherit
+```
+
+We need to set the
+
 ## Opinionated Testing Process
 
 Write unit tests to tests units of code (a function/method).
