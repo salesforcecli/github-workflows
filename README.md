@@ -158,7 +158,6 @@ jobs:
     secrets: inherit
 ```
 
-We need to set the
 
 ## Opinionated Testing Process
 
