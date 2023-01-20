@@ -11,7 +11,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: salesforcecli/github-workflows/.github/actions/windowsCachePerf@main
+      - uses: google/wireit@setup-github-actions-caching/v1
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node_version }}

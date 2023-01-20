@@ -15,6 +15,7 @@ jobs:
         with:
           node-version: ${{ matrix.node_version }}
           cache: yarn
+      - uses: google/wireit@setup-github-actions-caching/v1
       - name: Cache node modules
         id: cache-nodemodules
         uses: actions/cache@v3
