@@ -3,10 +3,9 @@ description: "Sets git username/email and push behavior"
 runs:
   using: composite
   steps:
+    # this workaround recommendation was removed by github, to this is now a no-op and can be removed if we're sure nobody is referring to it
     # improve windows cache perf.  See https://github.com/actions/cache/blob/main/workarounds.md#improving-cache-restore-performance-on-windowsusing-cross-os-caching
-    - if: ${{ runner.os == 'Windows' }}
-      name: Use GNU tar
+    - name: Deprecated. Please remove reference
       shell: cmd
       run: |
-        echo "Adding GNU tar to PATH"
-        echo C:\Program Files\Git\usr\bin>>"%GITHUB_PATH%"
+        echo "This should be removed"
