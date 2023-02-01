@@ -75,6 +75,6 @@ jobs:
           git commit -m 'chore: updates from devScripts' --no-verify
           git push origin --no-verify
           sleep 60
-          gh pr create --title 'refactor: devScripts update' --body 'created via github action.' -l dependencies
+          gh pr create --title 'refactor: devScripts update' --body 'created via github action [skip-validate-pr]' -l dependencies
         env:
           GH_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
