@@ -64,7 +64,12 @@ jobs:
       - run: yarn install  --network-timeout 600000
       - run: npx yarn-deduplicate
       - run: yarn install  --network-timeout 600000
-
+        # clean up any outstanding unmerged devScripts PRs
+      - run: |
+          PRs=$(gh pr list --search "in:title devScripts update" --json number | jq '.[] | .number' -r | tr -d '[],"')
+          for pr in $PRs; do
+              gh pr close $pr -c "will be replaced with new PR" --delete-branch
+          done
       # this may fail but we still want a PR with partial fix
       - run: |
           git checkout -b devScripts$(date +%F)
