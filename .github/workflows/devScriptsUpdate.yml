@@ -1,23 +1,9 @@
 on:
   workflow_call:
 
-jobs:
-  # is there already a PR open?
-  checkPRs:
-    outputs:
-      shouldUpdate: ${{ !contains(steps.currentOpenPRs.outputs.alreadyOpen, 'devScripts update') }}
-    runs-on: ubuntu-latest
-    steps:
-      - id: currentOpenPRs
-        run: echo "::set-output name=alreadyOpen::$(gh pr list -R ${{ github.repository }})"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: echo "command output - ${{steps.currentOpenPRs.outputs.alreadyOpen}}"
-      - run: echo "should open - ${{ !contains(steps.currentOpenPRs.outputs.alreadyOpen, 'devScripts update' )}}"
+jobs:  
   # what is the RC version, numerically?
-  compareVersions:
-    needs: [checkPRs]
-    if: ${{ needs.checkPRs.outputs.shouldUpdate == 'true' }}
+  compareVersions:    
     outputs:
       shouldUpdate: ${{ !endsWith(steps.packageVersion.outputs.prop, steps.version-info.outputs.version) }}
 
