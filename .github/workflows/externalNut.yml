@@ -64,7 +64,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ inputs.nodeVersion }}
-      - run: npm install -g sfdx-cli @salesforce/cli shx yarn-deduplicate --omit=dev
+      - run: npm install -g sfdx-cli@latest-rc @salesforce/cli@latest-rc shx yarn-deduplicate --omit=dev
       - run: git clone ${{ inputs.externalProjectGitUrl}} $(pwd)
       - name: Cache node modules
         if: inputs.useCache
