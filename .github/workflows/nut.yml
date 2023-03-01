@@ -24,6 +24,11 @@ on:
         required: false
         type: boolean
         default: true
+      retries:
+        required: false
+        type: number
+        default: 3
+        description: "Number of times to retry NUTs [max 5]"
 
 jobs:
   nut:
@@ -60,18 +65,28 @@ jobs:
       - run: echo "TESTKIT_EXECUTABLE_PATH=${{inputs.sfdxExecutablePath}}" >> $GITHUB_ENV
         if: inputs.sfdxExecutablePath
       - name: NUTs attempt 1
-        continue-on-error: true
         id: nut1
-        run: ${{ inputs.command }}
-      - name: NUTs attempt 2
         continue-on-error: true
+        run: ${{ inputs.command }}
+
+      - name: NUTs attempt 2
         id: nut2
-        if: steps.nut1.outcome == 'failure'
-        run: |
-          echo "::notice title=NUT Retry::NUT '${{inputs.command}}' failed and was retried."
-          ${{ inputs.command }}
+        continue-on-error: true
+        if: steps.nut1.outcome == 'failure' && inputs.retries >= 2
+        run: ${{ inputs.command }}
+
       - name: NUTs attempt 3
-        if: steps.nut2.outcome == 'failure'
-        run: |
-          echo "::warning title=NUT Retry 2::NUT '${{inputs.command}}' failed twice and was retried."
-          ${{ inputs.command }}
+        id: nut3
+        continue-on-error: true
+        if: steps.nut2.outcome == 'failure' && inputs.retries >= 3
+        run: ${{ inputs.command }}
+
+      - name: NUTs attempt 4
+        id: nut4
+        continue-on-error: true
+        if: steps.nut3.outcome == 'failure' && inputs.retries >= 4
+        run: ${{ inputs.command }}
+
+      - name: NUTs attempt 5
+        if: steps.nut4.outcome == 'failure' && inputs.retries == 5
+        run: ${{ inputs.command }}
