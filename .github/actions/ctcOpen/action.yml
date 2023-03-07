@@ -1,6 +1,17 @@
 name: ctcOpen
 description: Open a CTC case for a release
 
+inputs:
+  SF_CHANGE_CASE_SFDX_AUTH_URL:
+    description: Auth URL
+    required: true
+  SF_CHANGE_CASE_TEMPLATE_ID:
+    description: Change Case template ID
+    required: true
+  SF_CHANGE_CASE_CONFIGURATION_ITEM:
+    description: Change Case config item
+    required: true
+
 outputs:
   changeCaseId:
     description: Id for the change case created
@@ -52,9 +63,9 @@ runs:
 
         echo "ctcResult=$CTC_RESULT" >> "$GITHUB_OUTPUT"
       env:
-        SF_CHANGE_CASE_SFDX_AUTH_URL: ${{ secrets.SF_CHANGE_CASE_SFDX_AUTH_URL}}
-        SF_CHANGE_CASE_TEMPLATE_ID: ${{ secrets.SF_CHANGE_CASE_TEMPLATE_ID}}
-        SF_CHANGE_CASE_CONFIGURATION_ITEM: ${{ secrets.SF_CHANGE_CASE_CONFIGURATION_ITEM}}
+        SF_CHANGE_CASE_SFDX_AUTH_URL: ${{ inputs.SF_CHANGE_CASE_SFDX_AUTH_URL}}
+        SF_CHANGE_CASE_TEMPLATE_ID: ${{ inputs.SF_CHANGE_CASE_TEMPLATE_ID}}
+        SF_CHANGE_CASE_CONFIGURATION_ITEM: ${{ inputs.SF_CHANGE_CASE_CONFIGURATION_ITEM}}
 
     - run: echo "case id is ${{ steps.ctc.outputs.ctcResult }}"
       shell: bash
