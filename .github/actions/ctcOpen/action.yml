@@ -11,6 +11,9 @@ inputs:
   SF_CHANGE_CASE_CONFIGURATION_ITEM:
     description: Change Case config item
     required: true
+  SVC_CLI_BOT_GITHUB_TOKEN:
+    description: Github token
+    required: true
 
 outputs:
   changeCaseId:
@@ -24,6 +27,10 @@ runs:
       with:
         node-version: lts/*
         cache: npm
+    
+    - uses: actions/checkout@v3
+        with:
+          token: ${{ inputs.SVC_CLI_BOT_GITHUB_TOKEN }}
 
     - run: npm install -g @salesforce/change-case-management --omit=dev
       shell: bash
