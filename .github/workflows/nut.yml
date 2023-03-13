@@ -28,7 +28,7 @@ on:
         required: false
         type: number
         default: 3
-        description: "Number of times to retry NUTs [max 5]"
+        description: "Number of times to attempt NUTs"
 
 jobs:
   nut:
