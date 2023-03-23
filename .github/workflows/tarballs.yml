@@ -34,7 +34,13 @@ jobs:
           node-version: lts/*
           cache: yarn
       - run: yarn install  --network-timeout 600000
-      - run: yarn pack:tarballs
+      - name: pack tarballs
+        uses: nick-fields/retry@943e742917ac94714d2f408a0e8320f2d1fcafcd
+        with:
+          max_attempts: 3
+          command: yarn pack:tarballs
+          retry_on: error
+          timeout_minutes: 60
       - run: yarn pack:verify
       - run: yarn test:smoke-unix
       - if: inputs.upload
