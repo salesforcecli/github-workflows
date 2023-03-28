@@ -48,6 +48,11 @@ on:
         required: false
         type: boolean
         default: true
+      branch:
+        required: false
+        description: "branch to clone from the repo.  Defaults to 'main'"
+        type: string
+        default: "main"
 
 jobs:
   external-nut:
@@ -65,7 +70,7 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
       - run: npm install -g sfdx-cli@latest-rc @salesforce/cli@latest-rc shx yarn-deduplicate --omit=dev
-      - run: git clone ${{ inputs.externalProjectGitUrl}} $(pwd)
+      - run: git clone -b ${{ inputs.branch}} --single-branch ${{ inputs.externalProjectGitUrl}} $(pwd)
       - name: Cache node modules
         if: inputs.useCache
         id: cache-nodemodules
