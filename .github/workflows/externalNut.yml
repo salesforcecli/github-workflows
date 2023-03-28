@@ -48,6 +48,15 @@ on:
         required: false
         type: boolean
         default: true
+      attempts:
+        required: false
+        type: number
+        default: 3
+      branch:
+        required: false
+        description: "branch to clone from the repo.  Defaults to 'main'"
+        type: string
+        default: "main"
 
 jobs:
   external-nut:
@@ -65,7 +74,7 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
       - run: npm install -g sfdx-cli@latest-rc @salesforce/cli@latest-rc shx yarn-deduplicate --omit=dev
-      - run: git clone ${{ inputs.externalProjectGitUrl}} $(pwd)
+      - run: git clone -b ${{ inputs.branch}} --single-branch ${{ inputs.externalProjectGitUrl}} $(pwd)
       - name: Cache node modules
         if: inputs.useCache
         id: cache-nodemodules
@@ -101,9 +110,9 @@ jobs:
       - run: echo "TESTKIT_EXECUTABLE_PATH=${{inputs.sfdxExecutablePath}}" >> $GITHUB_ENV
         if: inputs.sfdxExecutablePath
       - uses: nick-fields/retry@943e742917ac94714d2f408a0e8320f2d1fcafcd
-        name: NUTs with 3 attempts
+        name: NUTs with ${{ inputs.attempts }} attempts
         with:
-          max_attempts: 3
+          max_attempts: ${{ inputs.attempts }}
           command: ${{ inputs.command }}
           retry_on: error
           timeout_minutes: 60
