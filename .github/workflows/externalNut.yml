@@ -84,7 +84,7 @@ jobs:
         with:
           # caching node_modules
           path: node_modules
-          key: ${{ runner.os }}-externalNuts-${{ env.cache-name }}-${{ inputs.externalProjectGitUrl}}-${{ github.sha }}
+          key: ${{ runner.os }}-externalNuts-${{ env.cache-name }}-${{ inputs.externalProjectGitUrl}}-${{ inputs.branch}}-${{ github.sha }}
       - run: yarn install  --network-timeout 600000
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
       - name: swap this dependency for the version on this branch
