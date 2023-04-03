@@ -78,7 +78,6 @@ jobs:
         with:
           max_attempts: ${{ inputs.attempts }}
           command: npm install -g sfdx-cli@latest-rc @salesforce/cli@latest-rc shx yarn-deduplicate --omit=dev
-          retry_on: error
           timeout_minutes: 20
       - run: git clone -b ${{ inputs.branch}} --single-branch ${{ inputs.externalProjectGitUrl}} $(pwd)
       - name: Cache node modules
