@@ -1,5 +1,23 @@
 on:
   workflow_call:
+    secrets:
+      SF_CHANGE_CASE_SFDX_AUTH_URL:
+        description: "SFDX_AUTH_URL for the CTC org. Only useful for the CTC NUTs."
+        required: false
+      ONEGP_TESTKIT_AUTH_URL:
+        description: "SFDX_AUTH_URL for the 1GP org. Only useful for the 1GP NUTs in packaging"
+        required: false
+      TESTKIT_AUTH_URL:
+        required: false
+      TESTKIT_HUB_USERNAME:
+        required: false
+      TESTKIT_JWT_CLIENT_ID:
+        required: false
+      TESTKIT_JWT_KEY:
+        required: false
+      TESTKIT_HUB_INSTANCE:
+        required: false
+
     inputs:
       command:
         required: false
@@ -32,14 +50,6 @@ on:
 
 jobs:
   nut:
-    env:
-      TESTKIT_AUTH_URL: ${{ secrets.TESTKIT_AUTH_URL}}
-      TESTKIT_HUB_USERNAME: ${{ secrets.TESTKIT_HUB_USERNAME }}
-      TESTKIT_JWT_CLIENT_ID: ${{ secrets.TESTKIT_JWT_CLIENT_ID }}
-      TESTKIT_JWT_KEY: ${{ secrets.TESTKIT_JWT_KEY }}
-      TESTKIT_HUB_INSTANCE: ${{ secrets.TESTKIT_HUB_INSTANCE }}
-      ONEGP_TESTKIT_AUTH_URL: ${{ secrets.ONEGP_TESTKIT_AUTH_URL }}
-      TESTKIT_SETUP_RETRIES: 2
     name: ${{ inputs.command }}
     runs-on: ${{ inputs.os }}
     steps:
@@ -71,3 +81,12 @@ jobs:
           command: ${{ inputs.command }}
           retry_on: error
           timeout_minutes: 60
+        env:
+          TESTKIT_AUTH_URL: ${{ secrets.TESTKIT_AUTH_URL}}
+          TESTKIT_HUB_USERNAME: ${{ secrets.TESTKIT_HUB_USERNAME }}
+          TESTKIT_JWT_CLIENT_ID: ${{ secrets.TESTKIT_JWT_CLIENT_ID }}
+          TESTKIT_JWT_KEY: ${{ secrets.TESTKIT_JWT_KEY }}
+          TESTKIT_HUB_INSTANCE: ${{ secrets.TESTKIT_HUB_INSTANCE }}
+          ONEGP_TESTKIT_AUTH_URL: ${{ secrets.ONEGP_TESTKIT_AUTH_URL }}
+          SF_CHANGE_CASE_SFDX_AUTH_URL: ${{ secrets.SF_CHANGE_CASE_SFDX_AUTH_URL }}
+          TESTKIT_SETUP_RETRIES: 2
