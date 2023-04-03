@@ -4,6 +4,12 @@ on:
       SF_CHANGE_CASE_SFDX_AUTH_URL:
         description: "SFDX_AUTH_URL for the CTC org. Only useful for the CTC NUTs."
         required: false
+      SF_CHANGE_CASE_TEMPLATE_ID:
+        required: false
+        description: "Template ID for the CTC org. Only useful for the CTC NUTs."
+      SF_CHANGE_CASE_CONFIGURATION_ITEM:
+        required: false
+        description: "Configuration Item for the CTC org. Only useful for the CTC NUTs."
       ONEGP_TESTKIT_AUTH_URL:
         description: "SFDX_AUTH_URL for the 1GP org. Only useful for the 1GP NUTs in packaging"
         required: false
@@ -89,4 +95,6 @@ jobs:
           TESTKIT_HUB_INSTANCE: ${{ secrets.TESTKIT_HUB_INSTANCE }}
           ONEGP_TESTKIT_AUTH_URL: ${{ secrets.ONEGP_TESTKIT_AUTH_URL }}
           SF_CHANGE_CASE_SFDX_AUTH_URL: ${{ secrets.SF_CHANGE_CASE_SFDX_AUTH_URL }}
+          SF_CHANGE_CASE_TEMPLATE_ID: ${{ secrets.SF_CHANGE_CASE_TEMPLATE_ID}}
+          SF_CHANGE_CASE_CONFIGURATION_ITEM: ${{ secrets.SF_CHANGE_CASE_CONFIGURATION_ITEM}}
           TESTKIT_SETUP_RETRIES: 2
