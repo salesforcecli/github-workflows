@@ -19,7 +19,7 @@ jobs:
       - uses: salesforcecli/github-workflows/.github/actions/gitConfig@main
       - name: build docs
         run: |
-          rm -rf docs
+          find . -not -path '*perf-*' -delete
           git worktree prune
           git fetch origin gh-pages:gh-pages
           git worktree add docs gh-pages
