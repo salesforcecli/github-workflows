@@ -20,7 +20,7 @@ jobs:
       - name: build docs
         # perf tests also store results on docs/gh-page, so we need to not delete those
         run: |
-          find . -not -path '*perf*' -delete
+          find ./docs -not -path './docs/perf*' -delete
           git worktree prune
           git fetch origin gh-pages:gh-pages
           git worktree add docs gh-pages
