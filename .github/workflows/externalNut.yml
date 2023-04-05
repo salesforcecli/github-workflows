@@ -84,7 +84,14 @@ jobs:
           max_attempts: ${{ inputs.attempts }}
           command: npm install -g sfdx-cli@latest-rc @salesforce/cli@latest-rc shx yarn-deduplicate --omit=dev
           timeout_minutes: 20
-      - run: git clone -b ${{ inputs.branch}} --single-branch ${{ inputs.externalProjectGitUrl}} $(pwd)
+      - uses: nick-fields/retry@943e742917ac94714d2f408a0e8320f2d1fcafcd
+        name: git clone
+        with:
+          max_attempts: ${{ inputs.attempts }}
+          command: git clone -b ${{ inputs.branch}} --single-branch ${{ inputs.externalProjectGitUrl}} $(pwd)
+          # backoff 60 seconds because most failures are 429 (too many requests)
+          retry_wait_seconds: 60
+          timeout_minutes: 20
       - name: Cache node modules
         if: inputs.useCache
         id: cache-nodemodules
