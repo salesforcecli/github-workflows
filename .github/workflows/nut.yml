@@ -75,7 +75,7 @@ jobs:
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/yarn.lock') }}
       - run: yarn config set network-timeout 600000
       - run: yarn global add sfdx-cli@latest-rc @salesforce/cli@latest-rc
-      - run: yarn install
+      - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
       - run: yarn compile
       - run: echo "TESTKIT_EXECUTABLE_PATH=${{inputs.sfdxExecutablePath}}" >> $GITHUB_ENV

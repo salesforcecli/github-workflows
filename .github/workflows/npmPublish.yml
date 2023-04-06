@@ -78,7 +78,7 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: yarn
-      - run: yarn install  --network-timeout 600000
+      - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
       - run: yarn build
       - run: npm install sfdx-cli -g @salesforce/plugin-release-management --omit=dev
 
