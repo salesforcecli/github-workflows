@@ -26,19 +26,19 @@ runs:
   steps:
     - id: getSha
       shell: bash
-      run: echo "::set-output name=sha::$(npm view ${{ inputs.npmPackage }}@${{ inputs.version }} --json | jq -r '.gitHead[0:7]')"
+      run: echo "sha=$(npm view ${{ inputs.npmPackage }}@${{ inputs.version }} --json | jq -r '.gitHead[0:7]')" >> GITHUB_OUTPUT
 
     - id: getNumericalVersion
       shell: bash
-      run: echo "::set-output name=version::$(npm view ${{ inputs.npmPackage }}@${{ inputs.version }} --json | jq -r '.version')"
+      run: echo "version=$(npm view ${{ inputs.npmPackage }}@${{ inputs.version }} --json | jq -r '.version')" >> GITHUB_OUTPUT
 
     - id: getCli
       shell: bash
-      run: echo "::set-output name=cli::$(npm view ${{ inputs.npmPackage }}@${{ inputs.version }} --json | jq -r '.oclif.bin')"
+      run: echo "cli=$(npm view ${{ inputs.npmPackage }}@${{ inputs.version }} --json | jq -r '.oclif.bin')" >> GITHUB_OUTPUT
 
     - id: getS3Folder
       shell: bash
-      run: echo "::set-output name=folder::$(npm view ${{ inputs.npmPackage }}@${{ inputs.version }} --json | jq -r '.oclif.update.s3.folder')"
+      run: echo "folder=$(npm view ${{ inputs.npmPackage }}@${{ inputs.version }} --json | jq -r '.oclif.update.s3.folder')" >> GITHUB_OUTPUT
 
     - run: echo "regex found version ${{ steps.getNumericalVersion.outputs.version }} with sha ${{ steps.getSha.outputs.sha }} for cli ${{ steps.getCli.outputs.cli }}"
       shell: bash
