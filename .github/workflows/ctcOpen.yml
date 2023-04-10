@@ -52,7 +52,7 @@ jobs:
               }
           done
 
-          echo "::set-output name=ctcResult::$CTC_RESULT"
+          echo "ctcResult=$CTC_RESULT" >> "$GITHUB_OUTPUT"
         env:
           SF_CHANGE_CASE_SFDX_AUTH_URL: ${{ secrets.SF_CHANGE_CASE_SFDX_AUTH_URL}}
           SF_CHANGE_CASE_TEMPLATE_ID: ${{ secrets.SF_CHANGE_CASE_TEMPLATE_ID}}
