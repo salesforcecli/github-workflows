@@ -60,7 +60,7 @@ on:
         required: false
         description: "commands to run before ANY modifications happen.  For example, changes that modify the lockfile like yarn add or remove need to happen before the action manually swaps the dependency under test"
         type: string
-        default: 'echo "no preExternalBuildCommands passed"'
+        default: 'echo "no preSwapCommands passed"'
       useCache:
         required: false
         type: boolean
