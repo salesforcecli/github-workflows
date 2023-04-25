@@ -75,7 +75,7 @@ on:
     branches:
       - main
       # point at specific branches, or a naming convention via wildcard
-      - prerelease/*
+      - prerelease/**
     tags-ignore:
       - "*"
 
@@ -157,7 +157,6 @@ jobs:
       githubTag: ${{ github.event.release.tag_name }}
     secrets: inherit
 ```
-
 
 ## Opinionated Testing Process
 
