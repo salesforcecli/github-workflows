@@ -1,6 +1,10 @@
 name: tag and github release
 on:
   workflow_call:
+    secrets:
+      SVC_CLI_BOT_GITHUB_TOKEN:
+        description: a github PAT with repo access
+
     inputs:
       prerelease:
         type: boolean

@@ -1,5 +1,13 @@
 on:
   workflow_call:
+    secrets:
+      NPM_TOKEN:
+        description: npm token
+      AWS_ACCESS_KEY_ID:
+        description: aws access key id.  Only requied if sign = true
+      AWS_SECRET_ACCESS_KEY:
+        description: aws secret access key.  Only requied if sign = true
+
     inputs:
       tag:
         required: false
