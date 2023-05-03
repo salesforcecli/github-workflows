@@ -14,6 +14,12 @@ jobs:
           regex: '@W-\d{7,8}@'
           flags: gm
       - uses: actions-ecosystem/action-regex-match@9e6c4fb3d5e898f505be7a1fb6e7b0a278f6665b
+        id: regex-match-gha-run
+        with:
+          text: ${{ github.event.pull_request.body }}
+          regex: 'https:\/\/github.com\/.*\/actions\/runs\/'
+          flags: gm
+      - uses: actions-ecosystem/action-regex-match@9e6c4fb3d5e898f505be7a1fb6e7b0a278f6665b
         id: regex-match-gh-issue
         with:
           text: ${{ github.event.pull_request.body }}
@@ -24,14 +30,16 @@ jobs:
           github.event.pull_request.user.login != 'dependabot[bot]' &&
           (github.event.pull_request.user.login != 'SF-CLI-BOT' || github.event.pull_request.user.login != 'svc-cli-bot') &&
           steps.regex-match-gus-wi.outputs.match == '' &&
-          steps.regex-match-gh-issue.outputs.match == ''
+          steps.regex-match-gh-issue.outputs.match == '' &&
+          steps.regex-match-gha-run.outputs.match == ''
         run: |
-          echo "PR does not reference work item or github issue."
-          echo "GUS WIs should be wrapped in @s, ex: @W-12345678@ or [@W-12345678@](https://some-url)"
+          echo "PR does not reference work item or github issue or github action run."
+          echo "GUS WIs should be wrapped in @s, ex: @W-12345678@ or [@W-12345678@](https://some-url) or include a full GHA run link"
           exit 1
       - name: output success
         if: |
           steps.regex-match-gus-wi.outputs.match != '' ||
+          steps.regex-match-gha-run.outputs.match != '' ||
           steps.regex-match-gh-issue.outputs.match != ''
         run: |
-          echo "PR references ${{ steps.regex-match-gus-wi.outputs.match }} ${{ steps.regex-match-gh-issue.outputs.match }}"
+          echo "PR references ${{ steps.regex-match-gus-wi.outputs.match }} ${{ steps.regex-match-gh-issue.outputs.match }} ${{ steps.regex-match-gha-run.outputs.match }}"
