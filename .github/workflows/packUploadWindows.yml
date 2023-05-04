@@ -24,6 +24,7 @@ jobs:
       SFDX_WINDOWS_SIGNING_PASS: ${{ secrets.SFDX_WINDOWS_SIGNING_PASS }}
       SF_WINDOWS_SIGNING_PASS: ${{ secrets.SF_WINDOWS_SIGNING_PASS }}
       SFDX_HIDE_RELEASE_NOTES: true
+      SF_DISABLE_TELEMETRY: true
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
