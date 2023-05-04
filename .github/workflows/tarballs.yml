@@ -24,6 +24,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       SFDX_HIDE_RELEASE_NOTES: true
+      SF_DISABLE_TELEMETRY: true
     runs-on: ubuntu-20-8core
     steps:
       - uses: actions/checkout@v3

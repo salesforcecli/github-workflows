@@ -142,6 +142,7 @@ jobs:
           retry_on: error
           timeout_minutes: 60
         env:
+          SF_DISABLE_TELEMETRY: true
           TESTKIT_AUTH_URL: ${{ secrets.TESTKIT_AUTH_URL }}
           TESTKIT_HUB_USERNAME: ${{ secrets.TESTKIT_HUB_USERNAME }}
           TESTKIT_HUB_INSTANCE: ${{ secrets.TESTKIT_HUB_INSTANCE }}
