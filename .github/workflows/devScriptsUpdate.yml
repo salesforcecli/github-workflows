@@ -4,6 +4,8 @@ on:
 jobs:
   # what is the RC version, numerically?
   compareVersions:
+    # skip from all places it's called
+    if: false
     outputs:
       shouldUpdate: ${{ !endsWith(steps.packageVersion.outputs.prop, steps.version-info.outputs.version) }}
 
