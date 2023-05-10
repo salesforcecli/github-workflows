@@ -13,6 +13,11 @@ on:
         type: string
         required: true
         description: channel that the uploaded tarballs get promoted to
+      nodeVersion:
+        type: string
+        required: true
+        default: lts/*
+        description: node version to use for the tarball build
 
 jobs:
   win:
@@ -29,7 +34,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: lts/*
+          node-version: ${{ inputs.nodeVersion }}
           cache: yarn
       - run: |
           sudo apt-get update

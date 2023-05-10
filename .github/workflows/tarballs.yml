@@ -17,6 +17,11 @@ on:
         type: string
         required: false
         description: channel that the uploaded tarballs get promoted to
+      nodeVersion:
+        type: string
+        required: true
+        default: lts/*
+        description: node version to use for the tarball build
 
 jobs:
   tarballs:
@@ -32,7 +37,7 @@ jobs:
           token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
       - uses: actions/setup-node@v3
         with:
-          node-version: lts/*
+          node-version: ${{ inputs.nodeVersion }}
           cache: yarn
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
       - name: pack tarballs
