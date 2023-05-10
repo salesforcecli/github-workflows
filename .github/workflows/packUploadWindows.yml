@@ -15,7 +15,6 @@ on:
         description: channel that the uploaded tarballs get promoted to
       nodeVersion:
         type: string
-        required: true
         default: lts/*
         description: node version to use for the tarball build
 
