@@ -35,40 +35,16 @@ runs:
     - run: npm install -g @salesforce/change-case-management --omit=dev
       shell: bash
 
-    - id: ctc
-      shell: bash
-      run: |
-        if [ -z "${SF_CHANGE_CASE_SFDX_AUTH_URL}" ] || [ -z "${SF_CHANGE_CASE_TEMPLATE_ID}" ] || [ -z "${SF_CHANGE_CASE_CONFIGURATION_ITEM}" ] ; then
-          echo "Environment not configured for CTC.  Your environment needs SF_CHANGE_CASE_SFDX_AUTH_URL, SF_CHANGE_CASE_TEMPLATE_ID, and SF_CHANGE_CASE_CONFIGURATION_ITEM"
-          exit 1
-        fi
-
-        ATTEMPT=1
-        MAX=5
-        DELAY=15 # In seconds
-
-        function CREATE_CHANGE_CASE {
-            CTC_RESULT=$(sfchangecase create --location ${{github.repositoryUrl}} --release ${{github.repository}}.$(date +%F) --json | jq -r '.result.id')
-
-            if [[ "$CTC_RESULT" == null ]]; then
-                return 1
-            fi
-        }
-
-        while true; do
-            CREATE_CHANGE_CASE && break || {
-                if [[ $ATTEMPT -lt $MAX ]]; then
-                    ((ATTEMPT++))
-                    echo "Change Case creation failed - trying again ($ATTEMPT/$MAX)"
-                    sleep $DELAY;
-                else
-                    "Failed to create a Change Case after $ATTEMPT attempts"
-                    exit 1
-                fi
-            }
-        done
-
-        echo "ctcResult=$CTC_RESULT" >> "$GITHUB_OUTPUT"
+    - name: Open CTC case
+      id: ctc
+      uses: nick-fields/retry@943e742917ac94714d2f408a0e8320f2d1fcafcd
+      with:
+        max_attempts: 5
+        retry_wait_seconds: 60
+        timeout_minutes: 60
+        command: |
+          CTC_RESULT=$(sfchangecase create --location ${{github.repositoryUrl}} --release ${{github.repository}}.$(date +%F) --json | jq -r '.result.id')
+          echo "ctcResult=$CTC_RESULT" >> "$GITHUB_OUTPUT"
       env:
         SF_CHANGE_CASE_SFDX_AUTH_URL: ${{ inputs.SF_CHANGE_CASE_SFDX_AUTH_URL}}
         SF_CHANGE_CASE_TEMPLATE_ID: ${{ inputs.SF_CHANGE_CASE_TEMPLATE_ID}}
