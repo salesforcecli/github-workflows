@@ -70,7 +70,7 @@ jobs:
 
   ctc-open:
     needs: [check-publish]
-    if: inputs.ctc && needs.check-publish.outputs.published == 'false'
+    if: false && inputs.ctc && needs.check-publish.outputs.published == 'false'
     uses: salesforcecli/github-workflows/.github/workflows/ctcOpen.yml@main
     secrets: inherit
 
@@ -133,7 +133,7 @@ jobs:
 
   ctcCloseSuccess:
     needs: [ctc-open, npm-publish]
-    if: needs.ctc-open.result == 'success' && needs.npm-publish.result == 'success' && needs.ctc-open.outputs.changeCaseId
+    if: false && needs.ctc-open.result == 'success' && needs.npm-publish.result == 'success' && needs.ctc-open.outputs.changeCaseId
     uses: salesforcecli/github-workflows/.github/workflows/ctcClose.yml@main
     secrets: inherit
     with:
@@ -141,7 +141,7 @@ jobs:
 
   ctcCloseFail:
     needs: [ctc-open, npm-publish]
-    if: always() && inputs.ctc && needs.ctc-open.outputs.changeCaseId && (needs.ctc-open.result != 'success' || needs.npm-publish.result != 'success')
+    if: always() && false && inputs.ctc && needs.ctc-open.outputs.changeCaseId && (needs.ctc-open.result != 'success' || needs.npm-publish.result != 'success')
     uses: salesforcecli/github-workflows/.github/workflows/ctcClose.yml@main
     secrets: inherit
     with:
