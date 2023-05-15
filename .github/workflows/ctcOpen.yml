@@ -8,7 +8,7 @@ on:
 jobs:
   ctcOpen:
     outputs:
-      changeCaseId: ${{ steps.ctc.outputs.ctcResult }}
+      changeCaseId: ${{ steps.ctc.outputs.ctcId }}
     runs-on: static-ip-ubuntu-runners
     steps:
       - uses: actions/checkout@v3
@@ -28,10 +28,21 @@ jobs:
           retry_wait_seconds: 60
           timeout_minutes: 60
           command: |
-            CTC_RESULT=$(sfchangecase create --location ${{github.repositoryUrl}} --release ${{github.repository}}.$(date +%F) --json | jq -r '.result.id')
-            echo "ctcResult=$CTC_RESULT" >> "$GITHUB_OUTPUT"
+            CTC_RESULT=$(sfchangecase create --location ${{github.repositoryUrl}} --release ${{github.repository}}.$(date +%F) --json')
+
+            STATUS=$(printf '%s' "$CTC_RESULT" | jq -r '.status')
+            CTC_ID=$(printf '%s' "$CTC_RESULT" | jq -r '.result.id')
+
+            if [[ "$STATUS" == "0" && "$CTC_ID" != "null" ]]; then
+                echo "Successfully created case with ID: $CTC_ID"
+                echo "ctcId=$CTC_ID" >> "$GITHUB_OUTPUT"
+            else
+                echo "CTC failed to open a case. Result:"
+                echo "$CTC_RESULT"
+                exit 1
+            fi
         env:
           SF_CHANGE_CASE_SFDX_AUTH_URL: ${{ secrets.SF_CHANGE_CASE_SFDX_AUTH_URL}}
           SF_CHANGE_CASE_TEMPLATE_ID: ${{ secrets.SF_CHANGE_CASE_TEMPLATE_ID}}
           SF_CHANGE_CASE_CONFIGURATION_ITEM: ${{ secrets.SF_CHANGE_CASE_CONFIGURATION_ITEM}}
-      - run: echo "case id is ${{steps.ctc.outputs.ctcResult}}"
+      - run: echo "case id is ${{ steps.ctc.outputs.ctcId }}"
