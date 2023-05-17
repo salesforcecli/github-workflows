@@ -65,6 +65,8 @@ Plugins created by Salesforce teams can be signed automatically with `sign:true`
 
 You'll need the CLI team to enable your repo for signing. Ask in https://salesforce-internal.slack.com/archives/C0298EE05PU
 
+Plugin signing is not available outside of Salesforce. Your users can add your plugin to their allow list (`unsignedPluginAllowList.json`)
+
 ```yml
 on:
   release:
