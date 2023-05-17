@@ -59,6 +59,28 @@ jobs:
     secrets: inherit
 ```
 
+### Plugin Signing
+
+Plugins created by Salesforce teams can be signed automatically with `sign:true` if the repo is in [salesforcecli](https://github.com/salesforcecli) or [forcedotcom](https://github.com/forcedotcom) gitub organization.
+
+You'll need the CLI team to enable your repo for signing. Ask in https://salesforce-internal.slack.com/archives/C0298EE05PU
+
+```yml
+on:
+  release:
+    # the result of the githubRelease workflow
+    types: [published]
+
+jobs:
+  my-publish:
+    uses: salesforcecli/github-workflows/.github/workflows/npmPublish.yml
+    with:
+      sign: true
+      tag: latest
+      githubTag: ${{ github.event.release.tag_name }}
+    secrets: inherit
+```
+
 ### Prereleases
 
 `main` will release to latest. Other branches can create github prereleases and publish to other npm dist tags
