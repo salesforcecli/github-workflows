@@ -43,7 +43,7 @@ runs:
         retry_wait_seconds: 60
         timeout_minutes: 60
         command: |
-          CTC_RESULT=$(sfchangecase create --location ${{ github.repositoryUrl }} --release ${{ github.repository }}.$(date +%F) --json')
+          CTC_RESULT=$(sfchangecase create --location ${{ github.repositoryUrl }} --release ${{ github.repository }}.$(date +%F) --json)
 
           STATUS=$(printf '%s' "$CTC_RESULT" | jq -r '.status')
           CTC_ID=$(printf '%s' "$CTC_RESULT" | jq -r '.result.id')
