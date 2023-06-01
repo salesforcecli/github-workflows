@@ -77,7 +77,7 @@ jobs:
         name: add CLIs as global dependencies
         with:
           max_attempts: ${{ inputs.retries }}
-          command: yarn global add sfdx-cli@latest-rc @salesforce/cli@latest-rc
+          command: yarn global add @salesforce/cli@^2
           timeout_minutes: 60
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
