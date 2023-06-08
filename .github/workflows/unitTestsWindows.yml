@@ -5,8 +5,7 @@ jobs:
   windows-unit-tests:
     strategy:
       matrix:
-        # node_version: [lts/-1, lts/*, latest]
-        node_version: [lts/-1, lts/*]
+        node_version: [lts/-1, lts/*, latest]
       fail-fast: false
     runs-on: windows-latest
     steps:
