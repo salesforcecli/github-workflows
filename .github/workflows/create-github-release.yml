@@ -34,9 +34,7 @@ jobs:
           if [ -n "${{ steps.distTag.outputs.tag }}" ]; then
             echo "Prerelease tag found in package.json, using: ${{ steps.distTag.outputs.tag }}"
             echo "tag=${{ steps.distTag.outputs.tag }}" >> "$GITHUB_OUTPUT"
-          fi
-
-          if [ -n "${{ inputs.prerelease }}" ]; then
+          elif [ -n "${{ inputs.prerelease }}" ]; then
             echo "Prerelease input passed in, using: ${{ inputs.prerelease }}"
             echo "tag=${{ inputs.prerelease }}" >> "$GITHUB_OUTPUT"
           fi
