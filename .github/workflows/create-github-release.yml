@@ -27,6 +27,9 @@ jobs:
 
       - name: Determine prerelease name
         id: prereleaseTag
+        # Only run this step if the ref is not main
+        # This will allow us to merge a prerelease PR into main and have it release as a normal release
+        if: ${{ github.ref_name != 'main' }}
         run: |
           if [ -n "${{ steps.distTag.outputs.tag }}" ]; then
             echo "Prerelease tag found in package.json, using: ${{ steps.distTag.outputs.tag }}"
