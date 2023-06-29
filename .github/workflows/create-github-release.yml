@@ -25,11 +25,18 @@ jobs:
       - uses: salesforcecli/github-workflows/.github/actions/getPreReleaseTag@main
         id: distTag
 
+      - name: Validate prerelease
+        if: github.ref_name == 'main' && inputs.prerelease
+        uses: actions/github-script@v3
+        with:
+          script: |
+            core.setFailed('Do not create a prerelease on "main". You can create a prerelease on a branch and when it is merged it will create a non-prerelease Release. For example: 1.0.1-beta.2 will release as 1.0.1 when merged into main.')
+
       - name: Determine prerelease name
         id: prereleaseTag
         # Only run this step if the ref is not main
         # This will allow us to merge a prerelease PR into main and have it release as a normal release
-        if: ${{ github.ref_name != 'main' }}
+        if: github.ref_name != 'main'
         run: |
           if [ -n "${{ inputs.prerelease }}" ]; then
             echo "Prerelease input passed in, using: ${{ inputs.prerelease }}"
