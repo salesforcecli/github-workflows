@@ -149,4 +149,3 @@ jobs:
           TESTKIT_JWT_CLIENT_ID: ${{ secrets.TESTKIT_JWT_CLIENT_ID }}
           TESTKIT_JWT_KEY: ${{ secrets.TESTKIT_JWT_KEY }}
           TESTKIT_SETUP_RETRIES: 2
-          DEBUG: 'testkit:session'
