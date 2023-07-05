@@ -44,6 +44,9 @@ jobs:
           elif [ -n "${{ steps.distTag.outputs.tag }}" ]; then
             echo "Prerelease tag found in package.json, using: ${{ steps.distTag.outputs.tag }}"
             echo "tag=${{ steps.distTag.outputs.tag }}" >> "$GITHUB_OUTPUT"
+          elif [[ ${{ github.ref_name }} =~ ^prerelease/.* ]]; then
+            echo "Prerelease branch found but no prerelease tag, using default: dev"
+            echo "tag=dev" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Conventional Changelog Action
