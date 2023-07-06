@@ -12,7 +12,7 @@ outputs:
 runs:
   using: composite
   steps:
-    - uses: notiz-dev/github-action-json-property@2192e246737701f108a4571462b76c75e7376216
+    - uses: notiz-dev/github-action-json-property@7a701887f4b568b23eb7b78bb0fc49aaeb1b68d3
       id: packageVersion
       with:
         path: "package.json"
@@ -21,7 +21,7 @@ runs:
     - run: echo "found version ${{ steps.packageVersion.outputs.prop  }}"
       shell: bash
 
-    - uses: booxmedialtd/ws-action-parse-semver@e4a833cf5d612066a210bd9b62d1c3b20be3b325
+    - uses: booxmedialtd/ws-action-parse-semver@7784200024d6b3fc01253e617ec0168daf603de3
       id: versionSuffix
       with:
         input_string: ${{ steps.packageVersion.outputs.prop }}

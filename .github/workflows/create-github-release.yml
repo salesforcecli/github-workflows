@@ -1,0 +1,77 @@
+name: create-github-release
+on:
+  workflow_call:
+    secrets:
+      SVC_CLI_BOT_GITHUB_TOKEN:
+        description: a github PAT with repo access
+
+    inputs:
+      prerelease:
+        type: string
+        description: "Name to use for the prerelease: beta, dev, etc."
+      skip-on-empty:
+        type: boolean
+        default: true
+        description: "Should release be skipped if there are no semantic commits?"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
+
+      - uses: salesforcecli/github-workflows/.github/actions/getPreReleaseTag@main
+        id: distTag
+
+      - name: Validate prerelease
+        if: github.ref_name == 'main' && inputs.prerelease
+        uses: actions/github-script@v3
+        with:
+          script: |
+            core.setFailed('Do not create a prerelease on "main". You can create a prerelease on a branch and when it is merged it will create a non-prerelease Release. For example: 1.0.1-beta.2 will release as 1.0.1 when merged into main.')
+
+      - name: Determine prerelease name
+        id: prereleaseTag
+        # Only run this step if the ref is not main
+        # This will allow us to merge a prerelease PR into main and have it release as a normal release
+        if: github.ref_name != 'main'
+        run: |
+          if [ -n "${{ inputs.prerelease }}" ]; then
+            echo "Prerelease input passed in, using: ${{ inputs.prerelease }}"
+            echo "tag=${{ inputs.prerelease }}" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ steps.distTag.outputs.tag }}" ]; then
+            echo "Prerelease tag found in package.json, using: ${{ steps.distTag.outputs.tag }}"
+            echo "tag=${{ steps.distTag.outputs.tag }}" >> "$GITHUB_OUTPUT"
+          elif [[ ${{ github.ref_name }} =~ ^prerelease/.* ]]; then
+            echo "Prerelease branch found but no prerelease tag, using default: dev"
+            echo "tag=dev" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Conventional Changelog Action
+        id: changelog
+        uses: TriPSs/conventional-changelog-action@9962c3267b32873dbc552a38a8397194361e1101
+        with:
+          git-user-name: svc-cli-bot
+          git-user-email: svc_cli_bot@salesforce.com
+          github-token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
+          tag-prefix: ""
+          # Setting 'release-count' to 0 will keep ALL releases in the change log file (no pruning)
+          release-count: "0"
+          skip-on-empty: ${{ inputs.skip-on-empty }}
+          pre-release: ${{ steps.prereleaseTag.outputs.tag && 'true' || 'false' }}
+          pre-release-identifier: ${{ steps.prereleaseTag.outputs.tag }}
+          # ternary-ish: https://github.com/actions/runner/issues/409#issuecomment-752775072
+          output-file: ${{ steps.prereleaseTag.outputs.tag && 'false' || 'CHANGELOG.md' }} # If prerelease, do not write the changelog file
+
+      - name: Create Github Release
+        uses: actions/create-release@v1
+        if: ${{ steps.changelog.outputs.skipped == 'false' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.changelog.outputs.tag }}
+          release_name: ${{ steps.changelog.outputs.tag }}
+          body: ${{ steps.changelog.outputs.clean_changelog }}
+          prerelease: ${{ steps.prereleaseTag.outputs.tag && 'true' || 'false' }}
