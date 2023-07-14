@@ -88,9 +88,7 @@ jobs:
           cache: yarn
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
       - run: yarn build
-      # why do we need the CLI?  used to get plugin-trust to verify signing
-      # https://github.com/salesforcecli/plugin-release-management/blob/7af2a65a07a42800c364478a2a85eafdc97b1c7d/src/commands/npm/package/release.ts#L151-L152
-      - run: npm install -g @salesforce/cli @salesforce/plugin-release-management --omit=dev
+      - run: npm install -g @salesforce/plugin-release-management
 
       # when dryrun is true: publish with --dryrun flag
       - if: ${{ inputs.dryrun && !inputs.prerelease }}
