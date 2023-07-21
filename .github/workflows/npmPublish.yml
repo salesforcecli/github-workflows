@@ -4,9 +4,9 @@ on:
       NPM_TOKEN:
         description: npm token
       AWS_ACCESS_KEY_ID:
-        description: aws access key id.  Only requied if sign = true
+        description: AWS access key id. Only required if sign = true
       AWS_SECRET_ACCESS_KEY:
-        description: aws secret access key.  Only requied if sign = true
+        description: AWS secret access key. Only required if sign = true
 
     inputs:
       tag:
