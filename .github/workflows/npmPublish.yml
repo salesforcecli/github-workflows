@@ -90,46 +90,19 @@ jobs:
       - run: yarn build
       - run: npm install -g @salesforce/plugin-release-management
 
-      # when dryrun is true: publish with --dryrun flag
-      - if: ${{ inputs.dryrun && !inputs.prerelease }}
-        name: Release Dryrun
-        run: sf-release npm:package:release --githubtag ${{ inputs.githubTag}} --dryrun --no-install --npmtag ${{ inputs.tag }}
-        env:
-          NPM_TOKEN: ${{secrets.NPM_TOKEN}}
-        # when dryrun and prerelease is true: publish with --dryrun and --prerelease flags
-      - if: ${{ inputs.dryrun && inputs.prerelease }}
-        name: PreRelease Dryrun
-        run: sf-release npm:package:release --githubtag ${{ inputs.githubTag}} --dryrun --no-install --npmtag ${{ inputs.tag }} --prerelease ${{ github.ref_name}}
-        env:
-          NPM_TOKEN: ${{secrets.NPM_TOKEN}}
-        # when dryrun is false and sign is true: sign and publish package
-      - if: ${{ !inputs.dryrun && inputs.sign && !inputs.prerelease}}
-        name: Sign and Release
-        run: sf-release npm:package:release --githubtag ${{ inputs.githubTag}} --sign --no-install --npmtag ${{ inputs.tag }}
+      - name: NPM Release
+        run: |
+          sf-release npm:package:release \
+            --githubtag ${{ inputs.githubTag}} \
+            --npmtag ${{ inputs.tag }} \
+            --no-install \
+            ${{ inputs.dryrun && '--dryrun' || '' }} \
+            ${{ inputs.prerelease && format('--prerelease {0}', github.ref_name) || '' }} \
+            ${{ inputs.sign && '--sign' || '' }}
         env:
           NPM_TOKEN: ${{secrets.NPM_TOKEN}}
           AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
           AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
-        # when dryrun is false and sign is true and prerelease is true: sign and publish prerelease package
-      - if: ${{ !inputs.dryrun && inputs.sign && inputs.prerelease}}
-        name: Sign and PreRelease
-        run: sf-release npm:package:release --githubtag ${{ inputs.githubTag}} --sign --no-install --npmtag ${{ inputs.tag }} --prerelease ${{ github.ref_name}}
-        env:
-          NPM_TOKEN: ${{secrets.NPM_TOKEN}}
-          AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
-          AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
-        # when dryrun is false and sign is false: publish package
-      - if: ${{ !inputs.dryrun && !inputs.sign && !inputs.prerelease}}
-        name: Release
-        run: sf-release npm:package:release --githubtag ${{ inputs.githubTag}} --no-install --npmtag ${{ inputs.tag }}
-        env:
-          NPM_TOKEN: ${{secrets.NPM_TOKEN}}
-        # when dryrun is false and sign is false and prerelease is true: publish prerelease package
-      - if: ${{ !inputs.sign && !inputs.dryrun && inputs.prerelease }}
-        name: PreRelease
-        run: sf-release npm:package:release --githubtag ${{ inputs.githubTag}} --no-install --npmtag ${{ inputs.tag }} --prerelease ${{ github.ref_name}}
-        env:
-          NPM_TOKEN: ${{secrets.NPM_TOKEN}}
 
   ctcCloseSuccess:
     needs: [ctc-open, npm-publish]
