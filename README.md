@@ -36,6 +36,9 @@ jobs:
   release:
     uses: salesforcecli/github-workflows/.github/workflows/githubRelease.yml@main
     secrets: inherit
+    # you can also pass in values for the secrets
+    # secrets:
+    #  SVC_CLI_BOT_GITHUB_TOKEN: gh_pat00000000
 ```
 
 ### npmPublish
@@ -57,6 +60,9 @@ jobs:
       tag: latest
       githubTag: ${{ github.event.release.tag_name }}
     secrets: inherit
+    # you can also pass in values for the secrets
+    # secrets:
+    #  NPM_TOKEN: ^&*$
 ```
 
 ### Plugin Signing
