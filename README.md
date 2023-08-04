@@ -26,7 +26,7 @@ Use this repo's `npmPublish` if you need either
 > A commit whose **body** (not the title) contains `BREAKING CHANGES:` will cause the action to update the packageVersion to the next major version, produce a changelog, tag and release.
 
 ```yml
-name: version, tag and github release
+name: create-github-release
 
 on:
   push:
@@ -94,11 +94,10 @@ jobs:
 `main` will release to latest. Other branches can create github prereleases and publish to other npm dist tags
 
 1. Configure the branch rules for wherever you want to release from
-1. Set your branch's package.json version like `4.4.4-beta.0`
 1. Modify your release and publish workflows like the following
 
 ```yml
-name: version, tag and github release
+name: create-github-release
 
 on:
   push:
@@ -108,6 +107,11 @@ on:
       - prerelease/**
     tags-ignore:
       - "*"
+  workflow_dispatch:
+    inputs:
+      prerelease:
+        type: string
+        description: "Name to use for the prerelease: beta, dev, etc. NOTE: If this is already set in the package.json, it does not need to be passed in here."
 
 jobs:
   release:
@@ -115,7 +119,11 @@ jobs:
     uses: salesforcecli/github-workflows/.github/workflows/githubRelease.yml@main
     secrets: inherit
     with:
-      prerelease: ${{ github.ref_name != 'main' }}
+      prerelease: ${{ inputs.prerelease }}
+      # If this is a push event, we want to skip the release if there are no semantic commits
+      # However, if this is a manual release (workflow_dispatch), then we want to disable skip-on-empty
+      # This helps recover from forgetting to add semantic commits ('fix:', 'feat:', etc.)
+      skip-on-empty: ${{ github.event_name == 'push' }}
 ```
 
 ```yml
