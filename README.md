@@ -34,7 +34,7 @@ on:
 
 jobs:
   release:
-    uses: salesforcecli/github-workflows/.github/workflows/githubRelease.yml@main
+    uses: salesforcecli/github-workflows/.github/workflows/create-github-release.yml@main
     secrets: inherit
     # you can also pass in values for the secrets
     # secrets:
@@ -116,7 +116,7 @@ on:
 jobs:
   release:
     # this job will throw if prerelease is true but it doesn't have a prerelease-looking package.json version
-    uses: salesforcecli/github-workflows/.github/workflows/githubRelease.yml@main
+    uses: salesforcecli/github-workflows/.github/workflows/create-github-release.yml@main
     secrets: inherit
     with:
       prerelease: ${{ inputs.prerelease }}
