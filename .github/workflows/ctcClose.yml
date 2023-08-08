@@ -13,8 +13,7 @@ on:
 
 jobs:
   ctcClose:
-    # If the org is forcedotcom, use the forcedotcom-ubuntu, otherwise use the static-ip-ubuntu-runners for CTC
-    runs-on: ${{ github.event.organization.login == 'forcedotcom' && 'forcedotcom-ubuntu' || 'static-ip-ubuntu-runners' }}
+    runs-on: static-ip-ubuntu-runners
     steps:
       - uses: actions/checkout@v3
         with:
