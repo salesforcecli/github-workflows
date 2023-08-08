@@ -14,7 +14,7 @@ on:
 
 jobs:
   release:
-    runs-on: static-ip-ubuntu-runners
+    runs-on: forcedotcom-ubuntu
     steps:
       - uses: actions/checkout@v3
         with:
