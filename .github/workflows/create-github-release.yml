@@ -16,7 +16,8 @@ on:
 
 jobs:
   release:
-    runs-on: static-ip-ubuntu-runners
+    # If the org is forcedotcom, use the static-ip-ubuntu-runners
+    runs-on: ${{ github.event.organization.login == 'forcedotcom' && 'static-ip-ubuntu-runners' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v3
         with:
