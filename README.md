@@ -91,8 +91,21 @@ jobs:
 
 ### Prereleases
 
-`main` will release to latest. Other branches can create github prereleases and publish to other npm dist tags
+`main` will release to `latest`. Other branches can create github prereleases and publish to other npm dist tags.
 
+You can create a prerelease one of two ways:
+1. Create a branch with the `prerelease/**` prefix. Example `prerelease/my-fix`
+    1. Once a PR is opened, every commit pushed to this branch will create a prerelease
+    2. The default prerelease tag will be `dev`. If another tag is desired, manually set it in your `package.json`. Example: `1.2.3-beta.0`
+1. Manually run the `create-github-release` workflow in the Actions tab
+    1. Click `Run workflow`   
+        1. Select the branch you want to create a prerelease from
+        1. Enter the desired prerelease tag: `dev`, `beta`, etc
+
+> [!NOTE]  
+> Since conventional commits are used, there is no need to manually remove the prerelease tag from your `package.json`. Once the PR is merged into `main`, conventional commits will bump the version as expected (patch for `fix:`, minor for `feat:`, etc)
+
+Setup:
 1. Configure the branch rules for wherever you want to release from
 1. Modify your release and publish workflows like the following
 
