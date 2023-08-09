@@ -131,11 +131,13 @@ name: publish
 
 on:
   release:
+    # both release and prereleases
     types: [published]
+  # support manual release in case something goes wrong and needs to be repeated or tested
   workflow_dispatch:
     inputs:
       tag:
-        description: tag that needs to publish
+        description: github tag that needs to publish
         type: string
         required: true
 
