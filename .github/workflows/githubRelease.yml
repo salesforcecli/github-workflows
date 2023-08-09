@@ -12,9 +12,14 @@ on:
         default: false
         description: use a prerelease instead of a regular release
 
+# -----------------------------------------------------------------------
+# NOTE: This workflow is deprecated in favor of create-github-release.yml
+# -----------------------------------------------------------------------
+
 jobs:
   release:
-    runs-on: static-ip-ubuntu-runners
+    # If the org is forcedotcom, use the forcedotcom-ubuntu
+    runs-on: ${{ github.event.organization.login == 'forcedotcom' && 'forcedotcom-ubuntu' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v3
         with:
