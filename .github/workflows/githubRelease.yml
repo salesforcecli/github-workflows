@@ -12,6 +12,10 @@ on:
         default: false
         description: use a prerelease instead of a regular release
 
+# -----------------------------------------------------------------------
+# NOTE: This workflow is deprecated in favor of create-github-release.yml
+# -----------------------------------------------------------------------
+
 jobs:
   release:
     runs-on: ubuntu-latest
