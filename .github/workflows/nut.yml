@@ -47,6 +47,7 @@ on:
       useCache:
         required: false
         type: boolean
+        description: "this does nothing.  It's here for backwards compatibility"
         default: true
       retries:
         required: false
