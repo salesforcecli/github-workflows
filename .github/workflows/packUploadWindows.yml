@@ -37,10 +37,10 @@ jobs:
           cache: yarn
       - run: |
           sudo apt-get update
-          sudo apt-get install osslsigncode nsis
+          sudo apt-get install build-essential scons mingw-w64 zlib1g-dev -y
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
-      - run: |
-          echo $WINDOWS_SIGNING_KEY | base64 --decode > /tmp/windows-signing.pfx
+      # - run: |
+      #     echo $WINDOWS_SIGNING_KEY | base64 --decode > /tmp/windows-signing.pfx
       # todo: download the macos tarball and pass that to the oclif pack:macos command
       - run: yarn pack:win
       - run: yarn upload:win
