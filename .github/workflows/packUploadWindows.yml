@@ -35,13 +35,11 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: yarn
-      - run: |
-          sudo apt-get update
-          sudo apt-get install osslsigncode nsis
+      - name: Set up Homebrew
+        id: set-up-homebrew
+        uses: Homebrew/actions/setup-homebrew@41775cf0c82ef066f1eb39cea1bd74697ca5b735
+      - run: brew install nsis
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
-      - run: |
-          echo $WINDOWS_SIGNING_KEY | base64 --decode > /tmp/windows-signing.pfx
-      # todo: download the macos tarball and pass that to the oclif pack:macos command
       - run: yarn pack:win
       - run: yarn upload:win
       - run: yarn channel:promote --cli ${{ inputs.cli }} --version ${{ inputs.version }} --target ${{ inputs.channel }} --platform win
