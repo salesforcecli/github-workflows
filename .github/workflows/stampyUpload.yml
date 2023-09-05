@@ -35,6 +35,8 @@ jobs:
         env:
           STAMPY_ARN: ${{ secrets.STAMPY_ARN }}
           STAMPY_UNSIGNED_BUCKET: ${{ secrets.STAMPY_UNSIGNED_BUCKET }}
+          # workaround for AWS CLI not having its region set
+          AWS_EC2_METADATA_DISABLED: true
         # switch AWS identity to the one that can access stampy
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity | jq -r '.Account')
