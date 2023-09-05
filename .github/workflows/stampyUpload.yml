@@ -24,7 +24,7 @@ jobs:
         with:
           version: ${{inputs.version}}
           npmPackage: ${{inputs.clipkg}}
-      - name: save filename (without extension) for reuse
+      - name: save filename (without arch/extension) for reuse
         id: filename
         run: echo "FILEBASE=${{inputs.cli}}-v${{inputs.version}}-${{steps.version-info.outputs.sha}}" >> "$GITHUB_OUTPUT"
       - name: download from s3
