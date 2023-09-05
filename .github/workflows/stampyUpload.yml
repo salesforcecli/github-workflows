@@ -31,6 +31,8 @@ jobs:
         env:
           # workaround for AWS CLI not having its region set.  see https://github.com/actions/runner-images/issues/2791
           AWS_EC2_METADATA_DISABLED: true
+          AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
+          AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
         run: |
           aws s3 cp s3://dfc-data-production/media/salesforce-cli/${{inputs.cli}}/versions/${{inputs.version}}/${{steps.version-info.outputs.sha}}/${{steps.filename.outputs.FILEBASE}}-x86.exe .
           aws s3 cp s3://dfc-data-production/media/salesforce-cli/${{inputs.cli}}/versions/${{inputs.version}}/${{steps.version-info.outputs.sha}}/${{steps.filename.outputs.FILEBASE}}-x64.exe .
@@ -38,6 +40,8 @@ jobs:
         env:
           STAMPY_ARN: ${{ secrets.STAMPY_ARN }}
           STAMPY_UNSIGNED_BUCKET: ${{ secrets.STAMPY_UNSIGNED_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
+          AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
           AWS_EC2_METADATA_DISABLED: true
         # switch AWS identity to the one that can access stampy
         run: |
