@@ -68,13 +68,17 @@ jobs:
           pre-release-identifier: ${{ steps.prereleaseTag.outputs.tag }}
           output-file: "false" # No changelog file
 
-      - name: Temp git diff
+      - name: Temp git commands
         if: ${{ inputs.generate-readme }}
-        run: git diff
+        run: |
+          git status
+          git diff
 
       - name: Generate oclif readme
         if: ${{ inputs.generate-readme && steps.next-version.outputs.skipped == 'false' }}
-        run: OCLIF_NEXT_VERSION=${{ steps.next-version.outputs.tag }} npx oclif readme --no-aliases
+        run: |
+          yarn compile
+          OCLIF_NEXT_VERSION=${{ steps.next-version.outputs.tag }} npx oclif readme --no-aliases
 
       - name: Conventional Changelog Action
         id: changelog
