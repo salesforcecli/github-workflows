@@ -70,7 +70,7 @@ jobs:
 
       - name: Temp git diff
         if: ${{ inputs.generate-readme }}
-        run: git diff --no-pager
+        run: git diff
 
       - name: Generate oclif readme
         if: ${{ inputs.generate-readme && steps.next-version.outputs.skipped == 'false' }}
