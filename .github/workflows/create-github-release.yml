@@ -53,7 +53,7 @@ jobs:
             echo "tag=dev" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Get version for oclif readme
+      - name: Get the next version for oclif readme
         id: next-version
         if: ${{ inputs.generate-readme }}
         uses: TriPSs/conventional-changelog-action@9962c3267b32873dbc552a38a8397194361e1101
@@ -68,12 +68,6 @@ jobs:
           pre-release-identifier: ${{ steps.prereleaseTag.outputs.tag }}
           output-file: "false" # No changelog file
 
-      - name: Before git commands
-        if: ${{ inputs.generate-readme }}
-        run: |
-          git status
-          git diff
-
       - name: Generate oclif readme
         if: ${{ inputs.generate-readme && steps.next-version.outputs.skipped == 'false' }}
         run: |
@@ -82,12 +76,6 @@ jobs:
           OCLIF_NEXT_VERSION=${{ steps.next-version.outputs.tag }} npx oclif readme --no-aliases
           # oclif readme has the "v" tag prefix hardcoded, this will replace it with what is in the package.json (v or not)
           sed -i "s|/blob/v${{ steps.next-version.outputs.tag }}|/blob/${{ steps.next-version.outputs.tag }}|g" README.md
-
-      - name: After git commands
-        if: ${{ inputs.generate-readme }}
-        run: |
-          git status
-          git diff
 
       - name: Conventional Changelog Action
         id: changelog
