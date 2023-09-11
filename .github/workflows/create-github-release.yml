@@ -59,7 +59,7 @@ jobs:
         uses: TriPSs/conventional-changelog-action@9962c3267b32873dbc552a38a8397194361e1101
         with:
           tag-prefix: ""
-          # skip-version-file: true # Do not update the version in the package.json
+          skip-version-file: true # Do not update the version in the package.json
           skip-commit: true # Do not commit the version bump
           git-push: false # Do not push to Github
           skip-tag: true # Do not tag release
@@ -80,6 +80,8 @@ jobs:
           yarn install
           yarn compile
           OCLIF_NEXT_VERSION=${{ steps.next-version.outputs.tag }} npx oclif readme --no-aliases
+          # oclif readme has the "v" tag prefix hardcoded, this will replace it with what is in the package.json (v or not)
+          sed -i "s|/blob/v${{ steps.next-version.outputs.tag }}|/blob/${{ steps.next-version.outputs.tag }}|g" README.md
 
       - name: After git commands
         if: ${{ inputs.generate-readme }}
