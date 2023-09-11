@@ -59,7 +59,7 @@ jobs:
         uses: TriPSs/conventional-changelog-action@9962c3267b32873dbc552a38a8397194361e1101
         with:
           tag-prefix: ""
-          skip-version-file: true # Do not update the version in the package.json
+          # skip-version-file: true # Do not update the version in the package.json
           skip-commit: true # Do not commit the version bump
           git-push: false # Do not push to Github
           skip-tag: true # Do not tag release
