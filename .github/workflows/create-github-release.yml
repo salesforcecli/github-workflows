@@ -13,6 +13,10 @@ on:
         type: boolean
         default: true
         description: "Should release be skipped if there are no semantic commits?"
+      generate-readme:
+        type: boolean
+        default: true
+        description: "Generate oclif readme"
 
 jobs:
   release:
@@ -48,6 +52,32 @@ jobs:
             echo "Prerelease branch found but no prerelease tag, using default: dev"
             echo "tag=dev" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Get the next version for oclif readme
+        id: next-version
+        if: ${{ inputs.generate-readme }}
+        uses: TriPSs/conventional-changelog-action@9962c3267b32873dbc552a38a8397194361e1101
+        with:
+          tag-prefix: ""
+          skip-version-file: true # Do not update the version in the package.json
+          skip-commit: true # Do not commit the version bump
+          git-push: false # Do not push to Github
+          skip-tag: true # Do not tag release
+          skip-on-empty: ${{ inputs.skip-on-empty }}
+          pre-release: ${{ steps.prereleaseTag.outputs.tag && 'true' || 'false' }}
+          pre-release-identifier: ${{ steps.prereleaseTag.outputs.tag }}
+          output-file: "false" # No changelog file
+
+      - name: Generate oclif readme
+        if: ${{ inputs.generate-readme && steps.next-version.outputs.skipped == 'false' }}
+        run: |
+          yarn install
+          yarn compile
+          yarn oclif readme \
+            --no-aliases \
+            --version ${{ steps.next-version.outputs.tag }} \
+            --repository-prefix "<%- repo %>/blob/<%- version %>/<%- commandPath %>" \
+            || echo "::warning::'oclif readme' failed. Check the logs."
 
       - name: Conventional Changelog Action
         id: changelog
