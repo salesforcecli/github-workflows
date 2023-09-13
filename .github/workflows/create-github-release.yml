@@ -73,9 +73,11 @@ jobs:
         run: |
           yarn install
           yarn compile
-          OCLIF_NEXT_VERSION=${{ steps.next-version.outputs.tag }} npx oclif readme --no-aliases
-          # oclif readme has the "v" tag prefix hardcoded, this will replace it with what is in the package.json (v or not)
-          sed -i "s|/blob/v${{ steps.next-version.outputs.tag }}|/blob/${{ steps.next-version.outputs.tag }}|g" README.md
+          yarn oclif readme \
+            --no-aliases \
+            --version ${{ steps.next-version.outputs.tag }} \
+            --repository-prefix "<%- repo %>/blob/<%- version %>/<%- commandPath %>" \
+            || echo "::warning::'oclif readme' failed. Check the logs."
 
       - name: Conventional Changelog Action
         id: changelog
