@@ -72,7 +72,7 @@ jobs:
         if: ${{ inputs.generate-readme && steps.next-version.outputs.skipped == 'false' }}
         run: |
           yarn install
-          yarn compile
+          yarn tsc
           yarn oclif readme \
             --no-aliases \
             --version ${{ steps.next-version.outputs.tag }} \
