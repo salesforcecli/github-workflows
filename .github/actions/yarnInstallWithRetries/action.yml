@@ -1,5 +1,10 @@
 name: yarn-install-with-retries
 description: "wraps yarn install with retries/timeout to handle network failures"
+inputs:
+  ignore-scripts:
+    type: boolean
+    default: false
+    description: "Skip pre/post install scripts"
 runs:
   using: composite
   steps:
@@ -7,5 +12,5 @@ runs:
       name: yarn install
       with:
         max_attempts: 5
-        command: yarn install --network-timeout 600000
+        command: yarn install --network-timeout 600000 ${{ inputs.ignore-scripts && '--ignore-scripts' || '' }}
         timeout_minutes: 60
