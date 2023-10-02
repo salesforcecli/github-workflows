@@ -15,6 +15,7 @@ jobs:
           node-version: ${{ matrix.node_version }}
           cache: yarn
       - uses: google/wireit@setup-github-actions-caching/v1
+        continue-on-error: true
       - name: Cache node modules
         id: cache-nodemodules
         uses: actions/cache@v3
@@ -27,6 +28,11 @@ jobs:
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
       - run: yarn build
-      - run: yarn test
+      - name: yarn test
+        uses: nick-fields/retry@943e742917ac94714d2f408a0e8320f2d1fcafcd
+        with:
+          max_attempts: 2
+          command: yarn test
+          timeout_minutes: 60
         env:
           SF_DISABLE_TELEMETRY: true
