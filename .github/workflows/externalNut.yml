@@ -128,7 +128,7 @@ jobs:
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
         working-directory: node_modules/${{ inputs.packageName }}
         run: |
-          yarn install  --network-timeout 600000 ${{ inputs.ignoreScripts && '--ignore-scripts' }}
+          yarn install  --network-timeout 600000 ${{ inputs.ignoreScripts && '--ignore-scripts' || '' }}
           ${{ inputs.preBuildCommands }}
           yarn compile
           ${{ inputs.postBuildCommands }}
