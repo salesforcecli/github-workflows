@@ -74,6 +74,11 @@ on:
         description: "branch to clone from the repo.  Defaults to 'main'"
         type: string
         default: "main"
+      ignoreScripts:
+        required: false
+        description: "if true, will run yarn install --ignore-scripts when building package in node_modules"
+        type: boolean
+        default: false
 
 jobs:
   external-nut:
@@ -123,7 +128,7 @@ jobs:
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
         working-directory: node_modules/${{ inputs.packageName }}
         run: |
-          yarn install  --network-timeout 600000
+          yarn install  --network-timeout 600000 ${{ inputs.ignoreScripts && '--ignore-scripts' }}
           ${{ inputs.preBuildCommands }}
           yarn compile
           ${{ inputs.postBuildCommands }}
