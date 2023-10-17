@@ -1,0 +1,49 @@
+name: generate-oclif-readme
+description: Generate oclif readme if it is an oclif plugin
+
+inputs:
+  skip-on-empty:
+    description: Should release be skipped if there are no semantic commits?
+    required: true
+  pre-release:
+    description: Is this release will be a prerelease?
+    required: true
+  pre-release-identifier:
+    description: The name of the prerelease channel (e.g. dev, beta)
+
+runs:
+  using: composite
+  steps:
+    # First we check to see if this is an oclif plugin
+    # If it is not, we will skip readme generation
+    - name: Check that oclif config exists
+      id: is-oclif-plugin
+      shell: bash
+      run: echo "bool=$(jq 'has("oclif")' package.json)" >> "$GITHUB_OUTPUT"
+
+    - name: Get the next version for oclif readme
+      id: next-version
+      if: ${{ steps.is-oclif-plugin.outputs.bool == 'true' }}
+      uses: TriPSs/conventional-changelog-action@9962c3267b32873dbc552a38a8397194361e1101
+      with:
+        tag-prefix: ""
+        skip-version-file: true # Do not update the version in the package.json
+        skip-commit: true # Do not commit the version bump
+        git-push: false # Do not push to Github
+        skip-tag: true # Do not tag release
+        skip-on-empty: ${{ inputs.skip-on-empty }}
+        pre-release: ${{ inputs.pre-release }}
+        pre-release-identifier: ${{ inputs.pre-release-identifier }}
+        output-file: "false" # No changelog file
+
+    - name: Generate oclif readme
+      if: ${{ steps.is-oclif-plugin.outputs.bool == 'true' && steps.next-version.outputs.skipped == 'false' }}
+      shell: bash
+      run: |
+        yarn install
+        yarn tsc
+        yarn oclif readme \
+          --no-aliases \
+          --version ${{ steps.next-version.outputs.tag }} \
+          --repository-prefix "<%- repo %>/blob/<%- version %>/<%- commandPath %>" \
+          || echo "::warning::'oclif readme' failed. Check the logs."
