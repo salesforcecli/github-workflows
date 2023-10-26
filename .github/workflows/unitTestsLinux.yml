@@ -5,7 +5,9 @@ jobs:
   linux-unit-tests:
     strategy:
       matrix:
-        node_version: [18, 20, 21]
+        # waiting on a jsdoc fix for node 21
+        # node_version: [18, 20, 21]
+        node_version: [18, 20]
       fail-fast: false
     runs-on: ubuntu-latest
     steps:
