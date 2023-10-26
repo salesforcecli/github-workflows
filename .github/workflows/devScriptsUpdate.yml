@@ -61,7 +61,7 @@ jobs:
       # this may fail but we still want a PR with partial fix
       - run: |
           git checkout -b devScripts$(date +%F)
-          yarn lint --fix
+          yarn lint -- --fix
         continue-on-error: true
       - run: |
           git add .
