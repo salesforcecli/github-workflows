@@ -5,9 +5,7 @@ jobs:
   windows-unit-tests:
     strategy:
       matrix:
-        # waiting on a jsdoc fix for node 21
-        # node_version: [18, 20, 21]
-        node_version: [18, 20]
+        node_version: [lts/-1, lts/*]
       fail-fast: false
     runs-on: windows-latest
     steps:
