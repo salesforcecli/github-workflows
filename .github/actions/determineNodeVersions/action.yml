@@ -1,0 +1,31 @@
+name: determine-node-versions
+description: Calculate Node and Node-1 versions for unit tests
+
+outputs:
+  nodeVersions:
+    description: Node versions to be consumed by a workflow matrix
+    value: ${{ steps.node-versions.outputs.nodeVersions }}
+
+runs:
+  using: composite
+  steps:
+    - name: Determine node versions
+      shell: bash
+      id: node-versions
+      run: |
+        NODE_VERSION="${{ vars.NODE_VERSION_OVERRIDE || 'lts/*' }}"
+        NODE_VERSION_MINUS_ONE="lts/-1"
+
+        if [ -n "${{ vars.NODE_VERSION_OVERRIDE }}" ]; then
+          NODE_VERSION_MAJOR=$(echo "${{ vars.NODE_VERSION_OVERRIDE }}" | cut -d '.' -f 1)
+          NODE_VERSION_MINUS_ONE="$((NODE_VERSION_MAJOR - 1))"
+        fi
+
+        {
+        echo 'nodeVersions<<EOF'
+        echo '['
+        echo "  \"$NODE_VERSION\","
+        echo "  \"$NODE_VERSION_MINUS_ONE\""
+        echo ']'
+        echo EOF
+        } >> "$GITHUB_OUTPUT"

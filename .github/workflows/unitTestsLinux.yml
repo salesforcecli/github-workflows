@@ -3,29 +3,12 @@ on:
 
 jobs:
   determine-node-versions:
-    runs-on: ubuntu-latest
     outputs:
-      nodeVersions: ${{ steps.node-versions.outputs.nodeVersions }}
+      nodeVersions: ${{ steps.determine-node-versions.outputs.nodeVersions }}
+    runs-on: ubuntu-latest
     steps:
-      - name: Determine node versions
-        id: node-versions
-        run: |
-          NODE_VERSION="${{ vars.NODE_VERSION_OVERRIDE || 'lts/*' }}"
-          NODE_VERSION_MINUS_ONE="lts/-1"
-
-          if [ -n "${{ vars.NODE_VERSION_OVERRIDE }}" ]; then
-            NODE_VERSION_MAJOR=$(echo "${{ vars.NODE_VERSION_OVERRIDE }}" | cut -d '.' -f 1)
-            NODE_VERSION_MINUS_ONE="$((NODE_VERSION_MAJOR - 1))"
-          fi
-
-          {
-          echo 'nodeVersions<<EOF'
-          echo '['
-          echo "  \"$NODE_VERSION\","
-          echo "  \"$NODE_VERSION_MINUS_ONE\""
-          echo ']'
-          echo EOF
-          } >> "$GITHUB_OUTPUT"
+      - uses: salesforcecli/github-workflows/.github/actions/determineNodeVersions@main
+        id: determine-node-versions
 
   linux-unit-tests:
     needs: determine-node-versions
