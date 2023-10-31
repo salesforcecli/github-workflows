@@ -7,7 +7,7 @@ jobs:
       nodeVersions: ${{ steps.determine-node-versions.outputs.nodeVersions }}
     runs-on: ubuntu-latest
     steps:
-      - uses: salesforcecli/github-workflows/.github/actions/determineNodeVersions@main
+      - uses: salesforcecli/github-workflows/.github/actions/determineNodeVersions@ew/retry-wrapper
         id: determine-node-versions
 
   linux-unit-tests:
