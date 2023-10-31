@@ -88,19 +88,17 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ inputs.nodeVersion }}
-      - uses: nick-fields/retry@943e742917ac94714d2f408a0e8320f2d1fcafcd
+      - uses: salesforcecli/github-workflows/.github/actions/retry@ew/retry-wrapper
         name: cli install
         with:
           max_attempts: ${{ inputs.attempts }}
           command: npm install -g @salesforce/cli@nightly shx yarn-deduplicate --omit=dev
           timeout_minutes: 20
-      - uses: nick-fields/retry@943e742917ac94714d2f408a0e8320f2d1fcafcd
+      - uses: salesforcecli/github-workflows/.github/actions/retry@ew/retry-wrapper
         name: git clone
         with:
           max_attempts: 20
           command: git clone -b ${{ inputs.branch}} --single-branch ${{ inputs.externalProjectGitUrl}} $(pwd)
-          # backoff 60 seconds because most failures are 429 (too many requests)
-          retry_wait_seconds: 60
           timeout_minutes: 20
       - name: Cache node modules
         if: inputs.useCache
@@ -139,13 +137,12 @@ jobs:
         run: yarn compile
       - run: echo "TESTKIT_EXECUTABLE_PATH=${{inputs.sfdxExecutablePath}}" >> $GITHUB_ENV
         if: inputs.sfdxExecutablePath
-      - uses: nick-fields/retry@943e742917ac94714d2f408a0e8320f2d1fcafcd
-        name: NUTs with ${{ inputs.attempts }} attempts
+      - name: NUTs with ${{ inputs.attempts }} attempts
+        uses: salesforcecli/github-workflows/.github/actions/retry@ew/retry-wrapper
         with:
           max_attempts: ${{ inputs.attempts }}
           command: ${{ inputs.command }}
           retry_on: error
-          timeout_minutes: 60
         env:
           SF_DISABLE_TELEMETRY: true
           TESTKIT_AUTH_URL: ${{ secrets.TESTKIT_AUTH_URL }}
