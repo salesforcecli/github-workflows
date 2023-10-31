@@ -19,12 +19,12 @@ jobs:
           fi
 
           {
-            echo 'nodeVersions<<EOF'
-            [
-              "$NODE_VERSION",
-              "$NODE_VERSION_MINUS_ONE"
-            ]
-            echo EOF
+          echo 'nodeVersions<<EOF'
+          echo '['
+          echo "  \"$NODE_VERSION\","
+          echo "  \"$NODE_VERSION_MINUS_ONE\""
+          echo ']'
+          echo EOF
           } >> "$GITHUB_OUTPUT"
 
   linux-unit-tests:
