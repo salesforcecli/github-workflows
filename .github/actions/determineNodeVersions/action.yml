@@ -28,9 +28,15 @@ runs:
 
         {
         echo 'nodeVersions<<EOF'
-        echo '['
-        echo "  \"$NODE_VERSION\","
-        echo "  \"$NODE_VERSION_MINUS_ONE\""
-        echo ']'
+        jq -n --arg v1 "$NODE_VERSION" --arg v2 "$NODE_VERSION_MINUS_ONE" '[$v1, $v1]'
         echo EOF
         } >> "$GITHUB_OUTPUT"
+
+        # Sample output looks like this:
+        #
+        # nodeVersions<<EOF
+        # [
+        #   "18.15.0",
+        #   "17"
+        # ]
+        # EOF
