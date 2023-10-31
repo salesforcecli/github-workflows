@@ -2,6 +2,16 @@ on:
   workflow_call:
 
 jobs:
+  determine-node-versions:
+    outputs:
+      nodeVersions: ${{ steps.determine-node-versions.outputs.nodeVersions }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: salesforcecli/github-workflows/.github/actions/determineNodeVersions@ew/retry-wrapper
+        id: determine-node-versions
+        with:
+          nodeVersionOverride: ${{ vars.NODE_VERSION_OVERRIDE }}
+
   windows-unit-tests:
     strategy:
       matrix:
