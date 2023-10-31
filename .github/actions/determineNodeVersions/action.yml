@@ -1,6 +1,11 @@
 name: determine-node-versions
 description: Calculate Node and Node-1 versions for unit tests
 
+inputs:
+  nodeVersionOverride:
+    description: Semver version to set version and version-1
+    required: false
+
 outputs:
   nodeVersions:
     description: Node versions to be consumed by a workflow matrix
@@ -13,11 +18,11 @@ runs:
       shell: bash
       id: node-versions
       run: |
-        NODE_VERSION="${{ vars.NODE_VERSION_OVERRIDE || 'lts/*' }}"
+        NODE_VERSION="${{ inputs.nodeVersionOverride || 'lts/*' }}"
         NODE_VERSION_MINUS_ONE="lts/-1"
 
-        if [ -n "${{ vars.NODE_VERSION_OVERRIDE }}" ]; then
-          NODE_VERSION_MAJOR=$(echo "${{ vars.NODE_VERSION_OVERRIDE }}" | cut -d '.' -f 1)
+        if [ -n "${{ inputs.nodeVersionOverride }}" ]; then
+          NODE_VERSION_MAJOR=$(echo "${{ inputs.nodeVersionOverride }}" | cut -d '.' -f 1)
           NODE_VERSION_MINUS_ONE="$((NODE_VERSION_MAJOR - 1))"
         fi
 
