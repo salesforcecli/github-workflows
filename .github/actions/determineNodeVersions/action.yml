@@ -19,16 +19,22 @@ runs:
       id: node-versions
       run: |
         NODE_VERSION="${{ inputs.nodeVersionOverride || 'lts/*' }}"
-        NODE_VERSION_MINUS_ONE="lts/-1"
+        NODE_PREVIOUS_LTS="lts/-1"
 
         if [ -n "${{ inputs.nodeVersionOverride }}" ]; then
           NODE_VERSION_MAJOR=$(echo "${{ inputs.nodeVersionOverride }}" | cut -d '.' -f 1)
-          NODE_VERSION_MINUS_ONE="$((NODE_VERSION_MAJOR - 1))"
+
+          # LTS-1 will always be the previous LTS, which is always even. Here we calculate the nearest LTS
+          if [ $((NODE_VERSION_MAJOR % 2)) == 0 ]; then
+            NODE_PREVIOUS_LTS="$((NODE_VERSION_MAJOR - 2))"
+          else
+            NODE_PREVIOUS_LTS="$((NODE_VERSION_MAJOR - 1))"
+          fi
         fi
 
         {
         echo 'nodeVersions<<EOF'
-        jq -n --arg v1 "$NODE_VERSION" --arg v2 "$NODE_VERSION_MINUS_ONE" '[$v1, $v2]'
+        jq -n --arg v1 "$NODE_VERSION" --arg v2 "$NODE_PREVIOUS_LTS" '[$v1, $v2]'
         echo EOF
         } >> "$GITHUB_OUTPUT"
 
