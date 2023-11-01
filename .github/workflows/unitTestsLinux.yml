@@ -10,7 +10,7 @@ jobs:
       - uses: salesforcecli/github-workflows/.github/actions/determineNodeVersions@ew/retry-wrapper
         id: determine-node-versions
         with:
-          nodeVersionOverride: ${{ vars.NODE_VERSION_OVERRIDE }}
+          nodeVersionOverride: ${{ vars.NODE_VERSION_OVERRIDE }} # default is 'lts/*' and 'lts/-1'
 
   linux-unit-tests:
     needs: determine-node-versions
