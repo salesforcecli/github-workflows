@@ -28,7 +28,7 @@ runs:
 
         {
         echo 'nodeVersions<<EOF'
-        jq -n --arg v1 "$NODE_VERSION" --arg v2 "$NODE_VERSION_MINUS_ONE" '[$v1, $v1]'
+        jq -n --arg v1 "$NODE_VERSION" --arg v2 "$NODE_VERSION_MINUS_ONE" '[$v1, $v2]'
         echo EOF
         } >> "$GITHUB_OUTPUT"
 
