@@ -84,7 +84,7 @@ jobs:
       - run: yarn compile
       - name: Check that oclif config exists
         id: is-oclif-plugin
-        run: echo "bool=$(jq 'has("oclif")' package.json)" >> "$GITHUB_OUTPUT"
+        run: echo "bool=$(jq 'if .oclif then true else false end' package.json)" >> "$GITHUB_OUTPUT"
       - run: yarn oclif manifest
         if: ${{ steps.is-oclif-plugin.outputs.bool == 'true' }}
       - run: echo "TESTKIT_EXECUTABLE_PATH=${{inputs.sfdxExecutablePath}}" >> $GITHUB_ENV
