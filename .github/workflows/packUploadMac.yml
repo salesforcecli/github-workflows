@@ -34,7 +34,7 @@ jobs:
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
       # todo: download the macos tarball and pass that to the oclif pack:macos command
       - name: pack:macos
-        uses: salesforcecli/github-workflows/.github/actions/retry@ew/retry-wrapper
+        uses: salesforcecli/github-workflows/.github/actions/retry@main
         with:
           command: yarn pack:macos
       - run: yarn upload:macos

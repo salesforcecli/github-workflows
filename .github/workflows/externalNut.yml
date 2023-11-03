@@ -88,13 +88,13 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ inputs.nodeVersion }}
-      - uses: salesforcecli/github-workflows/.github/actions/retry@ew/retry-wrapper
+      - uses: salesforcecli/github-workflows/.github/actions/retry@main
         name: cli install
         with:
           max_attempts: ${{ inputs.attempts }}
           command: npm install -g @salesforce/cli@nightly shx yarn-deduplicate --omit=dev
           timeout_minutes: 20
-      - uses: salesforcecli/github-workflows/.github/actions/retry@ew/retry-wrapper
+      - uses: salesforcecli/github-workflows/.github/actions/retry@main
         name: git clone
         with:
           max_attempts: 20
@@ -138,7 +138,7 @@ jobs:
       - run: echo "TESTKIT_EXECUTABLE_PATH=${{inputs.sfdxExecutablePath}}" >> $GITHUB_ENV
         if: inputs.sfdxExecutablePath
       - name: NUTs with ${{ inputs.attempts }} attempts
-        uses: salesforcecli/github-workflows/.github/actions/retry@ew/retry-wrapper
+        uses: salesforcecli/github-workflows/.github/actions/retry@main
         with:
           max_attempts: ${{ inputs.attempts }}
           command: ${{ inputs.command }}

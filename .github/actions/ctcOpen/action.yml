@@ -37,7 +37,7 @@ runs:
 
     - name: Open CTC case
       id: ctc
-      uses: salesforcecli/github-workflows/.github/actions/retry@ew/retry-wrapper
+      uses: salesforcecli/github-workflows/.github/actions/retry@main
       with:
         max_attempts: 5
         command: |

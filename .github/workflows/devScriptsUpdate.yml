@@ -68,7 +68,7 @@ jobs:
           git commit -m 'chore: updates from devScripts' --no-verify
           git push origin --no-verify
       # sometimes pr can't create immediately
-      - uses: salesforcecli/github-workflows/.github/actions/retry@ew/retry-wrapper
+      - uses: salesforcecli/github-workflows/.github/actions/retry@main
         with:
           max_attempts: 5
           command: |
