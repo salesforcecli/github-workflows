@@ -34,11 +34,9 @@ jobs:
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
       # todo: download the macos tarball and pass that to the oclif pack:macos command
       - name: pack:macos
-        uses: nick-fields/retry@943e742917ac94714d2f408a0e8320f2d1fcafcd
+        uses: salesforcecli/github-workflows/.github/actions/retry@main
         with:
-          max_attempts: 3
           command: yarn pack:macos
-          timeout_minutes: 60
       - run: yarn upload:macos
       - run: yarn channel:promote --cli ${{ inputs.cli }} --version ${{ inputs.version }} --target ${{ inputs.channel }} --platform macos
         name: Promote macos to ${{ inputs.channel }} channel

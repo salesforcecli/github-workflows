@@ -1,0 +1,30 @@
+name: retry
+description: a wrapper for nick-fields/retry with sensible defaults to make our workflow files cleaner
+
+inputs:
+  command:
+    required: true
+    description: The command to run
+  max_attempts:
+    description: Number of attempts to make before failing the step
+    default: "3"
+  retry_wait_seconds:
+    default: "60"
+    description: Number of seconds to wait before attempting the next retry
+  timeout_minutes:
+    default: "60"
+    description: Minutes to wait before attempt times out. Must only specify either minutes or seconds
+  retry_on:
+    default: "any"
+    description: Event to retry on. Currently supports [any (default), timeout, error]
+
+runs:
+  using: "composite"
+  steps:
+    - uses: nick-fields/retry@943e742917ac94714d2f408a0e8320f2d1fcafcd
+      with:
+        max_attempts: ${{ inputs.max_attempts }}
+        retry_wait_seconds: ${{ inputs.retry_wait_seconds }}
+        command: ${{ inputs.command }}
+        timeout_minutes: ${{ inputs.timeout_minutes }}
+        retry_on: ${{ inputs.retry_on }}

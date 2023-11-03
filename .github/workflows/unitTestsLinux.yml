@@ -2,10 +2,21 @@ on:
   workflow_call:
 
 jobs:
+  determine-node-versions:
+    outputs:
+      nodeVersions: ${{ steps.determine-node-versions.outputs.nodeVersions }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: salesforcecli/github-workflows/.github/actions/determineNodeVersions@main
+        id: determine-node-versions
+        with:
+          nodeVersionOverride: ${{ vars.NODE_VERSION_OVERRIDE }} # default is 'lts/*' and 'lts/-1'
+
   linux-unit-tests:
+    needs: determine-node-versions
     strategy:
       matrix:
-        node_version: [lts/-1, lts/*]
+        node_version: ${{ fromJSON(needs.determine-node-versions.outputs.nodeVersions) }}
       fail-fast: false
     runs-on: ubuntu-latest
     steps:
@@ -29,10 +40,8 @@ jobs:
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
       - run: yarn build
       - name: yarn test
-        uses: nick-fields/retry@943e742917ac94714d2f408a0e8320f2d1fcafcd
+        uses: salesforcecli/github-workflows/.github/actions/retry@main
         with:
-          max_attempts: 2
           command: yarn test
-          timeout_minutes: 60
         env:
           SF_DISABLE_TELEMETRY: true
