@@ -29,7 +29,7 @@ runs:
     - run: echo "found prerelease ${{ steps.versionSuffix.outputs.prerelease }}"
       shell: bash
 
-    - uses: actions-ecosystem/action-regex-match@9e6c4fb3d5e898f505be7a1fb6e7b0a278f6665b
+    - uses: actions-ecosystem/action-regex-match@d50fd2e7a37d0e617aea3d7ada663bd56862b9cc
       id: tag
       with:
         text: ${{ steps.versionSuffix.outputs.prerelease }}

@@ -7,19 +7,19 @@ jobs:
     if: ${{ !contains(github.event.pull_request.body, '[skip-validate-pr]') && !contains(github.event.pull_request.title, '[skip-validate-pr]') }}
     runs-on: "ubuntu-latest"
     steps:
-      - uses: actions-ecosystem/action-regex-match@9e6c4fb3d5e898f505be7a1fb6e7b0a278f6665b
+      - uses: actions-ecosystem/action-regex-match@d50fd2e7a37d0e617aea3d7ada663bd56862b9cc
         id: regex-match-gus-wi
         with:
           text: ${{ github.event.pull_request.body }}
           regex: '@W-\d{7,8}@'
           flags: gm
-      - uses: actions-ecosystem/action-regex-match@9e6c4fb3d5e898f505be7a1fb6e7b0a278f6665b
+      - uses: actions-ecosystem/action-regex-match@d50fd2e7a37d0e617aea3d7ada663bd56862b9cc
         id: regex-match-gha-run
         with:
           text: ${{ github.event.pull_request.body }}
           regex: 'https:\/\/github.com\/.*\/actions\/runs\/'
           flags: gm
-      - uses: actions-ecosystem/action-regex-match@9e6c4fb3d5e898f505be7a1fb6e7b0a278f6665b
+      - uses: actions-ecosystem/action-regex-match@d50fd2e7a37d0e617aea3d7ada663bd56862b9cc
         id: regex-match-gh-issue
         with:
           text: ${{ github.event.pull_request.body }}
