@@ -65,7 +65,7 @@ jobs:
       - name: Is published
         id: is-published
         run: |
-          RESPONSE=$(npm view .@${{ inputs.githubTag }} version --json --silent)
+          RESPONSE=$(npm view .@${{ inputs.githubTag }} version --json --silent || echo "Not published")
 
           if [ "$RESPONSE" = "\"${{ inputs.githubTag }}\"" ]; then
             echo "published=true" >> "$GITHUB_OUTPUT"
