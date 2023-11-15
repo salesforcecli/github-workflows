@@ -56,10 +56,10 @@ jobs:
       published: ${{ steps.is-published.outputs.published }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.githubTag }}
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           cache: yarn
       - uses: flood-io/is-published-on-npm@8478347e2650eb228d303975415458183d0a37e4
@@ -79,10 +79,10 @@ jobs:
     if: ${{ always() && needs.check-publish.outputs.published == 'false' }}
     runs-on: ${{ inputs.runsOn }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.githubTag }}
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: yarn

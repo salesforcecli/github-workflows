@@ -9,8 +9,8 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
       - uses: salesforcecli/github-workflows/.github/actions/versionInfo@main
         id: version-info
         with:
@@ -32,12 +32,12 @@ jobs:
     runs-on: "ubuntu-latest"
     steps:
       - run: echo "previous job output was ${{ needs.compareVersions.outputs.shouldUpdate }}"
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
       - uses: salesforcecli/github-workflows/.github/actions/gitConfig@main
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: lts/*
           cache: yarn
