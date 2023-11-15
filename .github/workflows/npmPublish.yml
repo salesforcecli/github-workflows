@@ -61,9 +61,17 @@ jobs:
           ref: ${{ inputs.githubTag }}
       - uses: actions/setup-node@v4
         with:
-          cache: yarn
-      - uses: flood-io/is-published-on-npm@8478347e2650eb228d303975415458183d0a37e4
+          node-version: ${{ inputs.nodeVersion }}
+      - name: Is published
         id: is-published
+        run: |
+          RESPONSE=$(npm view .@${{ inputs.githubTag }} version --json --silent)
+
+          if [ "$RESPONSE" = "\"${{ inputs.githubTag }}\"" ]; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: echo "published said ${{ steps.is-published.outputs.published }}"
