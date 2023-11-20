@@ -96,7 +96,7 @@ jobs:
           cache: yarn
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
       - run: yarn build
-      - run: npm install -g @salesforce/plugin-release-management
+      - run: npm install -g @salesforce/plugin-release-management@4.4.24
 
       - name: NPM Release
         run: |
