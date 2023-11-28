@@ -80,11 +80,10 @@ jobs:
       - name: Create Github Release
         uses: ncipollo/release-action@v1.13.0
         if: ${{ steps.changelog.outputs.skipped == 'false' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
         with:
-          tag: ${{ steps.changelog.outputs.tag }}
           name: ${{ steps.changelog.outputs.tag }}
+          tag: ${{ steps.changelog.outputs.tag }}
           body: ${{ steps.changelog.outputs.clean_changelog }}
           prerelease: ${{ steps.prereleaseTag.outputs.tag && 'true' || 'false' }}
+          token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
           skipIfReleaseExists: true
