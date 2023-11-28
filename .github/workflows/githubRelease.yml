@@ -20,6 +20,12 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
+      - name: Deprecation warning
+        run: |
+          echo "::warning::WARNING: This workflow is deprecated in favor of create-github-release.yml\n
+                                    Update your worklows to use the new flow that supports prereleases\n
+                                    Docs: https://github.com/salesforcecli/github-workflows#prereleases\n
+                                    Example: https://github.com/salesforcecli/plugin-source/pull/927/files"
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
