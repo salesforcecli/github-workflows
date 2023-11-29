@@ -83,6 +83,7 @@ jobs:
         with:
           name: ${{ steps.changelog.outputs.tag }}
           tag: ${{ steps.changelog.outputs.tag }}
+          commit: ${{ github.ref_name }}
           body: ${{ steps.changelog.outputs.clean_changelog }}
           prerelease: ${{ steps.prereleaseTag.outputs.tag && 'true' || 'false' }}
           token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
