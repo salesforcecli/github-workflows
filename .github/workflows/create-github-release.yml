@@ -78,7 +78,7 @@ jobs:
           output-file: ${{ steps.prereleaseTag.outputs.tag && 'false' || 'CHANGELOG.md' }} # If prerelease, do not write the changelog file
 
       - name: Create Github Release
-        uses: ncipollo/release-action@v1.13.0
+        uses: ncipollo/release-action@6c75be85e571768fa31b40abf38de58ba0397db5
         if: ${{ steps.changelog.outputs.skipped == 'false' }}
         with:
           name: ${{ steps.changelog.outputs.tag }}
