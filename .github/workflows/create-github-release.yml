@@ -24,7 +24,7 @@ jobs:
     steps:
       - name: Get Github user info
         id: github-user-info
-        uses: salesforcecli/github-workflows/.github/actions/getGithubUserInfo@main
+        uses: salesforcecli/github-workflows/.github/actions/getGithubUserInfo@ew/external-friendly
         with:
           token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
 

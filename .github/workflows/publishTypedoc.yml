@@ -21,10 +21,10 @@ jobs:
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
       - name: Get Github user info
         id: github-user-info
-        uses: salesforcecli/github-workflows/.github/actions/getGithubUserInfo@main
+        uses: salesforcecli/github-workflows/.github/actions/getGithubUserInfo@ew/external-friendly
         with:
           token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
-      - uses: salesforcecli/github-workflows/.github/actions/gitConfig@main
+      - uses: salesforcecli/github-workflows/.github/actions/gitConfig@ew/external-friendly
         with:
           username: ${{ steps.github-user-info.outputs.username }}
           email: ${{ steps.github-user-info.outputs.email }}
