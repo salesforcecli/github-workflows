@@ -38,4 +38,4 @@ runs:
 
         echo "email=$EMAIL" >> "$GITHUB_OUTPUT"
       env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ inputs.GITHUB_TOKEN }}
