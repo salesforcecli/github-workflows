@@ -1,5 +1,8 @@
 on:
   workflow_call:
+    secrets:
+      SVC_CLI_BOT_GITHUB_TOKEN:
+        description: A Github PAT with repo access.
 
 jobs:
   # what is the RC version, numerically?
@@ -35,7 +38,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
+
+      - name: Get Github user info
+        id: github-user-info
+        uses: salesforcecli/github-workflows/.github/actions/getGithubUserInfo@main
+        with:
+          token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
+
       - uses: salesforcecli/github-workflows/.github/actions/gitConfig@main
+        with:
+          username: ${{ steps.github-user-info.outputs.username }}
+          email: ${{ steps.github-user-info.outputs.email }}
 
       - uses: actions/setup-node@v4
         with:

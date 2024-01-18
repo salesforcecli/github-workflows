@@ -3,7 +3,7 @@ on:
   workflow_call:
     secrets:
       SVC_CLI_BOT_GITHUB_TOKEN:
-        description: a github PAT with repo access
+        description: A Github PAT with repo access.
 
     inputs:
       prerelease:
@@ -22,6 +22,12 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
+      - name: Get Github user info
+        id: github-user-info
+        uses: salesforcecli/github-workflows/.github/actions/getGithubUserInfo@main
+        with:
+          token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
+
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
@@ -65,8 +71,8 @@ jobs:
         id: changelog
         uses: TriPSs/conventional-changelog-action@9962c3267b32873dbc552a38a8397194361e1101
         with:
-          git-user-name: svc-cli-bot
-          git-user-email: svc_cli_bot@salesforce.com
+          git-user-name: ${{ steps.github-user-info.outputs.username }}
+          git-user-email: ${{ steps.github-user-info.outputs.email }}
           github-token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
           tag-prefix: ""
           # Setting 'release-count' to 0 will keep ALL releases in the change log file (no pruning)

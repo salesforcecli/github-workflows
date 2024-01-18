@@ -1,5 +1,8 @@
 on:
   workflow_call:
+    secrets:
+      SVC_CLI_BOT_GITHUB_TOKEN:
+        description: A Github PAT with repo access.
 
 jobs:
   publish:
@@ -16,7 +19,15 @@ jobs:
           node-version: lts/*
           cache: yarn
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
+      - name: Get Github user info
+        id: github-user-info
+        uses: salesforcecli/github-workflows/.github/actions/getGithubUserInfo@main
+        with:
+          token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
       - uses: salesforcecli/github-workflows/.github/actions/gitConfig@main
+        with:
+          username: ${{ steps.github-user-info.outputs.username }}
+          email: ${{ steps.github-user-info.outputs.email }}
       - name: build docs
         run: |
           rm -rf docs

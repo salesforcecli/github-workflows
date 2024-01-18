@@ -1,11 +1,20 @@
 name: gitConfig
 description: "Sets git username/email and push behavior"
+
+inputs:
+  username:
+    description: "Github username to set as `user.name`. TIP: Use getGithubUserInfo to look up username from a Github token."
+    required: true
+  email:
+    description: "Github email to set as `user.email`. TIP: Use getGithubUserInfo to look up email from a Github token."
+    required: true
+
 runs:
   using: composite
   steps:
     - run: git config --global push.default current
       shell: bash
-    - run: git config --global user.email svc_cli_bot@salesforce.com
+    - run: git config --global user.name ${{ inputs.username }}
       shell: bash
-    - run: git config --global user.name svc-cli-bot
+    - run: git config --global user.email ${{ inputs.email }}
       shell: bash
