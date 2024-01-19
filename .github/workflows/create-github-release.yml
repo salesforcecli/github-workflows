@@ -4,6 +4,7 @@ on:
     secrets:
       SVC_CLI_BOT_GITHUB_TOKEN:
         description: A Github PAT with repo access.
+        required: true
 
     inputs:
       prerelease:
@@ -26,7 +27,7 @@ jobs:
         id: github-user-info
         uses: salesforcecli/github-workflows/.github/actions/getGithubUserInfo@ew/external-friendly
         with:
-          token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
+          SVC_CLI_BOT_GITHUB_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
 
       - uses: actions/checkout@v4
         with:

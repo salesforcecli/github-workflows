@@ -3,6 +3,7 @@ on:
     secrets:
       SVC_CLI_BOT_GITHUB_TOKEN:
         description: A Github PAT with repo access.
+        required: true
 
 jobs:
   # what is the RC version, numerically?

@@ -1,4 +1,15 @@
 name: tag and github release
+#
+#
+#
+#
+# -----------------------------------------------------------------------
+# NOTE: This workflow is deprecated in favor of create-github-release.yml
+# -----------------------------------------------------------------------
+#
+#
+#
+#
 on:
   workflow_call:
     secrets:
@@ -11,10 +22,6 @@ on:
         required: false
         default: false
         description: use a prerelease instead of a regular release
-
-# -----------------------------------------------------------------------
-# NOTE: This workflow is deprecated in favor of create-github-release.yml
-# -----------------------------------------------------------------------
 
 jobs:
   release:

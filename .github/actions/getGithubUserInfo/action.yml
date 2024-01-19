@@ -2,7 +2,7 @@ name: getGithubUserInfo
 description: Looks up Github user info for a Token
 
 inputs:
-  GITHUB_TOKEN:
+  SVC_CLI_BOT_GITHUB_TOKEN:
     description: Github token
     required: true
 
@@ -17,9 +17,16 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Validate token is passed
+      if: inputs.SVC_CLI_BOT_GITHUB_TOKEN == ''
+      uses: actions/github-script@v3
+      with:
+        script: core.setFailed("You must pass a Github Token with Repo Access as SVC_CLI_BOT_GITHUB_TOKEN")
     - name: Get Github user info
       id: user-info
       shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.SVC_CLI_BOT_GITHUB_TOKEN }}
       run: |
         USER_INFO=$(gh api user)
 
@@ -37,5 +44,3 @@ runs:
         fi
 
         echo "email=$EMAIL" >> "$GITHUB_OUTPUT"
-      env:
-        GH_TOKEN: ${{ inputs.GITHUB_TOKEN }}
