@@ -86,6 +86,7 @@ jobs:
     runs-on: ${{ inputs.os }}
     steps:
       - run: git config --system core.longpaths true
+        if: ${{ runner.os == 'Windows' }}
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.nodeVersion }}
