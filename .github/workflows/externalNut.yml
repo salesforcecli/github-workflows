@@ -85,6 +85,7 @@ jobs:
     name: ${{ inputs.command }}
     runs-on: ${{ inputs.os }}
     steps:
+      - run: git config --system core.longpaths true
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.nodeVersion }}
