@@ -48,18 +48,12 @@ jobs:
           script: |
             core.setFailed('Prerelease requires a dist tag name in your package.json like beta in 1.1.1-beta.0')
 
-      - name: Get Github user info
-        id: github-user-info
-        uses: salesforcecli/github-workflows/.github/actions/getGithubUserInfo@ew/external-friendly
-        with:
-          token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
-
       - name: Conventional Changelog Action
         id: changelog
         uses: TriPSs/conventional-changelog-action@9962c3267b32873dbc552a38a8397194361e1101
         with:
-          git-user-name: ${{ steps.github-user-info.outputs.username }}
-          git-user-email: ${{ steps.github-user-info.outputs.email }}
+          git-user-name: svc-cli-bot
+          git-user-email: svc_cli_bot@salesforce.com
           github-token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
           tag-prefix: ""
           # Setting 'release-count' to 0 will keep ALL releases in the change log (no pruning)
