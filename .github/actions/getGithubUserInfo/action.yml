@@ -21,7 +21,7 @@ runs:
       if: inputs.SVC_CLI_BOT_GITHUB_TOKEN == ''
       uses: actions/github-script@v3
       with:
-        script: core.setFailed("You must pass a Github Token with Repo Access as SVC_CLI_BOT_GITHUB_TOKEN")
+        script: core.setFailed("You must pass a Github Token with repo write access as SVC_CLI_BOT_GITHUB_TOKEN")
     - name: Get Github user info
       id: user-info
       shell: bash

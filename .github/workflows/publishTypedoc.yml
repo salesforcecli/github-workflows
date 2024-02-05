@@ -2,7 +2,7 @@ on:
   workflow_call:
     secrets:
       SVC_CLI_BOT_GITHUB_TOKEN:
-        description: A Github PAT with repo access.
+        description: A Github PAT with repo write access.
         required: true
 
 jobs:
