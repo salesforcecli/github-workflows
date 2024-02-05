@@ -7,6 +7,7 @@ Reusable workflows and actions
 >
 > - Create a new PAT with Repo access
 >   - It is recommended that this is a service account user
+>   - Note: This user/bot will need to have access to push to your repo's default branch. This can be configured in the branch protection rules.
 > - Add the PAT as an Actions [Organization secret](https://github.com/organizations/salesforcecli/settings/secrets/actions)
 >   - Set the `Name` to `SVC_CLI_BOT_GITHUB_TOKEN`
 >   - Paste in your new PAT as the `Value`
