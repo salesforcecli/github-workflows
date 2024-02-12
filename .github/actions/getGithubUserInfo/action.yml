@@ -1,0 +1,46 @@
+name: getGithubUserInfo
+description: Looks up Github user info for a Token
+
+inputs:
+  SVC_CLI_BOT_GITHUB_TOKEN:
+    description: Github token
+    required: true
+
+outputs:
+  username:
+    description: Github username associated with the provided token
+    value: ${{ steps.user-info.outputs.username }}
+  email:
+    description: Github email associated with the provided token
+    value: ${{ steps.user-info.outputs.email }}
+
+runs:
+  using: composite
+  steps:
+    - name: Validate token is passed
+      if: inputs.SVC_CLI_BOT_GITHUB_TOKEN == ''
+      uses: actions/github-script@v3
+      with:
+        script: core.setFailed("You must pass a Github Token with repo write access as SVC_CLI_BOT_GITHUB_TOKEN")
+    - name: Get Github user info
+      id: user-info
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.SVC_CLI_BOT_GITHUB_TOKEN }}
+      run: |
+        USER_INFO=$(gh api user)
+
+        GH_USERNAME=$(echo $USER_INFO | jq -r '.login')
+        EMAIL=$(echo $USER_INFO | jq -r '.email')
+
+        echo "username=$(echo $USER_INFO | jq -r '.login')" >> "$GITHUB_OUTPUT"
+
+        if [[ -z "$EMAIL" || $EMAIL == 'null' ]]; then
+          # Email is empty (likely set to private)
+          ID=$(echo $USER_INFO | jq -r '.id')
+
+          # https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-personal-account-on-github/managing-email-preferences/setting-your-commit-email-address
+          EMAIL="$ID+$GH_USERNAME@users.noreply.github.com"
+        fi
+
+        echo "email=$EMAIL" >> "$GITHUB_OUTPUT"
