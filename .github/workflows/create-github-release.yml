@@ -18,6 +18,9 @@ on:
         type: boolean
         default: true
         description: "Generate oclif readme"
+      readme-command:
+        type: string
+        description: "Command to use for generating the readme"
 
 jobs:
   release:
@@ -62,11 +65,12 @@ jobs:
 
       - name: Generate oclif readme
         if: ${{ inputs.generate-readme }}
-        uses: salesforcecli/github-workflows/.github/actions/generateOclifReadme@main
+        uses: salesforcecli/github-workflows/.github/actions/generateOclifReadme@mdonnalley/support-mutli-readme
         with:
           skip-on-empty: ${{ inputs.skip-on-empty }}
           pre-release: ${{ steps.prereleaseTag.outputs.tag && 'true' || 'false' }}
           pre-release-identifier: ${{ steps.prereleaseTag.outputs.tag }}
+          command: ${{ inputs.readme-command }}
 
       - name: Conventional Changelog Action
         id: changelog

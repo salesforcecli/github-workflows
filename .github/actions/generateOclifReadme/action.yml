@@ -10,6 +10,8 @@ inputs:
     required: true
   pre-release-identifier:
     description: The name of the prerelease channel (e.g. dev, beta)
+  command:
+    description: The command to run to generate the readme.
 
 runs:
   using: composite
@@ -42,8 +44,13 @@ runs:
       run: |
         yarn install
         yarn tsc
-        yarn oclif readme \
+        if [[ -n "${{ inputs.command }}" ]]; then
+          command="${{ inputs.command }}"
+        else
+          command="yarn oclif readme"
+        fi
+        ${command} \
           --no-aliases \
           --version ${{ steps.next-version.outputs.tag }} \
           --repository-prefix "<%- repo %>/blob/<%- version %>/<%- commandPath %>" \
-          || echo "::warning::'oclif readme' failed. Check the logs."
+          || echo "::warning::'${command}' failed. Check the logs."
