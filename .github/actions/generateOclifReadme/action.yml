@@ -10,6 +10,8 @@ inputs:
     required: true
   pre-release-identifier:
     description: The name of the prerelease channel (e.g. dev, beta)
+  multi:
+    description: Create a different markdown page for each topic.
 
 runs:
   using: composite
@@ -45,5 +47,6 @@ runs:
         yarn oclif readme \
           --no-aliases \
           --version ${{ steps.next-version.outputs.tag }} \
+          ${{ inputs.multi && '--multi' || '' }} \
           --repository-prefix "<%- repo %>/blob/<%- version %>/<%- commandPath %>" \
           || echo "::warning::'oclif readme' failed. Check the logs."
