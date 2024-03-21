@@ -18,9 +18,10 @@ on:
         type: boolean
         default: true
         description: "Generate oclif readme"
-      readme-command:
-        type: string
-        description: "Command to use for generating the readme"
+      readme-multi:
+        type: boolean
+        description: "Create a different markdown page for each topic."
+        default: false
 
 jobs:
   release:
@@ -70,7 +71,7 @@ jobs:
           skip-on-empty: ${{ inputs.skip-on-empty }}
           pre-release: ${{ steps.prereleaseTag.outputs.tag && 'true' || 'false' }}
           pre-release-identifier: ${{ steps.prereleaseTag.outputs.tag }}
-          command: ${{ inputs.readme-command }}
+          multi: ${{ inputs.readme-multi }}
 
       - name: Conventional Changelog Action
         id: changelog
