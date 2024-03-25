@@ -47,6 +47,6 @@ runs:
         yarn oclif readme \
           --no-aliases \
           --version ${{ steps.next-version.outputs.tag }} \
-          ${{ inputs.multi && '--multi' || '' }} \
+          ${{ inputs.multi === 'true' && '--multi' || '' }} \
           --repository-prefix "<%- repo %>/blob/<%- version %>/<%- commandPath %>" \
           || echo "::warning::'oclif readme' failed. Check the logs."
