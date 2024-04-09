@@ -1,0 +1,93 @@
+on:
+  workflow_call:
+    inputs:
+      # could we get this from pjson?
+      packageName:
+        description: "The npm package that this repository publishes.  ex: @salesforce/core"
+        required: true
+        type: string
+      externalProjectGitUrl:
+        description: "The url that will be cloned.  This contains the code you want to compile.  Ex: https://github.com/salesforcecli/plugin-user"
+        type: string
+        required: true
+      command:
+        required: false
+        type: string
+        default: yarn compile
+        description: "command to execute (ex: yarn compile, yarn build)"
+      nodeVersion:
+        required: false
+        description: version of node to run tests against.  Use things like [lts/-1, lts/*, latest] to avoid hardcoding versions
+        type: string
+        default: lts/*
+      os:
+        required: false
+        description: "runs-on property, ex: ubuntu-latest, windows-latest"
+        type: string
+        default: "ubuntu-latest"
+      preBuildCommands:
+        required: false
+        description: "commands to run before the build...for example, to delete known module conflicts"
+        type: string
+        default: 'echo "no preBuildCommands passed"'
+      postBuildCommands:
+        required: false
+        description: "script to run after the build"
+        type: string
+        default: 'echo "no postBuildCommands passed"'
+      preExternalBuildCommands:
+        required: false
+        description: "commands to run before the build of the external repo...for example, to delete known module conflicts"
+        type: string
+        default: 'echo "no preExternalBuildCommands passed"'
+      preSwapCommands:
+        required: false
+        description: "commands to run before ANY modifications happen.  For example, changes that modify the lockfile like yarn add or remove need to happen before the action manually swaps the dependency under test"
+        type: string
+        default: 'echo "no preSwapCommands passed"'
+      branch:
+        required: false
+        description: "branch to clone from the repo.  Defaults to 'main'"
+        type: string
+        default: "main"
+      ignoreScripts:
+        required: false
+        description: "if true, will run yarn install --ignore-scripts when building package in node_modules"
+        type: boolean
+        default: false
+
+jobs:
+  external-build:
+    name: ${{ inputs.command }}
+    runs-on: ${{ inputs.os }}
+    steps:
+      - run: git config --system core.longpaths true
+        if: ${{ runner.os == 'Windows' }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.nodeVersion }}
+      - uses: salesforcecli/github-workflows/.github/actions/retry@main
+        name: git clone
+        with:
+          max_attempts: 20
+          command: git clone -b ${{ inputs.branch}} --single-branch ${{ inputs.externalProjectGitUrl}} $(pwd)
+          timeout_minutes: 20
+      - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
+      - run: ${{inputs.preSwapCommands}}
+      - name: swap this dependency for the version on this branch
+        run: |
+          yarn remove ${{ inputs.packageName }}
+          yarn add ${{ github.repository }}#${{ github.sha }}
+          npx yarn-deduplicate
+          yarn install  --network-timeout 600000
+      - name: install/build ${{ inputs.packageName}} in node_modules
+        working-directory: node_modules/${{ inputs.packageName }}
+        run: |
+          yarn install  --network-timeout 600000 ${{ inputs.ignoreScripts && '--ignore-scripts' || '' }}
+          ${{ inputs.preBuildCommands }}
+          yarn compile
+          ${{ inputs.postBuildCommands }}
+      - name: preExternalBuildCommands
+        run: ${{ inputs.preExternalBuildCommands }}
+      - name: Build the external project (where the NUTs are)
+        run: ${{ inputs.command }}
