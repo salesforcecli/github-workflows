@@ -25,6 +25,12 @@ jobs:
           text: ${{ github.event.pull_request.body }}
           regex: "#[0-9]+"
           flags: gm
+      - uses: actions-ecosystem/action-regex-match@d50fd2e7a37d0e617aea3d7ada663bd56862b9cc
+        id: regex-match-cli-gh-issue
+        with:
+          text: ${{ github.event.pull_request.body }}
+          regex: "https:\/\/github.com\/forcedotcom\/cli\/issues\/[0-9]+"
+          flags: gm
       - name: fail
         if: |
           github.event.pull_request.user.login != 'dependabot[bot]' &&
