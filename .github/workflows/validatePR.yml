@@ -37,7 +37,8 @@ jobs:
           (github.event.pull_request.user.login != 'SF-CLI-BOT' || github.event.pull_request.user.login != 'svc-cli-bot') &&
           steps.regex-match-gus-wi.outputs.match == '' &&
           steps.regex-match-gh-issue.outputs.match == '' &&
-          steps.regex-match-gha-run.outputs.match == ''
+          steps.regex-match-gha-run.outputs.match == '' &&
+          steps.regex-match-cli-gh-issue.match == ''
         run: |
           echo "PR does not reference work item or github issue or github action run."
           echo "GUS WIs should be wrapped in @s, ex: @W-12345678@ or [@W-12345678@](https://some-url) or include a full GHA run link"
@@ -46,6 +47,7 @@ jobs:
         if: |
           steps.regex-match-gus-wi.outputs.match != '' ||
           steps.regex-match-gha-run.outputs.match != '' ||
-          steps.regex-match-gh-issue.outputs.match != ''
+          steps.regex-match-gh-issue.outputs.match != '' ||
+          steps.regex-match-cli-gh-issue.match != ''
         run: |
           echo "PR references ${{ steps.regex-match-gus-wi.outputs.match }} ${{ steps.regex-match-gh-issue.outputs.match }} ${{ steps.regex-match-gha-run.outputs.match }}"
