@@ -2,8 +2,7 @@ name: yarn-install-with-retries
 description: "wraps yarn install with retries/timeout to handle network failures"
 inputs:
   ignore-scripts:
-    type: boolean
-    default: false
+    default: 'false'
     description: "Skip pre/post install scripts"
 runs:
   using: composite
@@ -11,4 +10,4 @@ runs:
     - name: yarn install
       uses: salesforcecli/github-workflows/.github/actions/retry@main
       with:
-        command: yarn install --network-timeout 600000 ${{ inputs.ignore-scripts && '--ignore-scripts' || '' }}
+        command: yarn install --network-timeout 600000 ${{ inputs.ignore-scripts == 'true' && '--ignore-scripts' || '' }}
