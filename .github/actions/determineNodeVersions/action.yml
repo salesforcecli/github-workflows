@@ -5,6 +5,9 @@ inputs:
   nodeVersionOverride:
     description: Semver version to set version and version-1
     required: false
+  nodeDisableCurrent:
+    description: Disable testing on Node "current"
+    required: false
 
 outputs:
   nodeVersions:
@@ -18,6 +21,9 @@ runs:
       shell: bash
       id: node-versions
       run: |
+        # Current can be disabled by setting the "nodeDisableCurrent" input to "true"
+        # IF "NODE_VERSION" is overridden, "NODE_VERSION_CURRENT" will also be disabled
+        NODE_VERSION_CURRENT="current"
         NODE_VERSION="${{ inputs.nodeVersionOverride || 'lts/*' }}"
         NODE_PREVIOUS_LTS="lts/-1"
 
@@ -33,16 +39,30 @@ runs:
         fi
 
         {
-        echo 'nodeVersions<<EOF'
-        jq -n --arg v1 "$NODE_VERSION" --arg v2 "$NODE_PREVIOUS_LTS" '[$v1, $v2]'
-        echo EOF
+        echo "nodeVersions<<EOF"
+        if [ "$NODE_VERSION" = "lts/*" ] && [ "${{ inputs.nodeDisableCurrent }}" != "true" ]; then
+            jq -n --arg v1 "$NODE_VERSION_CURRENT" --arg v2 "$NODE_VERSION" --arg v3 "$NODE_PREVIOUS_LTS"  '[$v1, $v2, $v3]'
+        else
+            jq -n --arg v1 "$NODE_VERSION" --arg v2 "$NODE_PREVIOUS_LTS" '[$v1, $v2]'
+        fi
+        echo "EOF"
         } >> "$GITHUB_OUTPUT"
 
         # Sample output looks like this:
         #
         # nodeVersions<<EOF
         # [
+        #   "current",
+        #   "lts/*",
+        #   "lts/-1",
+        # ]
+        # EOF
+        #
+        # OR...
+        #
+        # nodeVersions<<EOF
+        # [
         #   "18.15.0",
-        #   "17"
+        #   "16"
         # ]
         # EOF

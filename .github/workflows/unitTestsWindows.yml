@@ -11,6 +11,7 @@ jobs:
         id: determine-node-versions
         with:
           nodeVersionOverride: ${{ vars.NODE_VERSION_OVERRIDE }} # default is 'lts/*' and 'lts/-1'
+          nodeDisableCurrent: ${{ vars.UT_DISABLE_NODE_CURRENT }} # default is falsy
 
   windows-unit-tests:
     needs: determine-node-versions
