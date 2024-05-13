@@ -5,6 +5,9 @@ inputs:
   nodeVersionOverride:
     description: Semver version to set version and version-1
     required: false
+  nodeDisableCurrent:
+    description: Disable testing on Node "current"
+    required: false
 
 outputs:
   nodeVersions:
@@ -18,7 +21,7 @@ runs:
       shell: bash
       id: node-versions
       run: |
-        # Current can be disabled by setting the GHA var "UT_DISABLE_NODE_CURRENT" to "true"
+        # Current can be disabled by setting the "nodeDisableCurrent" input to "true"
         # IF "NODE_VERSION" is overridden, "NODE_VERSION_CURRENT" will also be disabled
         NODE_VERSION_CURRENT="current"
         NODE_VERSION="${{ inputs.nodeVersionOverride || 'lts/*' }}"
@@ -37,7 +40,7 @@ runs:
 
         {
         echo "nodeVersions<<EOF"
-        if [ "$NODE_VERSION" = "lts/*" ] && [ "${{ vars.UT_DISABLE_NODE_CURRENT }}" != "true" ]; then
+        if [ "$NODE_VERSION" = "lts/*" ] && [ "${{ inputs.nodeDisableCurrent }}" != "true" ]; then
             jq -n --arg v1 "$NODE_VERSION_CURRENT" --arg v2 "$NODE_VERSION" --arg v3 "$NODE_PREVIOUS_LTS"  '[$v1, $v2, $v3]'
         else
             jq -n --arg v1 "$NODE_VERSION" --arg v2 "$NODE_PREVIOUS_LTS" '[$v1, $v2]'
