@@ -50,3 +50,5 @@ jobs:
         run: yarn upload:tarballs
       - if: inputs.upload && inputs.cli && inputs.version && inputs.channel
         run: yarn channel:promote --cli ${{ inputs.cli }} --version ${{ inputs.version }} --target ${{ inputs.channel }}
+      - run: gh release upload ${{ inputs.version }} ./dist/*.gz --clobber --repo ${{ github.repository}}
+      - run: gh release upload ${{ inputs.version }} ./dist/*.xz --clobber --repo ${{ github.repository}}
