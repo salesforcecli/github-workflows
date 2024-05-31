@@ -25,8 +25,6 @@ on:
 jobs:
   tarballs:
     env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       SFDX_HIDE_RELEASE_NOTES: true
       SF_DISABLE_TELEMETRY: true
     runs-on: ubuntu-20-8core
@@ -48,9 +46,19 @@ jobs:
       - run: yarn test:smoke-unix
       - if: inputs.upload
         run: yarn upload:tarballs
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       - if: inputs.upload && inputs.cli && inputs.version && inputs.channel
         run: yarn channel:promote --cli ${{ inputs.cli }} --version ${{ inputs.version }} --target ${{ inputs.channel }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       - if: inputs.upload
         run: gh release upload ${{ inputs.version }} ./dist/*.gz --clobber --repo ${{ github.repository}}
+        env:
+          GH_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
       - if: inputs.upload
         run: gh release upload ${{ inputs.version }} ./dist/*.xz --clobber --repo ${{ github.repository}}
+        env:
+          GH_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
