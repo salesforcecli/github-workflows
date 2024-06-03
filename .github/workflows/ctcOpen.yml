@@ -22,10 +22,8 @@ jobs:
       - run: npm install -g @salesforce/change-case-management --omit=dev
       - name: Open CTC case
         id: ctc
-        uses: salesforcecli/github-workflows/.github/actions/retry@main
-        with:
-          max_attempts: 5
-          command: |
+        shell: bash
+        run: |
             CTC_RESULT=$(sfchangecase create --location ${{github.repositoryUrl}} --release ${{github.repository}}.$(date +%F) --json)
 
             STATUS=$(printf '%s' "$CTC_RESULT" | jq -r '.status')

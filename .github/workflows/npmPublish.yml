@@ -84,7 +84,7 @@ jobs:
 
   npm-publish:
     needs: [check-publish, ctc-open]
-    if: ${{ always() && needs.check-publish.outputs.published == 'false' }}
+    if: ${{ always() && needs.check-publish.outputs.published == 'false' && (!inputs.ctc || (inputs.ctc && needs.ctc-open.outputs.changeCaseId)) }}
     runs-on: ${{ inputs.runsOn }}
     steps:
       - uses: actions/checkout@v4
@@ -97,7 +97,6 @@ jobs:
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
       - run: yarn build
       - run: npm install -g @salesforce/plugin-release-management
-
       - name: NPM Release
         run: |
           sf-release npm:package:release \
