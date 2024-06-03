@@ -84,6 +84,7 @@ jobs:
 
   npm-publish:
     needs: [check-publish, ctc-open]
+    continue-on-error: true
     if: ${{ needs.check-publish.outputs.published == 'false' }}
     runs-on: ${{ inputs.runsOn }}
     steps:
@@ -97,7 +98,6 @@ jobs:
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
       - run: yarn build
       - run: npm install -g @salesforce/plugin-release-management
-
       - name: NPM Release
         run: |
           sf-release npm:package:release \
@@ -114,7 +114,7 @@ jobs:
 
   ctcCloseSuccess:
     needs: [ctc-open, npm-publish]
-    if: needs.ctc-open.result == 'success' && needs.npm-publish.result == 'success' && needs.ctc-open.outputs.changeCaseId
+    if: success() && needs.ctc-open.result == 'success' && needs.npm-publish.result == 'success' && needs.ctc-open.outputs.changeCaseId
     uses: salesforcecli/github-workflows/.github/workflows/ctcClose.yml@main
     secrets: inherit
     with:
