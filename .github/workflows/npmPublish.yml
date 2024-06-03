@@ -79,7 +79,7 @@ jobs:
   ctc-open:
     needs: [check-publish]
     if: inputs.ctc && needs.check-publish.outputs.published == 'false'
-    uses: salesforcecli/github-workflows/.github/workflows/ctcOpen.yml@wr/removeAlways
+    uses: salesforcecli/github-workflows/.github/workflows/ctcOpen.yml@main
     secrets: inherit
 
   npm-publish:
