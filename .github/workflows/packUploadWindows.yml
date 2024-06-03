@@ -44,3 +44,8 @@ jobs:
       - run: yarn upload:win
       - run: yarn channel:promote --cli ${{ inputs.cli }} --version ${{ inputs.version }} --target ${{ inputs.channel }} --platform win
         name: Promote win to ${{ inputs.channel }} channel
+      - name: upload artifacts to github release
+        run: |
+          gh release upload ${{ inputs.version }} ./dist/sf-*.exe --clobber --repo ${{ github.repository}}
+        env:
+          GH_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
