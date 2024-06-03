@@ -84,8 +84,7 @@ jobs:
 
   npm-publish:
     needs: [check-publish, ctc-open]
-    continue-on-error: true
-    if: ${{ needs.check-publish.outputs.published == 'false' }}
+    if: ${{ always() && needs.check-publish.outputs.published == 'false' && (!inputs.ctc || (inputs.ctc && needs.ctc-open.outputs.changeCaseId)) }}
     runs-on: ${{ inputs.runsOn }}
     steps:
       - uses: actions/checkout@v4
