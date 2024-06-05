@@ -1,0 +1,56 @@
+name: Parse Semver
+
+description: Extracts major, minor, patch, prerelease, and full version from a given semver.
+
+inputs:
+  input_string:
+    description: 'The semver version to parse'
+    required: true
+
+outputs:
+  major:
+    description: 'MAJOR part of the semver'
+    value: ${{ steps.parse.outputs.major }}
+  minor:
+    description: 'MINOR part of the semver'
+    value: ${{ steps.parse.outputs.minor }}
+  patch:
+    description: 'PATCH part of the semver'
+    value: ${{ steps.parse.outputs.patch }}
+  prerelease:
+    description: 'Prerelease part of the semver'
+    value: ${{ steps.parse.outputs.prerelease }}
+  fullversion:
+    description: 'Full representation of the semver'
+    value: ${{ steps.parse.outputs.fullversion }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Parse Semver
+      id: parse
+      shell: bash
+      run: |
+        FULL_VERSION="${{ inputs.version }}"
+        VERSION="${FULL_VERSION#v}"
+
+        # Split version into parts
+        IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+
+        # Check if PATCH contains prerelease info and extract it
+        if [[ "$PATCH" == *-* ]]; then
+            PRERELEASE=$(echo "$PATCH" | cut -d- -f2 | cut -d. -f1)
+            PATCH=$(echo "$PATCH" | cut -d- -f1)
+        fi
+
+        # Set outputs
+        echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
+        echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
+        echo "patch=$PATCH" >> "$GITHUB_OUTPUT"
+        echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+        echo "fullversion=$FULL_VERSION" >> "$GITHUB_OUTPUT"
+    - name: Exit if major, minor, or patch not found
+      if: ${{ !steps.parse.outputs.major || !steps.parse.outputs.minor || !steps.parse.outputs.patch }}
+      uses: actions/github-script@v7
+      with:
+        script: core.setFailed("Error parsing semver ${{ inputs.version }}\nMajor:${{ steps.parse.outputs.major }}\nMinor:${{ steps.parse.outputs.minor }}\nPatch:${{ steps.parse.outputs.patch }}")

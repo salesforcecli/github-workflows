@@ -26,7 +26,7 @@ runs:
     - name: Get the next version for oclif readme
       id: next-version
       if: ${{ steps.is-oclif-plugin.outputs.bool == 'true' }}
-      uses: TriPSs/conventional-changelog-action@9962c3267b32873dbc552a38a8397194361e1101
+      uses: TriPSs/conventional-changelog-action@3a392e9aa44a72686b0fc13259a90d287dd0877c
       with:
         tag-prefix: ""
         skip-version-file: true # Do not update the version in the package.json

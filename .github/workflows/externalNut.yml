@@ -105,7 +105,7 @@ jobs:
       - name: Cache node modules
         if: inputs.useCache
         id: cache-nodemodules
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         env:
           cache-name: cache-node-modules
         with:

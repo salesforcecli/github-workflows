@@ -21,7 +21,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: nick-fields/retry@943e742917ac94714d2f408a0e8320f2d1fcafcd
+    - uses: nick-fields/retry@3f757583fb1b1f940bc8ef4bf4734c8dc02a5847
       with:
         max_attempts: ${{ inputs.max_attempts }}
         retry_wait_seconds: ${{ inputs.retry_wait_seconds }}
