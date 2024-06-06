@@ -24,7 +24,11 @@ jobs:
         id: ctc
         shell: bash
         run: |
+            # Temp disable exit on error
+            set +e
             CTC_RESULT=$(sfchangecase create --location ${{github.repositoryUrl}} --release ${{github.repository}}.$(date +%F) --json)
+            # Re-enable exit on error
+            set -e
 
             STATUS=$(printf '%s' "$CTC_RESULT" | jq -r '.status')
             CTC_ID=$(printf '%s' "$CTC_RESULT" | jq -r '.result.id')
