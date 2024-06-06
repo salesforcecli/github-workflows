@@ -46,6 +46,6 @@ jobs:
         name: Promote win to ${{ inputs.channel }} channel
       - name: upload artifacts to github release
         run: |
-          gh release upload ${{ inputs.version }} ./dist/sf-*.exe --clobber --repo ${{ github.repository}}
+          gh release upload ${{ inputs.version }} ./dist/win32/sf-*.exe --clobber --repo ${{ github.repository}}
         env:
           GH_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}

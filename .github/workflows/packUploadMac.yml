@@ -42,6 +42,6 @@ jobs:
         name: Promote macos to ${{ inputs.channel }} channel
       - name: upload artifacts to github release
         run: |
-          gh release upload ${{ inputs.version }} ./dist/sf-*.pkg --clobber --repo ${{ github.repository}}
+          gh release upload ${{ inputs.version }} ./dist/macos/sf-*.pkg --clobber --repo ${{ github.repository}}
         env:
           GH_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
