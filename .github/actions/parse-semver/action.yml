@@ -31,7 +31,7 @@ runs:
       id: parse
       shell: bash
       run: |
-        FULL_VERSION="${{ inputs.version }}"
+        FULL_VERSION="${{ inputs.input_string }}"
         VERSION="${FULL_VERSION#v}"
 
         # Split version into parts
@@ -53,4 +53,4 @@ runs:
       if: ${{ !steps.parse.outputs.major || !steps.parse.outputs.minor || !steps.parse.outputs.patch }}
       uses: actions/github-script@v7
       with:
-        script: core.setFailed("Error parsing semver ${{ inputs.version }}\nMajor:${{ steps.parse.outputs.major }}\nMinor:${{ steps.parse.outputs.minor }}\nPatch:${{ steps.parse.outputs.patch }}")
+        script: core.setFailed("Error parsing semver ${{ inputs.input_string }}\nMajor:${{ steps.parse.outputs.major }}\nMinor:${{ steps.parse.outputs.minor }}\nPatch:${{ steps.parse.outputs.patch }}")
