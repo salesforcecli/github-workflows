@@ -3,7 +3,7 @@ description: read package.json and return the version suffix (ex 'beta' if x.y.z
 
 outputs:
   tag:
-    value: ${{ steps.tag.outputs.match }}
+    value: ${{ steps.parsed.outputs.prerelease }}
     description: version suffix (ex 'beta' if x.y.z-beta.0 ), if exists in package.json
   version:
     value: ${{ steps.packageVersion.outputs.prop }}
@@ -12,7 +12,7 @@ outputs:
 runs:
   using: composite
   steps:
-    - uses: notiz-dev/github-action-json-property@7a701887f4b568b23eb7b78bb0fc49aaeb1b68d3
+    - uses: salesforcecli/github-workflows/.github/actions/get-json-property@main
       id: packageVersion
       with:
         path: "package.json"
@@ -21,20 +21,10 @@ runs:
     - run: echo "found version ${{ steps.packageVersion.outputs.prop  }}"
       shell: bash
 
-    - uses: booxmedialtd/ws-action-parse-semver@7784200024d6b3fc01253e617ec0168daf603de3
-      id: versionSuffix
+    - uses: salesforcecli/github-workflows/.github/actions/parse-semver@main
+      id: parsed
       with:
         input_string: ${{ steps.packageVersion.outputs.prop }}
 
-    - run: echo "found prerelease ${{ steps.versionSuffix.outputs.prerelease }}"
-      shell: bash
-
-    - uses: actions-ecosystem/action-regex-match@d50fd2e7a37d0e617aea3d7ada663bd56862b9cc
-      id: tag
-      with:
-        text: ${{ steps.versionSuffix.outputs.prerelease }}
-        # at this point, we have just the prerelease section, but it includes the final .0 or whatever
-        regex: '.*(?=\.\d+)'
-
-    - run: echo "found tag ${{ steps.tag.outputs.match }}"
+    - run: echo "found prerelease tag ${{ steps.parsed.outputs.prerelease }}"
       shell: bash

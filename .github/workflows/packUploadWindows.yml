@@ -37,7 +37,7 @@ jobs:
           cache: yarn
       - name: Set up Homebrew
         id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@41775cf0c82ef066f1eb39cea1bd74697ca5b735
+        uses: Homebrew/actions/setup-homebrew@e05416b42376bcda221f9102c4f595f4994016be
       - run: brew install makensis
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
       - run: yarn pack:win

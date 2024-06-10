@@ -43,14 +43,14 @@ jobs:
 
       - name: prerelease package.json validation
         if: inputs.prerelease && !steps.distTag.outputs.tag
-        uses: actions/github-script@v3
+        uses: actions/github-script@v7
         with:
           script: |
             core.setFailed('Prerelease requires a dist tag name in your package.json like beta in 1.1.1-beta.0')
 
       - name: Conventional Changelog Action
         id: changelog
-        uses: TriPSs/conventional-changelog-action@9962c3267b32873dbc552a38a8397194361e1101
+        uses: TriPSs/conventional-changelog-action@3a392e9aa44a72686b0fc13259a90d287dd0877c
         with:
           git-user-name: svc-cli-bot
           git-user-email: svc_cli_bot@salesforce.com

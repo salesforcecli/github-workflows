@@ -42,7 +42,7 @@ jobs:
 
       - name: Validate prerelease
         if: github.ref_name == 'main' && inputs.prerelease
-        uses: actions/github-script@v3
+        uses: actions/github-script@v7
         with:
           script: |
             core.setFailed('Do not create a prerelease on "main". You can create a prerelease on a branch and when it is merged it will create a non-prerelease Release. For example: 1.0.1-beta.2 will release as 1.0.1 when merged into main.')
@@ -75,7 +75,7 @@ jobs:
 
       - name: Conventional Changelog Action
         id: changelog
-        uses: TriPSs/conventional-changelog-action@9962c3267b32873dbc552a38a8397194361e1101
+        uses: TriPSs/conventional-changelog-action@3a392e9aa44a72686b0fc13259a90d287dd0877c
         with:
           git-user-name: ${{ steps.github-user-info.outputs.username }}
           git-user-email: ${{ steps.github-user-info.outputs.email }}
@@ -90,7 +90,7 @@ jobs:
           output-file: ${{ steps.prereleaseTag.outputs.tag && 'false' || 'CHANGELOG.md' }} # If prerelease, do not write the changelog file
 
       - name: Create Github Release
-        uses: ncipollo/release-action@6c75be85e571768fa31b40abf38de58ba0397db5
+        uses: ncipollo/release-action@2c591bcc8ecdcd2db72b97d6147f871fcd833ba5
         if: ${{ steps.changelog.outputs.skipped == 'false' }}
         with:
           name: ${{ steps.changelog.outputs.tag }}
