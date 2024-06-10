@@ -26,5 +26,5 @@ runs:
       with:
         input_string: ${{ steps.packageVersion.outputs.prop }}
 
-    - run: echo "found prerelease tag ${{ steps.parsed.outputs.prerelease }}"
+    - run: echo "Prerelease tag parsing found '${{ steps.parsed.outputs.prerelease }}'"
       shell: bash
