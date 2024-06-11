@@ -17,7 +17,7 @@ jobs:
         id: regex-match-gha-run
         with:
           text: ${{ github.event.pull_request.body }}
-          regex: 'https:\/\/github.com\/.*\/actions\/runs\/'
+          regex: 'https:\/\/github\.com\/[\w\.-]+\/[\w\.-]+\/actions\/runs\/'
           flags: gm
       - uses: kaisugi/action-regex-match@45cc5bacf016a4c0d2c3c9d0f8b7c2f1b79687b8
         id: regex-match-gh-issue
