@@ -4,7 +4,7 @@ description: Get a property from a json file using jq
 # Examples:
 # prop_path: version
 # prop_path: devDependencies["@salesforce/dev-scripts"]
-
+#                            ^ Note: double quotes needed here
 
 inputs:
   path:
