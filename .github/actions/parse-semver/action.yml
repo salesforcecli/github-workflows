@@ -34,6 +34,14 @@ runs:
         FULL_VERSION="${{ inputs.input_string }}"
         VERSION="${FULL_VERSION#v}"
 
+        # Filter out non-semver characters
+        CLEAN_VERSION=$(echo "$VERSION" | sed -E 's/[^0-9a-zA-Z.-]+//g')
+
+        if [[ "$CLEAN_VERSION" != "$VERSION" ]]; then
+            echo "Semver version includes invalid characters. Exiting..."
+            exit 1
+        fi
+
         # Split version into parts
         IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
 
