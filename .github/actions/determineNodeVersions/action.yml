@@ -8,7 +8,6 @@ inputs:
   nodeDisableCurrent:
     description: Disable testing on Node "current"
     required: false
-    default: true
 
 outputs:
   nodeVersions:
