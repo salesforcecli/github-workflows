@@ -29,7 +29,7 @@ jobs:
         id: regex-match-cli-gh-issue
         with:
           text: ${{ github.event.pull_request.body }}
-          regex: 'forcedotcom\/cli\/issues\/[0-9]+'
+          regex: 'forcedotcom\/cli\/issues\/[0-9]+|forcedotcom\/vscode\/issues\/[0-9]+'
           flags: gm
       - name: fail
         if: |
