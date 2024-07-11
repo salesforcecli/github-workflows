@@ -32,4 +32,4 @@ runs:
       if: ${{ steps.jq.outputs.prop == 'null' }}
       uses: actions/github-script@v7
       with:
-        script: core.setFailed("Property '${{ inputs.prop_path }}' not found in ${{ inputs.path }}")
+        script: core.setFailed("JSON property not found in provided path (check action inputs)")

@@ -30,8 +30,10 @@ runs:
     - name: Parse Semver
       id: parse
       shell: bash
+      env:
+        INPUT_INPUT_STRING: ${{ inputs.input_string }}
       run: |
-        FULL_VERSION="${{ inputs.input_string }}"
+        FULL_VERSION="$INPUT_INPUT_STRING"
         VERSION="${FULL_VERSION#v}"
 
         # Filter out non-semver characters
