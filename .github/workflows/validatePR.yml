@@ -7,47 +7,53 @@ jobs:
     if: ${{ !contains(github.event.pull_request.body, '[skip-validate-pr]') && !contains(github.event.pull_request.title, '[skip-validate-pr]') }}
     runs-on: "ubuntu-latest"
     steps:
-      - uses: kaisugi/action-regex-match@45cc5bacf016a4c0d2c3c9d0f8b7c2f1b79687b8
+      - name: Find GUS Work Item
+        uses: kaisugi/action-regex-match@45cc5bacf016a4c0d2c3c9d0f8b7c2f1b79687b8
         id: regex-match-gus-wi
         with:
           text: ${{ github.event.pull_request.body }}
           regex: '@W-\d{7,8}@'
           flags: gm
-      - uses: kaisugi/action-regex-match@45cc5bacf016a4c0d2c3c9d0f8b7c2f1b79687b8
+
+      - name: Find Github Action Run
+        uses: kaisugi/action-regex-match@45cc5bacf016a4c0d2c3c9d0f8b7c2f1b79687b8
         id: regex-match-gha-run
         with:
           text: ${{ github.event.pull_request.body }}
           regex: 'https:\/\/github\.com\/[\w\.-]+\/[\w\.-]+\/actions\/runs\/'
           flags: gm
-      - uses: kaisugi/action-regex-match@45cc5bacf016a4c0d2c3c9d0f8b7c2f1b79687b8
-        id: regex-match-gh-issue
-        with:
-          text: ${{ github.event.pull_request.body }}
-          regex: "#[0-9]+"
-          flags: gm
-      - uses: kaisugi/action-regex-match@45cc5bacf016a4c0d2c3c9d0f8b7c2f1b79687b8
+
+      - name: Find CLI Github Issue
+        uses: kaisugi/action-regex-match@45cc5bacf016a4c0d2c3c9d0f8b7c2f1b79687b8
         id: regex-match-cli-gh-issue
         with:
           text: ${{ github.event.pull_request.body }}
           regex: 'forcedotcom\/cli\/issues\/[0-9]+|forcedotcom\/salesforcedx-vscode\/issues\/[0-9]+'
           flags: gm
-      - name: fail
+
+      - name: Fail if no references
         if: |
           github.event.pull_request.user.login != 'dependabot[bot]' &&
           (github.event.pull_request.user.login != 'SF-CLI-BOT' || github.event.pull_request.user.login != 'svc-cli-bot') &&
           steps.regex-match-gus-wi.outputs.match == '' &&
-          steps.regex-match-gh-issue.outputs.match == '' &&
           steps.regex-match-gha-run.outputs.match == '' &&
           steps.regex-match-cli-gh-issue.match == ''
         run: |
           echo "PR does not reference work item or github issue or github action run."
           echo "GUS WIs should be wrapped in @s, ex: @W-12345678@ or [@W-12345678@](https://some-url) or include a full GHA run link"
           exit 1
-      - name: output success
+
+      - name: Output matches
         if: |
           steps.regex-match-gus-wi.outputs.match != '' ||
           steps.regex-match-gha-run.outputs.match != '' ||
-          steps.regex-match-gh-issue.outputs.match != '' ||
           steps.regex-match-cli-gh-issue.match != ''
         run: |
-          echo "PR references ${{ steps.regex-match-gus-wi.outputs.match }} ${{ steps.regex-match-gh-issue.outputs.match }} ${{ steps.regex-match-gha-run.outputs.match }} ${{ steps.regex-match-cli-gh-issue.match }}"
+          echo "Gus Work Item: $STEPS_GUS_WI"
+          echo "Github Action Run: $STEPS_GHA_RUN"
+          echo "CLI Github Issue: $STEPS_CLI_GH_ISSUE"
+        env:
+          STEPS_GUS_WI: ${{ steps.regex-match-gus-wi.outputs.match }}
+          STEPS_GHA_RUN: ${{ steps.regex-match-gha-run.outputs.match }}
+          STEPS_CLI_GH_ISSUE: ${{ steps.regex-match-cli-gh-issue.match }}
+
