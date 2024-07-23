@@ -14,7 +14,7 @@ jobs:
           nodeDisableCurrent: ${{ vars.UT_DISABLE_NODE_CURRENT }} # default is falsy
 
   prevent-typescript-dependency:
-    uses: salesforcecli/github-workflows/.github/workflows/preventTypescriptDep.yml@wr/noTS
+    uses: salesforcecli/github-workflows/.github/workflows/preventTypescriptDep.yml@main
 
   linux-unit-tests:
     needs: determine-node-versions
