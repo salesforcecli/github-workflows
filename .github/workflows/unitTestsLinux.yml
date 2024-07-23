@@ -13,6 +13,9 @@ jobs:
           nodeVersionOverride: ${{ vars.NODE_VERSION_OVERRIDE }} # default is 'lts/*' and 'lts/-1'
           nodeDisableCurrent: ${{ vars.UT_DISABLE_NODE_CURRENT }} # default is falsy
 
+  prevent-typescript-dependency:
+    uses: salesforcecli/github-workflows/.github/workflows/preventTypescriptDep.yml@main
+
   linux-unit-tests:
     needs: determine-node-versions
     strategy:
