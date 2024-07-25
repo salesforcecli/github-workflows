@@ -1,5 +1,11 @@
 on:
   workflow_call:
+    inputs:
+      skipTsDepCheck:
+        type: boolean
+        required: false
+        default: false
+        description: skip `prevent-typescript-dependency`. Use it for devDeps that ship TS
 
 jobs:
   determine-node-versions:
@@ -14,6 +20,7 @@ jobs:
           nodeDisableCurrent: ${{ vars.UT_DISABLE_NODE_CURRENT }} # default is falsy
 
   prevent-typescript-dependency:
+    if: ${{ inputs.skipTsDepCheck == 'false' }}
     uses: salesforcecli/github-workflows/.github/workflows/preventTypescriptDep.yml@main
 
   linux-unit-tests:
