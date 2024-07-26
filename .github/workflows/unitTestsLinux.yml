@@ -20,7 +20,7 @@ jobs:
           nodeDisableCurrent: ${{ vars.UT_DISABLE_NODE_CURRENT }} # default is falsy
 
   prevent-typescript-dependency:
-    if: ${{ inputs.skipTsDepCheck == 'false' }}
+    if: ${{ inputs.skipTsDepCheck == false }}
     uses: salesforcecli/github-workflows/.github/workflows/preventTypescriptDep.yml@main
 
   linux-unit-tests:
