@@ -83,7 +83,7 @@ jobs:
 
   ctc-open:
     needs: [check-publish]
-    if: inputs.ctc && needs.check-publish.outputs.published == 'false'
+    if: inputs.ctc && needs.check-publish.outputs.published == 'false' && inputs.tag == 'latest'
     uses: salesforcecli/github-workflows/.github/workflows/ctcOpen.yml@main
     secrets: inherit
 
