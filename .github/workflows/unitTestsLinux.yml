@@ -1,8 +1,6 @@
 on:
   workflow_call:
 
-# TODO: All good
-
 jobs:
   determine-node-versions:
     outputs:
