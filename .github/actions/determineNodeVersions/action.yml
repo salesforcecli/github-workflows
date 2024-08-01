@@ -14,6 +14,25 @@ outputs:
     description: Node versions to be consumed by a workflow matrix
     value: ${{ steps.node-versions.outputs.nodeVersions }}
 
+# Sample output looks like this:
+#
+# nodeVersions<<EOF
+# [
+#   "current",
+#   "lts/*",
+#   "lts/-1",
+# ]
+# EOF
+#
+# OR...
+#
+# nodeVersions<<EOF
+# [
+#   "18.15.0",
+#   "16"
+# ]
+# EOF
+
 runs:
   using: composite
   steps:
@@ -24,11 +43,11 @@ runs:
         # Current can be disabled by setting the "nodeDisableCurrent" input to "true"
         # IF "NODE_VERSION" is overridden, "NODE_VERSION_CURRENT" will also be disabled
         NODE_VERSION_CURRENT="current"
-        NODE_VERSION="${{ inputs.nodeVersionOverride || 'lts/*' }}"
+        NODE_VERSION="${INPUTS_NODE_VERSION_OVERRIDE:-'lts/*'}"
         NODE_PREVIOUS_LTS="lts/-1"
 
-        if [ -n "${{ inputs.nodeVersionOverride }}" ]; then
-          NODE_VERSION_MAJOR=$(echo "${{ inputs.nodeVersionOverride }}" | cut -d '.' -f 1)
+        if [ -n "$INPUTS_NODE_VERSION_OVERRIDE" ]; then
+          NODE_VERSION_MAJOR=$(echo "$INPUTS_NODE_VERSION_OVERRIDE" | cut -d '.' -f 1)
 
           # LTS-1 will always be the previous LTS, which is always even. Here we calculate the nearest LTS
           if [ $((NODE_VERSION_MAJOR % 2)) == 0 ]; then
@@ -40,29 +59,13 @@ runs:
 
         {
         echo "nodeVersions<<EOF"
-        if [ "$NODE_VERSION" = "lts/*" ] && [ "${{ inputs.nodeDisableCurrent }}" != "true" ]; then
+        if [ "$NODE_VERSION" = "lts/*" ] && [ "$INPUTS_NODE_DISABLE_CURRENT" != "true" ]; then
             jq -n --arg v1 "$NODE_VERSION_CURRENT" --arg v2 "$NODE_VERSION" --arg v3 "$NODE_PREVIOUS_LTS"  '[$v1, $v2, $v3]'
         else
             jq -n --arg v1 "$NODE_VERSION" --arg v2 "$NODE_PREVIOUS_LTS" '[$v1, $v2]'
         fi
         echo "EOF"
         } >> "$GITHUB_OUTPUT"
-
-        # Sample output looks like this:
-        #
-        # nodeVersions<<EOF
-        # [
-        #   "current",
-        #   "lts/*",
-        #   "lts/-1",
-        # ]
-        # EOF
-        #
-        # OR...
-        #
-        # nodeVersions<<EOF
-        # [
-        #   "18.15.0",
-        #   "16"
-        # ]
-        # EOF
+      env:
+        INPUTS_NODE_VERSION_OVERRIDE: ${{ inputs.nodeVersionOverride }}
+        INPUTS_NODE_DISABLE_CURRENT: ${{ inputs.nodeDisableCurrent }}

@@ -6,25 +6,32 @@ outputs:
     value: ${{ steps.parsed.outputs.prerelease }}
     description: version suffix (ex 'beta' if x.y.z-beta.0 ), if exists in package.json
   version:
-    value: ${{ steps.packageVersion.outputs.prop }}
+    value: ${{ steps.package-version.outputs.prop }}
     description: version from pjson
 
 runs:
   using: composite
   steps:
     - uses: salesforcecli/github-workflows/.github/actions/get-json-property@main
-      id: packageVersion
+      id: package-version
       with:
         path: "package.json"
         prop_path: "version"
 
-    - run: echo "found version ${{ steps.packageVersion.outputs.prop  }}"
+    - name: Echo found version
       shell: bash
+      run: echo "[INFO] Version found:\ $STEPS_PACKAGE_VERSION_PROP"
+      env:
+        STEPS_PACKAGE_VERSION_PROP: ${{ steps.package-version.outputs.prop }}
 
-    - uses: salesforcecli/github-workflows/.github/actions/parse-semver@main
+    - name: Parse semver version
+      uses: salesforcecli/github-workflows/.github/actions/parse-semver@main
       id: parsed
       with:
-        input_string: ${{ steps.packageVersion.outputs.prop }}
+        input_string: ${{ steps.package-version.outputs.prop }}
 
-    - run: echo "Prerelease tag parsing found '${{ steps.parsed.outputs.prerelease }}'"
+    - name: Echo found prerelease tag
       shell: bash
+      run: echo "[INFO] Prerelease tag is:\ $STEPS_PARSED_PRERELEASE"
+      env:
+        STEPS_PARSED_PRERELEASE: ${{ steps.parsed.outputs.prerelease }}

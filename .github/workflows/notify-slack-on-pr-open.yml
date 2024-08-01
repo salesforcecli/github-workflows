@@ -1,5 +1,9 @@
 name: Pull Request Slack Notification
 
+# NOTE: This workflow in github-workflows is not intended to be used externally
+#       It is used when Pull Requests are opened on this repository itself
+#       All of our repositories have their own copy of this workflow
+
 on:
   pull_request:
     types: [opened, reopened]
@@ -9,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Notify Slack on PR open
-      env: 
+      env:
         WEBHOOK_URL : ${{ secrets.CLI_TEAM_SLACK_WEBHOOK_URL }}
         PULL_REQUEST_AUTHOR_ICON_URL : ${{ github.event.pull_request.user.avatar_url }}
         PULL_REQUEST_AUTHOR_NAME : ${{ github.event.pull_request.user.login }}

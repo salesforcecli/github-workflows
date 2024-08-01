@@ -26,22 +26,42 @@ runs:
   steps:
     - id: getSha
       shell: bash
-      run: echo "sha=$(npm view ${{ inputs.npmPackage }}@${{ inputs.version }} --json | jq -r '.gitHead[0:7]')" >> "$GITHUB_OUTPUT"
+      run: echo "sha=$(npm view $INPUTS_NPM_PACKAGE@$INPUTS_VERSION --json | jq -r '.gitHead[0:7]')" >> "$GITHUB_OUTPUT"
+      env:
+        INPUTS_NPM_PACKAGE: ${{ inputs.npmPackage }}
+        INPUTS_VERSION: ${{ inputs.version }}
 
     - id: getNumericalVersion
       shell: bash
-      run: echo "version=$(npm view ${{ inputs.npmPackage }}@${{ inputs.version }} --json | jq -r '.version')" >> "$GITHUB_OUTPUT"
+      run: echo "version=$(npm view $INPUTS_NPM_PACKAGE@$INPUTS_VERSION --json | jq -r '.version')" >> "$GITHUB_OUTPUT"
+      env:
+        INPUTS_NPM_PACKAGE: ${{ inputs.npmPackage }}
+        INPUTS_VERSION: ${{ inputs.version }}
 
     - id: getCli
       shell: bash
-      run: echo "cli=$(npm view ${{ inputs.npmPackage }}@${{ inputs.version }} --json | jq -r '.oclif.bin')" >> "$GITHUB_OUTPUT"
+      run: echo "cli=$(npm view $INPUTS_NPM_PACKAGE@$INPUTS_VERSION --json | jq -r '.oclif.bin')" >> "$GITHUB_OUTPUT"
+      env:
+        INPUTS_NPM_PACKAGE: ${{ inputs.npmPackage }}
+        INPUTS_VERSION: ${{ inputs.version }}
 
     - id: getS3Folder
       shell: bash
-      run: echo "folder=$(npm view ${{ inputs.npmPackage }}@${{ inputs.version }} --json | jq -r '.oclif.update.s3.folder')" >> "$GITHUB_OUTPUT"
+      run: echo "folder=$(npm view $INPUTS_NPM_PACKAGE@$INPUTS_VERSION --json | jq -r '.oclif.update.s3.folder')" >> "$GITHUB_OUTPUT"
+      env:
+        INPUTS_NPM_PACKAGE: ${{ inputs.npmPackage }}
+        INPUTS_VERSION: ${{ inputs.version }}
 
-    - run: echo "regex found version ${{ steps.getNumericalVersion.outputs.version }} with sha ${{ steps.getSha.outputs.sha }} for cli ${{ steps.getCli.outputs.cli }}"
+    - name: Echo info
       shell: bash
-
-    - run: echo "xz url is https://developer.salesforce.com/${{ steps.getS3Folder.outputs.folder }}/versions/${{ steps.getNumericalVersion.outputs.version }}/${{ steps.getSha.outputs.sha }}/${{ steps.getCli.outputs.cli }}-v${{ steps.getNumericalVersion.outputs.version }}-${{ steps.getSha.outputs.sha }}-linux-x64.tar.xz"
-      shell: bash
+      run: |
+        echo "[INFO] version-info outputs:"
+        echo "cli: $STEPS_GETCLI_CLI"
+        echo "version: $STEPS_GETNUMERICALVERSION_VERSION"
+        echo "sha: $STEPS_GETSHA_SHA"
+        echo "folder (xz): https://developer.salesforce.com/$STEPS_GETS3FOLDER_FOLDER/versions/$STEPS_GETNUMERICALVERSION_VERSION/$STEPS_GETSHA_SHA/$STEPS_GETCLI_CLI-v$STEPS_GETNUMERICALVERSION_VERSION-$STEPS_GETSHA_SHA-linux-x64.tar.xz"
+      env:
+        STEPS_GETCLI_CLI: ${{ steps.getCli.outputs.cli }}
+        STEPS_GETNUMERICALVERSION_VERSION: ${{ steps.getNumericalVersion.outputs.version }}
+        STEPS_GETSHA_SHA: ${{ steps.getSha.outputs.sha }}
+        STEPS_GETS3FOLDER_FOLDER: ${{ steps.getS3Folder.outputs.folder }}

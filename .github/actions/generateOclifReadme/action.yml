@@ -46,7 +46,9 @@ runs:
         yarn tsc
         yarn oclif readme \
           --no-aliases \
-          --version ${{ steps.next-version.outputs.tag }} \
+          --version "$STEPS_NEXT_VERSION_TAG" \
           ${{ inputs.multi == 'true' && '--multi' || '' }} \
           --repository-prefix "<%- repo %>/blob/<%- version %>/<%- commandPath %>" \
           || echo "::warning::'oclif readme' failed. Check the logs."
+      env:
+        STEPS_NEXT_VERSION_TAG: ${{ steps.next-version.outputs.tag }}

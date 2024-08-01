@@ -85,46 +85,59 @@ jobs:
     name: ${{ inputs.command }}
     runs-on: ${{ inputs.os }}
     steps:
-      - run: git config --system core.longpaths true
+      - name: Configure git longpaths if on Windows
         if: ${{ runner.os == 'Windows' }}
+        run: git config --system core.longpaths true
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.nodeVersion }}
+
       - uses: salesforcecli/github-workflows/.github/actions/retry@main
         name: cli install
         with:
           max_attempts: ${{ inputs.attempts }}
           command: npm install -g @salesforce/cli@nightly shx yarn-deduplicate --omit=dev
           timeout_minutes: 20
+
       - uses: salesforcecli/github-workflows/.github/actions/retry@main
         name: git clone
         with:
           max_attempts: 20
-          command: git clone -b ${{ inputs.branch}} --single-branch ${{ inputs.externalProjectGitUrl}} $(pwd)
+          command: git clone -b "$INPUTS_BRANCH" --single-branch "$INPUTS_EXTERNAL_PROJECT_GIT_URL" $(pwd)
           timeout_minutes: 20
+        env:
+          INPUTS_BRANCH: ${{ inputs.branch }}
+          INPUTS_EXTERNAL_PROJECT_GIT_URL: ${{ inputs.externalProjectGitUrl }}
+
       - name: Cache node modules
         if: inputs.useCache
         id: cache-nodemodules
         uses: actions/cache@v4
-        env:
-          cache-name: cache-node-modules
         with:
-          # caching node_modules
           path: node_modules
           key: ${{ runner.os }}-externalNuts-${{ env.cache-name }}-${{ inputs.externalProjectGitUrl}}-${{ inputs.branch}}-${{ github.sha }}
+        env:
+          cache-name: cache-node-modules
+
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
-      - run: ${{inputs.preSwapCommands}}
+
+      - name: Run preSwapCommands
+        run: ${{ inputs.preSwapCommands }}
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
 
-      - name: swap this dependency for the version on this branch
+      - name: Swap this dependency for the version on this branch
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
         run: |
-          yarn remove ${{ inputs.packageName }}
+          yarn remove "$INPUTS_PACKAGE_NAME"
           yarn add ${{ github.repository }}#${{ github.sha }}
           npx yarn-deduplicate
           yarn install  --network-timeout 600000
-      - name: install/build ${{ inputs.packageName}} in node_modules
+        env:
+          INPUTS_PACKAGE_NAME: ${{ inputs.packageName }}
+
+      - name: Install/build ${{ inputs.packageName }} in node_modules
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
         working-directory: node_modules/${{ inputs.packageName }}
         run: |
@@ -132,13 +145,14 @@ jobs:
           ${{ inputs.preBuildCommands }}
           yarn compile
           ${{ inputs.postBuildCommands }}
-      - name: preExternalBuildCommands
+
+      - name: Run preExternalBuildCommands
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
         run: ${{ inputs.preExternalBuildCommands }}
+
       - name: Build the external project (where the NUTs are)
         run: yarn compile
-      - run: echo "TESTKIT_EXECUTABLE_PATH=${{inputs.sfdxExecutablePath}}" >> $GITHUB_ENV
-        if: inputs.sfdxExecutablePath
+
       - name: NUTs with ${{ inputs.attempts }} attempts
         uses: salesforcecli/github-workflows/.github/actions/retry@main
         with:
@@ -146,6 +160,7 @@ jobs:
           command: ${{ inputs.command }}
           retry_on: error
         env:
+          TESTKIT_EXECUTABLE_PATH: ${{ inputs.sfdxExecutablePath }}
           SF_DISABLE_TELEMETRY: true
           TESTKIT_AUTH_URL: ${{ secrets.TESTKIT_AUTH_URL }}
           TESTKIT_HUB_USERNAME: ${{ secrets.TESTKIT_HUB_USERNAME }}

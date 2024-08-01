@@ -20,22 +20,28 @@ jobs:
         with:
           version: latest
           npmPackage: "@salesforce/dev-scripts"
-      - run: echo "dev scripts latest is ${{ steps.version-info.outputs.version }}"
+
+      - run: echo "[INFO] dev-scripts latest is:\ $STEPS_VERSION_INFO_VERSION"
+        env:
+          STEPS_VERSION_INFO_VERSION: ${{ steps.version-info.outputs.version }}
+
       - uses: salesforcecli/github-workflows/.github/actions/get-json-property@main
         id: packageVersion
         with:
           path: "package.json"
-          prop_path: 'devDependencies["@salesforce/dev-scripts"]'
+          prop_path: 'devDependencies.@salesforce/dev-scripts'
 
-      - run: echo "this repo has version is ${{ steps.packageVersion.outputs.prop }}"
-      - run: echo "output value will be ${{ !endsWith(steps.packageVersion.outputs.prop, steps.version-info.outputs.version) }}"
+      - run: echo "[INFO] This repo's dev-scripts version is:\ $STEPS_PACKAGE_VERSION_PROP"
+        env:
+          STEPS_PACKAGE_VERSION_PROP: ${{ steps.packageVersion.outputs.prop }}
+
+      - run: echo "[INFO] shouldUpdate value will be:\ ${{ !endsWith(steps.packageVersion.outputs.prop, steps.version-info.outputs.version) }}"
 
   updateDevScripts:
     needs: [compareVersions]
     if: ${{ needs.compareVersions.outputs.shouldUpdate == 'true' }}
     runs-on: "ubuntu-latest"
     steps:
-      - run: echo "previous job output was ${{ needs.compareVersions.outputs.shouldUpdate }}"
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
@@ -55,12 +61,13 @@ jobs:
         with:
           node-version: lts/*
           cache: yarn
+      # TODO: Do we need this? Isn't that why we use npx?
       - run: npm install -g yarn-deduplicate
       - run: yarn upgrade @salesforce/dev-scripts@latest
+      # TODO: What does this mean? Would yarnInstallWithRetries work here?
       # this may fail because that's how dev-scripts does things
       - run: yarn install  --network-timeout 600000
         continue-on-error: true
-
       - run: yarn install  --network-timeout 600000
       - run: npx yarn-deduplicate
       - run: yarn install  --network-timeout 600000
