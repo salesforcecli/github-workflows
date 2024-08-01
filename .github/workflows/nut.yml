@@ -99,11 +99,6 @@ jobs:
       - run: yarn oclif manifest
         if: ${{ steps.is-oclif-plugin.outputs.bool == 'true' }}
 
-      - run: echo "TESTKIT_EXECUTABLE_PATH=$INPUTS_SFDX_EXECUTABLE_PATH" >> $GITHUB_ENV
-        if: inputs.sfdxExecutablePath
-        env:
-          INPUTS_SFDX_EXECUTABLE_PATH: ${{ inputs.sfdxExecutablePath }}
-
       - name: NUTs with ${{ inputs.retries }} attempts
         uses: salesforcecli/github-workflows/.github/actions/retry@main
         with:
@@ -111,6 +106,7 @@ jobs:
           command: ${{ inputs.command }}
           retry_on: error
         env:
+          TESTKIT_EXECUTABLE_PATH: ${{ inputs.sfdxExecutablePath }}
           TESTKIT_AUTH_URL: ${{ secrets.TESTKIT_AUTH_URL}}
           TESTKIT_HUB_USERNAME: ${{ secrets.TESTKIT_HUB_USERNAME }}
           TESTKIT_JWT_CLIENT_ID: ${{ secrets.TESTKIT_JWT_CLIENT_ID }}
