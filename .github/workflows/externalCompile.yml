@@ -61,33 +61,47 @@ jobs:
     name: ${{ inputs.command }}
     runs-on: ${{ inputs.os }}
     steps:
-      - run: git config --system core.longpaths true
+      - name: Configure git longpaths if on Windows
         if: ${{ runner.os == 'Windows' }}
+        run: git config --system core.longpaths true
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.nodeVersion }}
-      - uses: salesforcecli/github-workflows/.github/actions/retry@main
-        name: git clone
+
+      - name: Git clone
+        uses: salesforcecli/github-workflows/.github/actions/retry@main
         with:
           max_attempts: 20
-          command: git clone -b ${{ inputs.branch}} --single-branch ${{ inputs.externalProjectGitUrl}} $(pwd)
+          command: git clone -b "$INPUTS_BRANCH" --single-branch "$INPUTS_EXTERNAL_PROJECT_GIT_URL" $(pwd)
           timeout_minutes: 20
+        env:
+          INPUTS_BRANCH: ${{ inputs.branch }}
+          INPUTS_EXTERNAL_PROJECT_GIT_URL: ${{ inputs.externalProjectGitUrl }}
+
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
-      - run: ${{inputs.preSwapCommands}}
-      - name: swap this dependency for the version on this branch
+
+      - run: ${{ inputs.preSwapCommands }}
+
+      - name: Swap this dependency for the version on this branch
         run: |
-          yarn remove ${{ inputs.packageName }}
+          yarn remove "$INPUTS_PACKAGE_NAME"
           yarn add ${{ github.repository }}#${{ github.sha }}
           npx yarn-deduplicate
           yarn install  --network-timeout 600000
-      - name: install/build ${{ inputs.packageName}} in node_modules
+        env:
+          INPUTS_PACKAGE_NAME: ${{ inputs.packageName }}
+
+      - name: Install/build ${{ inputs.packageName }} in node_modules
         working-directory: node_modules/${{ inputs.packageName }}
         run: |
           yarn install  --network-timeout 600000 ${{ inputs.ignoreScripts && '--ignore-scripts' || '' }}
           ${{ inputs.preBuildCommands }}
           yarn compile
           ${{ inputs.postBuildCommands }}
-      - name: preExternalBuildCommands
+
+      - name: Run preExternalBuildCommands
         run: ${{ inputs.preExternalBuildCommands }}
+
       - name: Build the external project (where the NUTs are)
         run: ${{ inputs.command }}

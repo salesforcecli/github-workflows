@@ -1,15 +1,6 @@
 on:
   workflow_call:
     inputs:
-      cli:
-        type: string
-        required: true
-        description: sf or sfdx
-        default: sf
-      clipkg:
-        type: string
-        description: npm package name for cli
-        default: "@salesforce/cli"
       version:
         type: string
         required: true
@@ -22,33 +13,43 @@ jobs:
       - uses: salesforcecli/github-workflows/.github/actions/versionInfo@main
         id: version-info
         with:
-          version: ${{inputs.version}}
-          npmPackage: ${{inputs.clipkg}}
-      - name: save filename (without arch/extension) for reuse
+          version: ${{ inputs.version }}
+          npmPackage: "@salesforce/cli"
+
+      - name: Save filename (without arch/extension) for reuse
         id: filename
-        run: echo "FILEBASE=${{inputs.cli}}-v${{inputs.version}}-${{steps.version-info.outputs.sha}}" >> "$GITHUB_OUTPUT"
-      - name: download from s3
+        run: echo "FILEBASE=sf-v$INPUTS_VERSION-$STEPS_VERSION_INFO_SHA" >> "$GITHUB_OUTPUT"
         env:
-          # workaround for AWS CLI not having its region set.  see https://github.com/actions/runner-images/issues/2791
-          AWS_EC2_METADATA_DISABLED: true
-          AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
-          AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+          INPUTS_VERSION: ${{ inputs.version }}
+          STEPS_VERSION_INFO_SHA: ${{ steps.version-info.outputs.sha }}
+
+      - name: Download from s3
         run: |
-          aws s3 cp s3://dfc-data-production/media/salesforce-cli/${{inputs.cli}}/versions/${{inputs.version}}/${{steps.version-info.outputs.sha}}/${{steps.filename.outputs.FILEBASE}}-x86.exe .
-          aws s3 cp s3://dfc-data-production/media/salesforce-cli/${{inputs.cli}}/versions/${{inputs.version}}/${{steps.version-info.outputs.sha}}/${{steps.filename.outputs.FILEBASE}}-x64.exe .
-      - name: upload to unsigned bucket
+          aws s3 cp "s3://dfc-data-production/media/salesforce-cli/sf/versions/$INPUTS_VERSION/$STEPS_VERSION_INFO_SHA/$STEPS_FILENAME_FILEBASE-x86.exe" .
+          aws s3 cp "s3://dfc-data-production/media/salesforce-cli/sf/versions/$INPUTS_VERSION/$STEPS_VERSION_INFO_SHA/$STEPS_FILENAME_FILEBASE-x64.exe" .
         env:
-          STAMPY_ARN: ${{ secrets.STAMPY_ARN }}
-          STAMPY_UNSIGNED_BUCKET: ${{ secrets.STAMPY_UNSIGNED_BUCKET }}
-          AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
-          AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+          INPUTS_VERSION: ${{ inputs.version }}
+          STEPS_VERSION_INFO_SHA: ${{ steps.version-info.outputs.sha }}
+          STEPS_FILENAME_FILEBASE: ${{ steps.filename.outputs.FILEBASE }}
+          # workaround for AWS CLI not having its region set (see https://github.com/actions/runner-images/issues/2791)
           AWS_EC2_METADATA_DISABLED: true
-        # switch AWS identity to the one that can access stampy
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      # Note: we first need to switch AWS identity to the one that can access stampy
+      - name: Upload to unsigned bucket
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity | jq -r '.Account')
           TEMP_ROLE=$(aws sts assume-role --role-arn $STAMPY_ARN --role-session-name artifact-signing)
           export AWS_ACCESS_KEY_ID=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.AccessKeyId')
           export AWS_SECRET_ACCESS_KEY=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SecretAccessKey')
           export AWS_SESSION_TOKEN=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SessionToken')
-          aws s3 cp ${{steps.filename.outputs.FILEBASE}}-x86.exe $STAMPY_UNSIGNED_BUCKET/${{steps.filename.outputs.FILEBASE}}-x86.exe
-          aws s3 cp ${{steps.filename.outputs.FILEBASE}}-x64.exe $STAMPY_UNSIGNED_BUCKET/${{steps.filename.outputs.FILEBASE}}-x64.exe
+          aws s3 cp "$STEPS_FILENAME_FILEBASE-x86.exe" "$STAMPY_UNSIGNED_BUCKET/$STEPS_FILENAME_FILEBASE-x86.exe"
+          aws s3 cp "$STEPS_FILENAME_FILEBASE-x64.exe" "$STAMPY_UNSIGNED_BUCKET/$STEPS_FILENAME_FILEBASE-x64.exe"
+        env:
+          STEPS_FILENAME_FILEBASE: ${{ steps.filename.outputs.FILEBASE }}
+          STAMPY_ARN: ${{ secrets.STAMPY_ARN }}
+          STAMPY_UNSIGNED_BUCKET: ${{ secrets.STAMPY_UNSIGNED_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: true

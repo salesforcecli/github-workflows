@@ -53,16 +53,19 @@ jobs:
         # This will allow us to merge a prerelease PR into main and have it release as a normal release
         if: github.ref_name != 'main'
         run: |
-          if [ -n "${{ inputs.prerelease }}" ]; then
-            echo "Prerelease input passed in, using: ${{ inputs.prerelease }}"
-            echo "tag=${{ inputs.prerelease }}" >> "$GITHUB_OUTPUT"
-          elif [ -n "${{ steps.distTag.outputs.tag }}" ]; then
-            echo "Prerelease tag found in package.json, using: ${{ steps.distTag.outputs.tag }}"
-            echo "tag=${{ steps.distTag.outputs.tag }}" >> "$GITHUB_OUTPUT"
-          elif [[ ${{ github.ref_name }} =~ ^prerelease/.* ]]; then
-            echo "Prerelease branch found but no prerelease tag, using default: dev"
+          if [ -n "$INPUTS_PRERELEASE" ]; then
+            echo "[INFO] Prerelease input passed in, using: $INPUTS_PRERELEASE"
+            echo "tag=$INPUTS_PRERELEASE" >> "$GITHUB_OUTPUT"
+          elif [ -n "$STEPS_DISTTAG_TAG" ]; then
+            echo "[INFO] Prerelease tag found in package.json, using: $STEPS_DISTTAG_TAG"
+            echo "tag=$STEPS_DISTTAG_TAG" >> "$GITHUB_OUTPUT"
+          elif [[ "$GITHUB_REF_NAME" =~ ^prerelease/.* ]]; then
+            echo "[INFO] Prerelease branch found but no prerelease tag, using default: dev"
             echo "tag=dev" >> "$GITHUB_OUTPUT"
           fi
+        env:
+          INPUTS_PRERELEASE: ${{ inputs.prerelease }}
+          STEPS_DISTTAG_TAG: ${{ steps.distTag.outputs.tag }}
 
       - name: Generate oclif readme
         if: ${{ inputs.generate-readme }}

@@ -16,8 +16,6 @@ jobs:
     runs-on: static-ip-ubuntu-runners
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
 
       - uses: actions/setup-node@v4
         with:
@@ -30,9 +28,11 @@ jobs:
             echo "Environment not configured for CTC.  Your environment needs SF_CHANGE_CASE_SFDX_AUTH_URL, SF_CHANGE_CASE_TEMPLATE_ID, and SF_CHANGE_CASE_CONFIGURATION_ITEM"
             exit 1
           else
-            sfchangecase close --location ${{ github.repositoryUrl }} --release ${{github.repository}}.$(date +%F) --changecaseid ${{ inputs.changeCaseId}} --status "${{ inputs.status }}"
+            sfchangecase close --location ${{ github.repositoryUrl }} --release ${{github.repository}}.$(date +%F) --changecaseid "$INPUTS_CHANGE_CASE_ID" --status "$INPUTS_STATUS"
           fi
         env:
+          INPUTS_CHANGE_CASE_ID: ${{ inputs.changeCaseId}}
+          INPUTS_STATUS: ${{ inputs.status}}
           SF_CHANGE_CASE_SFDX_AUTH_URL: ${{ secrets.SF_CHANGE_CASE_SFDX_AUTH_URL}}
           SF_CHANGE_CASE_TEMPLATE_ID: ${{ secrets.SF_CHANGE_CASE_TEMPLATE_ID}}
           SF_CHANGE_CASE_CONFIGURATION_ITEM: ${{ secrets.SF_CHANGE_CASE_CONFIGURATION_ITEM}}

@@ -28,18 +28,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
           cache: npm
+
       - run: npm install -g @salesforce/plugin-release-management --omit=dev
+
       - name: run automerge command
-        if: ${{ !inputs.skipCI }}
+        run: sf-release dependabot:automerge --merge-method "$INPUTS_MERGE_METHOD" --max-version-bump "$INPUTS_MAX_VERSION_BUMP" --owner $GITHUB_REPOSITORY_OWNER --repo $(basename $GITHUB_REPOSITORY) ${{ inputs.skipCI && '--skip-ci' || '' }}
         env:
-          GITHUB_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN}}
-        run: sf-release dependabot:automerge --merge-method ${{ inputs.mergeMethod}} --max-version-bump ${{ inputs.maxVersionBump}} --owner $GITHUB_REPOSITORY_OWNER --repo $(basename $GITHUB_REPOSITORY)
-      - name: run automerge command
-        if: ${{ inputs.skipCI }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN}}
-        run: sf-release dependabot:automerge --merge-method ${{ inputs.mergeMethod}} --max-version-bump ${{ inputs.maxVersionBump}} --owner $GITHUB_REPOSITORY_OWNER --repo $(basename $GITHUB_REPOSITORY) --skip-ci
+          GITHUB_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          INPUTS_MERGE_METHOD: ${{ inputs.mergeMethod }}
+          INPUTS_MAX_VERSION_BUMP: ${{ inputs.maxVersionBump }}

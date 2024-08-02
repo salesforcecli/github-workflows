@@ -1,10 +1,6 @@
 on:
   workflow_call:
     inputs:
-      cli:
-        type: string
-        required: true
-        description: only needed if upload. sfdx or sf
       version:
         type: string
         required: true
@@ -22,30 +18,42 @@ jobs:
   win:
     runs-on: ubuntu-latest
     env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      WINDOWS_SIGNING_KEY: ${{ secrets.WINDOWS_SIGNING_KEY }}
-      SFDX_WINDOWS_SIGNING_PASS: ${{ secrets.SFDX_WINDOWS_SIGNING_PASS }}
-      SF_WINDOWS_SIGNING_PASS: ${{ secrets.SF_WINDOWS_SIGNING_PASS }}
-      SFDX_HIDE_RELEASE_NOTES: true
       SF_DISABLE_TELEMETRY: true
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: yarn
+
       - name: Set up Homebrew
-        id: set-up-homebrew
         uses: Homebrew/actions/setup-homebrew@e05416b42376bcda221f9102c4f595f4994016be
+
+      # TODO: It would be nice if we chould ditch homebrew for this install
       - run: brew install makensis
+
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
-      - run: yarn pack:win
-      - run: yarn upload:win
-      - run: yarn channel:promote --cli ${{ inputs.cli }} --version ${{ inputs.version }} --target ${{ inputs.channel }} --platform win
-        name: Promote win to ${{ inputs.channel }} channel
-      - name: upload artifacts to github release
-        run: |
-          gh release upload ${{ inputs.version }} ./dist/win32/sf-*.exe --clobber --repo ${{ github.repository}}
+
+      - name: Pack for Windows
+        run: yarn pack:win
+
+      - name: Upload Windows
+        run: yarn upload:win
         env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Promote win to ${{ inputs.channel }} channel
+        run: yarn channel:promote --cli sf --version "$INPUTS_VERSION" --target "$INPUTS_CHANNEL" --platform win
+        env:
+          INPUTS_VERSION: ${{ inputs.version }}
+          INPUTS_CHANNEL: ${{ inputs.channel }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Upload artifacts to Github release
+        run: gh release upload "$INPUTS_VERSION" ./dist/win32/sf-*.exe --clobber --repo "$GITHUB_REPOSITORY"
+        env:
+          INPUTS_VERSION: ${{ inputs.version }}
           GH_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}

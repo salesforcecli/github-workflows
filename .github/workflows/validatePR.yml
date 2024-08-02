@@ -1,5 +1,3 @@
-# test push
-
 on: workflow_call
 
 jobs:
@@ -49,9 +47,9 @@ jobs:
           steps.regex-match-gha-run.outputs.match != '' ||
           steps.regex-match-cli-gh-issue.match != ''
         run: |
-          echo "Gus Work Item: $STEPS_GUS_WI"
-          echo "Github Action Run: $STEPS_GHA_RUN"
-          echo "CLI Github Issue: $STEPS_CLI_GH_ISSUE"
+          echo "[INFO] Gus Work Item: $STEPS_GUS_WI"
+          echo "[INFO] Github Action Run: $STEPS_GHA_RUN"
+          echo "[INFO] CLI Github Issue: $STEPS_CLI_GH_ISSUE"
         env:
           STEPS_GUS_WI: ${{ steps.regex-match-gus-wi.outputs.match }}
           STEPS_GHA_RUN: ${{ steps.regex-match-gha-run.outputs.match }}

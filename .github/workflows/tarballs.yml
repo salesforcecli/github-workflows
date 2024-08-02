@@ -5,10 +5,6 @@ on:
         type: boolean
         description: true means test, then upload them AWS
         required: false
-      cli:
-        type: string
-        required: false
-        description: only needed if upload. sfdx or sf
       version:
         type: string
         required: false
@@ -25,38 +21,46 @@ on:
 jobs:
   tarballs:
     env:
-      SFDX_HIDE_RELEASE_NOTES: true
       SF_DISABLE_TELEMETRY: true
     runs-on: ubuntu-20-8core
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: yarn
+
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
+
       - name: pack tarballs
         uses: salesforcecli/github-workflows/.github/actions/retry@main
         with:
           command: yarn pack:tarballs
           retry_on: error
+
       - run: yarn pack:verify
+
       - run: yarn test:smoke-unix
+
       - if: inputs.upload
         run: yarn upload:tarballs
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      - if: inputs.upload && inputs.cli && inputs.version && inputs.channel
-        run: yarn channel:promote --cli ${{ inputs.cli }} --version ${{ inputs.version }} --target ${{ inputs.channel }}
+
+      - if: inputs.upload && inputs.version && inputs.channel
+        run: yarn channel:promote --cli sf --version "$INPUTS_VERSION" --target "$INPUTS_CHANNEL"
         env:
+          INPUTS_VERSION: ${{ inputs.version }}
+          INPUTS_CHANNEL: ${{ inputs.channel }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
       - if: inputs.upload
         run: |
-          gh release upload ${{ inputs.version }} ./dist/*.gz --clobber --repo ${{ github.repository}}
-          gh release upload ${{ inputs.version }} ./dist/*.xz --clobber --repo ${{ github.repository}}
+          gh release upload "$INPUTS_VERSION" ./dist/*.gz --clobber --repo "$GITHUB_REPOSITORY"
+          gh release upload "$INPUTS_VERSION" ./dist/*.xz --clobber --repo "$GITHUB_REPOSITORY"
         env:
+          INPUTS_VERSION: ${{ inputs.version }}
           GH_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}

@@ -24,8 +24,6 @@ runs:
   using: composite
   steps:
     - uses: actions/checkout@v4
-      with:
-        token: ${{ inputs.SVC_CLI_BOT_GITHUB_TOKEN }}
 
     - uses: actions/setup-node@v4
       with:
@@ -59,5 +57,7 @@ runs:
         SF_CHANGE_CASE_TEMPLATE_ID: ${{ inputs.SF_CHANGE_CASE_TEMPLATE_ID}}
         SF_CHANGE_CASE_CONFIGURATION_ITEM: ${{ inputs.SF_CHANGE_CASE_CONFIGURATION_ITEM}}
 
-    - run: echo "case id is ${{ steps.ctc.outputs.ctcId }}"
+    - run: echo "[INFO] Change Case ID is:\ $STEPS_CTC_CTCID"
       shell: bash
+      env:
+        STEPS_CTC_CTCID: ${{ steps.ctc.outputs.ctcId }}
