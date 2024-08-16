@@ -17,7 +17,7 @@ runs:
       run: |
         git config --global push.default current
         git config --global user.name "$INPUTS_USERNAME"
-        git config --global user.email "INPUTS_EMAIL"
+        git config --global user.email "$INPUTS_EMAIL"
       env:
         INPUTS_USERNAME: ${{ inputs.username }}
         INPUTS_EMAIL: ${{ inputs.email }}
