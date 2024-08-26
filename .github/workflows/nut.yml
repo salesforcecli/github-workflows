@@ -63,14 +63,14 @@ jobs:
         if: ${{ runner.os == 'Windows' }}
         run: git config --system core.longpaths true
 
+      - uses: actions/checkout@v4
+
+      - uses: google/wireit@setup-github-actions-caching/v1
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: yarn
-
-      - uses: actions/checkout@v4
-
-      - uses: google/wireit@setup-github-actions-caching/v1
 
       - name: Cache node modules
         id: cache-nodemodules
