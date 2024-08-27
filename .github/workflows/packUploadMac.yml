@@ -1,10 +1,6 @@
 on:
   workflow_call:
     inputs:
-      cli:
-        type: string
-        required: true
-        description: only needed if upload. sfdx or sf
       version:
         type: string
         required: true
@@ -20,28 +16,39 @@ on:
 jobs:
   macos:
     env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      SFDX_HIDE_RELEASE_NOTES: true
       SF_DISABLE_TELEMETRY: true
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: yarn
+
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
-      # todo: download the macos tarball and pass that to the oclif pack:macos command
-      - name: pack:macos
+
+      - name: Pack for macos
         uses: salesforcecli/github-workflows/.github/actions/retry@main
         with:
           command: yarn pack:macos
-      - run: yarn upload:macos
-      - run: yarn channel:promote --cli ${{ inputs.cli }} --version ${{ inputs.version }} --target ${{ inputs.channel }} --platform macos
-        name: Promote macos to ${{ inputs.channel }} channel
-      - name: upload artifacts to github release
-        run: |
-          gh release upload ${{ inputs.version }} ./dist/macos/sf-*.pkg --clobber --repo ${{ github.repository}}
+
+      - name: Upload macos
+        run: yarn upload:macos
         env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Promote macos to ${{ inputs.channel }} channel
+        run: yarn channel:promote --cli sf --version "$INPUTS_VERSION" --target "$INPUTS_CHANNEL" --platform macos
+        env:
+          INPUTS_VERSION: ${{ inputs.version }}
+          INPUTS_CHANNEL: ${{ inputs.channel }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Upload artifacts to Github release
+        run: gh release upload "$INPUTS_VERSION" ./dist/macos/sf-*.pkg --clobber --repo "$GIT_REPOSITORY"
+        env:
+          INPUTS_VERSION: ${{ inputs.version }}
           GH_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}

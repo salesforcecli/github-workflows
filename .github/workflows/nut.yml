@@ -59,15 +59,19 @@ jobs:
     name: ${{ inputs.command }}
     runs-on: ${{ inputs.os }}
     steps:
-      - run: git config --system core.longpaths true
+      - name: Configure git longpaths if on Windows
         if: ${{ runner.os == 'Windows' }}
+        run: git config --system core.longpaths true
 
       - uses: actions/checkout@v4
+
       - uses: google/wireit@setup-github-actions-caching/v1
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: yarn
+
       - name: Cache node modules
         id: cache-nodemodules
         uses: actions/cache@v4
@@ -76,21 +80,31 @@ jobs:
         with:
           path: "**/node_modules"
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/yarn.lock') }}
+
       - name: add CLI as global dependency
         uses: salesforcecli/github-workflows/.github/actions/retry@main
         with:
           max_attempts: ${{ inputs.retries }}
           command: npm install @salesforce/cli@nightly -g
+
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
+
       - run: yarn compile
+
       - name: Check that oclif config exists
         id: is-oclif-plugin
         run: echo "bool=$(jq 'if .oclif then true else false end' package.json)" >> "$GITHUB_OUTPUT"
+
       - run: yarn oclif manifest
         if: ${{ steps.is-oclif-plugin.outputs.bool == 'true' }}
-      - run: echo "TESTKIT_EXECUTABLE_PATH=${{inputs.sfdxExecutablePath}}" >> $GITHUB_ENV
+
+      - name: Set optional sf executable path
         if: inputs.sfdxExecutablePath
+        run: echo "TESTKIT_EXECUTABLE_PATH=$INPUTS_SF_EXECUTABLE_PATH" >> $GITHUB_ENV
+        env:
+          INPUTS_SF_EXECUTABLE_PATH: ${{ inputs.sfdxExecutablePath }}
+
       - name: NUTs with ${{ inputs.retries }} attempts
         uses: salesforcecli/github-workflows/.github/actions/retry@main
         with:

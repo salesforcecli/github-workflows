@@ -31,7 +31,7 @@ runs:
       id: parse
       shell: bash
       run: |
-        FULL_VERSION="${{ inputs.input_string }}"
+        FULL_VERSION="$INPUTS_INPUT_STRING"
         VERSION="${FULL_VERSION#v}"
 
         # Filter out non-semver characters
@@ -57,8 +57,20 @@ runs:
         echo "patch=$PATCH" >> "$GITHUB_OUTPUT"
         echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
         echo "fullversion=$FULL_VERSION" >> "$GITHUB_OUTPUT"
+      env:
+        INPUTS_INPUT_STRING: ${{ inputs.input_string }}
+
     - name: Exit if major, minor, or patch not found
       if: ${{ !steps.parse.outputs.major || !steps.parse.outputs.minor || !steps.parse.outputs.patch }}
       uses: actions/github-script@v7
       with:
-        script: core.setFailed("Error parsing semver ${{ inputs.input_string }}\nMajor:${{ steps.parse.outputs.major }}\nMinor:${{ steps.parse.outputs.minor }}\nPatch:${{ steps.parse.outputs.patch }}")
+        script: |
+          core.setFailed(`Error parsing semver: ${process.env.INPUTS_INPUT_STRING}
+            Major: ${process.env.STEPS_PARSE_MAJOR}
+            Minor: ${process.env.STEPS_PARSE_MINOR}
+            Patch: ${process.env.STEPS_PARSE_PATCH}`)
+      env:
+        INPUTS_INPUT_STRING: ${{ inputs.input_string }}
+        STEPS_PARSE_MAJOR: ${{ steps.parse.outputs.major }}
+        STEPS_PARSE_MINOR: ${{ steps.parse.outputs.minor }}
+        STEPS_PARSE_PATCH: ${{ steps.parse.outputs.patch }}

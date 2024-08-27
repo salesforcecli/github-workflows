@@ -1,10 +1,9 @@
 name: get-json-property
-description: Get a property from a json file using jq
+description: Get a property from a json file with dot notation
 
 # Examples:
 # prop_path: version
-# prop_path: devDependencies["@salesforce/dev-scripts"]
-#                            ^ Note: double quotes needed here
+# prop_path: devDependencies.@salesforce/dev-scripts
 
 inputs:
   path:
@@ -12,24 +11,41 @@ inputs:
     description: Json file to look up prop (package.json)
   prop_path:
     required: true
-    description: jq query to search (version)
+    description: dot notation property to find (version)
 
 outputs:
   prop:
     description: The value of the prop_path
-    value: ${{ steps.jq.outputs.prop }}
+    value: ${{ steps.parse.outputs.prop }}
 
 runs:
   using: "composite"
   steps:
     - name: Get property from json file
-      id: jq
-      shell: bash
-      run: |
-        PROP=$(jq -r '.${{ inputs.prop_path }}' ${{ inputs.path }})
-        echo "prop=$PROP" >> "$GITHUB_OUTPUT"
-    - name: Exit if prop was not found
-      if: ${{ steps.jq.outputs.prop == 'null' }}
+      id: parse
       uses: actions/github-script@v7
       with:
-        script: core.setFailed("Property '${{ inputs.prop_path }}' not found in ${{ inputs.path }}")
+        result-encoding: string
+        script: |
+          try {
+            const fs = require('fs')
+
+            var path = process.env.INPUTS_PATH;
+            var propPath = process.env.INPUTS_PROP_PATH;
+
+            const json = JSON.parse(fs.readFileSync(path))
+
+            // https://stackoverflow.com/a/43849204
+            const result = propPath.split('.').reduce((p,c)=>p&&p[c]||null, json)
+
+            if (result) {
+              core.setOutput('prop', result)
+            } else {
+              core.setFailed(`Property '${propPath}' not found in '${path}'`)
+            }
+          } catch(err) {
+            core.setFailed(err)
+          }
+      env:
+        INPUTS_PATH: ${{ inputs.path }}
+        INPUTS_PROP_PATH: ${{ inputs.prop_path }}

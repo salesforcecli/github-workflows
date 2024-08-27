@@ -32,12 +32,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node_version }}
           cache: yarn
+
       - uses: google/wireit@setup-github-actions-caching/v1
         continue-on-error: true
+
       - name: Cache node modules
         id: cache-nodemodules
         uses: actions/cache@v4
@@ -49,7 +52,9 @@ jobs:
 
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
+
       - run: yarn build
+
       - name: yarn test
         uses: salesforcecli/github-workflows/.github/actions/retry@main
         with:

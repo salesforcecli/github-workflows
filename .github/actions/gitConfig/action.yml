@@ -12,9 +12,12 @@ inputs:
 runs:
   using: composite
   steps:
-    - run: git config --global push.default current
+    - name: Set git config
       shell: bash
-    - run: git config --global user.name ${{ inputs.username }}
-      shell: bash
-    - run: git config --global user.email ${{ inputs.email }}
-      shell: bash
+      run: |
+        git config --global push.default current
+        git config --global user.name "$INPUTS_USERNAME"
+        git config --global user.email "$INPUTS_EMAIL"
+      env:
+        INPUTS_USERNAME: ${{ inputs.username }}
+        INPUTS_EMAIL: ${{ inputs.email }}
