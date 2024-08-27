@@ -43,7 +43,7 @@ runs:
         # Current can be disabled by setting the "nodeDisableCurrent" input to "true"
         # IF "NODE_VERSION" is overridden, "NODE_VERSION_CURRENT" will also be disabled
         NODE_VERSION_CURRENT="current"
-        NODE_VERSION="${INPUTS_NODE_VERSION_OVERRIDE:-'lts/*'}"
+        NODE_VERSION="${INPUTS_NODE_VERSION_OVERRIDE:-lts/*}"
         NODE_PREVIOUS_LTS="lts/-1"
 
         if [ -n "$INPUTS_NODE_VERSION_OVERRIDE" ]; then
