@@ -104,11 +104,8 @@ jobs:
         name: git clone
         with:
           max_attempts: 20
-          command: git clone -b "$INPUTS_BRANCH" --single-branch "$INPUTS_EXTERNAL_PROJECT_GIT_URL" $(pwd)
+          command: git clone -b ${{ inputs.branch }} --single-branch  ${{ inputs.externalProjectGitUrl }} $(pwd)
           timeout_minutes: 20
-        env:
-          INPUTS_BRANCH: ${{ inputs.branch }}
-          INPUTS_EXTERNAL_PROJECT_GIT_URL: ${{ inputs.externalProjectGitUrl }}
 
       - name: Cache node modules
         if: inputs.useCache
