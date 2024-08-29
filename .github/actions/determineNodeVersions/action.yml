@@ -8,6 +8,9 @@ inputs:
   nodeDisableCurrent:
     description: Disable testing on Node "current"
     required: false
+  nodeDisablePrevious:
+    description: Disable testing on Node "-1"
+    required: false
 
 outputs:
   nodeVersions:
@@ -41,16 +44,29 @@ runs:
       id: node-versions
       run: |
         # Current can be disabled by setting the "nodeDisableCurrent" input to "true"
+        # Previous LTS can be disabled by setting the "nodeDisablePrevious" input to "true"
         # IF "NODE_VERSION" is overridden, "NODE_VERSION_CURRENT" will also be disabled
-        NODE_VERSION_CURRENT="current"
-        NODE_VERSION="${INPUTS_NODE_VERSION_OVERRIDE:-lts/*}"
-        NODE_PREVIOUS_LTS="lts/-1"
 
+        NODE_VERSION_CURRENT="current"
+        if [ "$INPUTS_NODE_DISABLE_CURRENT" = "true" ] || [ -n "$INPUTS_NODE_VERSION_OVERRIDE" ]; then
+          NODE_VERSION_CURRENT=""
+        fi
+
+        NODE_VERSION="lts/*"
         if [ -n "$INPUTS_NODE_VERSION_OVERRIDE" ]; then
+          NODE_VERSION="$INPUTS_NODE_VERSION_OVERRIDE"
+        fi
+
+        NODE_PREVIOUS_LTS="lts/-1"
+        if [ "$INPUTS_NODE_DISABLE_PREVIOUS" = "true" ]; then
+          NODE_PREVIOUS_LTS=""
+        fi
+
+        if [ -n "$INPUTS_NODE_VERSION_OVERRIDE" ] && [ "$INPUTS_NODE_DISABLE_PREVIOUS" != "true" ] ; then
           NODE_VERSION_MAJOR=$(echo "$INPUTS_NODE_VERSION_OVERRIDE" | cut -d '.' -f 1)
 
           # LTS-1 will always be the previous LTS, which is always even. Here we calculate the nearest LTS
-          if [ $((NODE_VERSION_MAJOR % 2)) == 0 ]; then
+          if [ $((NODE_VERSION_MAJOR % 2)) = 0 ]; then
             NODE_PREVIOUS_LTS="$((NODE_VERSION_MAJOR - 2))"
           else
             NODE_PREVIOUS_LTS="$((NODE_VERSION_MAJOR - 1))"
@@ -59,13 +75,10 @@ runs:
 
         {
         echo "nodeVersions<<EOF"
-        if [ "$NODE_VERSION" = "lts/*" ] && [ "$INPUTS_NODE_DISABLE_CURRENT" != "true" ]; then
-            jq -n --arg v1 "$NODE_VERSION_CURRENT" --arg v2 "$NODE_VERSION" --arg v3 "$NODE_PREVIOUS_LTS"  '[$v1, $v2, $v3]'
-        else
-            jq -n --arg v1 "$NODE_VERSION" --arg v2 "$NODE_PREVIOUS_LTS" '[$v1, $v2]'
-        fi
+          jq -n --arg v1 "$NODE_VERSION_CURRENT" --arg v2 "$NODE_VERSION" --arg v3 "$NODE_PREVIOUS_LTS"  '[$v1, $v2, $v3] | map(select(. != ""))'
         echo "EOF"
         } >> "$GITHUB_OUTPUT"
       env:
         INPUTS_NODE_VERSION_OVERRIDE: ${{ inputs.nodeVersionOverride }}
         INPUTS_NODE_DISABLE_CURRENT: ${{ inputs.nodeDisableCurrent }}
+        INPUTS_NODE_DISABLE_PREVIOUS: ${{ inputs.nodeDisablePrevious }}
