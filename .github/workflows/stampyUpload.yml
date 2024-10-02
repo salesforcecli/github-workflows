@@ -27,6 +27,7 @@ jobs:
         run: |
           aws s3 cp "s3://dfc-data-production/media/salesforce-cli/sf/versions/$INPUTS_VERSION/$STEPS_VERSION_INFO_SHA/$STEPS_FILENAME_FILEBASE-x86.exe" .
           aws s3 cp "s3://dfc-data-production/media/salesforce-cli/sf/versions/$INPUTS_VERSION/$STEPS_VERSION_INFO_SHA/$STEPS_FILENAME_FILEBASE-x64.exe" .
+          aws s3 cp "s3://dfc-data-production/media/salesforce-cli/sf/versions/$INPUTS_VERSION/$STEPS_VERSION_INFO_SHA/$STEPS_FILENAME_FILEBASE-arm64.exe" .
         env:
           INPUTS_VERSION: ${{ inputs.version }}
           STEPS_VERSION_INFO_SHA: ${{ steps.version-info.outputs.sha }}
@@ -46,6 +47,7 @@ jobs:
           export AWS_SESSION_TOKEN=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SessionToken')
           aws s3 cp "$STEPS_FILENAME_FILEBASE-x86.exe" "$STAMPY_UNSIGNED_BUCKET/$STEPS_FILENAME_FILEBASE-x86.exe"
           aws s3 cp "$STEPS_FILENAME_FILEBASE-x64.exe" "$STAMPY_UNSIGNED_BUCKET/$STEPS_FILENAME_FILEBASE-x64.exe"
+          aws s3 cp "$STEPS_FILENAME_FILEBASE-arm64.exe" "$STAMPY_UNSIGNED_BUCKET/$STEPS_FILENAME_FILEBASE-arm64.exe"
         env:
           STEPS_FILENAME_FILEBASE: ${{ steps.filename.outputs.FILEBASE }}
           STAMPY_ARN: ${{ secrets.STAMPY_ARN }}
