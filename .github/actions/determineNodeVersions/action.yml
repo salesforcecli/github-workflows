@@ -12,6 +12,8 @@ outputs:
 runs:
   using: 'composite'
   steps:
+    # Note: this is not typically how you would run javascript in an action
+    # This is need so that we can get the correct node version used elsewhere
     - name: Set up Node
       uses: actions/setup-node@v4
       with:
@@ -19,5 +21,5 @@ runs:
     - name: Run main script
       shell: bash
       id: node-versions
-      run: node dist/index.js
+      run: node ${{ github.action_path }}/dist/index.js
 
