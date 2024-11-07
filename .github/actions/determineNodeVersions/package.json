@@ -1,0 +1,19 @@
+{
+  "name": "determinenodeversions",
+  "version": "1.0.0",
+  "description": "Determine the active Node versions to test against",
+  "main": "index.js",
+  "scripts": {
+    "build": "ncc build src/index.js -o dist",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "type": "module",
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@actions/core": "^1.11.1"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.38.2"
+  }
+}
