@@ -2,8 +2,7 @@ name: Determine node versions
 description: "Get all the supported node versions"
 inputs:
   nodeVersionOverride:
-    description: Semver version to set version and version-1
-    default: 'lts/*'
+    description: Set node to a specific Semver version
     required: false
 outputs:
   nodeVersions:
@@ -17,15 +16,15 @@ runs:
     - name: logging
       shell: bash
       run: |
-        echo "nodeVersionOverride: ${{ inputs.nodeVersionOverride }}"
+        echo "nodeVersionOverride: ${{ inputs.nodeVersionOverride || 'lts/*' }}"
         echo "action_path: ${{ github.action_path }}"
         echo "action path env var: $GITHUB_ACTION_PATH"
     - name: Set up Node
       uses: actions/setup-node@v4
       with:
-        node-version: ${{ inputs.nodeVersionOverride }}
+        node-version: ${{ inputs.nodeVersionOverride || 'lts/*' }}
     - name: Run main script
       shell: bash
       id: node-versions
-      run: node ${{ github.action_path }}/dist/index.js
+      run: node "$GITHUB_ACTION_PATH/dist/index.js"
 
