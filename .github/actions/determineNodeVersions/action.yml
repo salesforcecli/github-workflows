@@ -14,6 +14,12 @@ runs:
   steps:
     # Note: this is not typically how you would run javascript in an action
     # This is need so that we can get the correct node version used elsewhere
+    - name: logging
+      shell: bash
+      run: |
+        echo "nodeVersionOverride: ${{ inputs.nodeVersionOverride }}"
+        echo "action_path: ${{ github.action_path }}"
+        echo "action path env var: $GITHUB_ACTION_PATH"
     - name: Set up Node
       uses: actions/setup-node@v4
       with:
