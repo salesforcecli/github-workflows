@@ -25586,6 +25586,7 @@ const getVersions = async () => {
     // Below we will replace the matching major version with this more specific version
     // This will ensure that the unit tests run on the same version that will be shipped
     const installedNode = process.versions.node;
+    console.log("disabled 23:", process.env.NODE_DISABLE_VERSION_23);
     // Support disabling certain versions via an environment variable
     // They will be named like `NODE_DISABLE_VERSION_18` and will be set to `true`
     const disabledVersions = Object.keys(process.env).filter((env) => env.startsWith('NODE_DISABLE_VERSION_')).map((env) => env.replace('NODE_DISABLE_VERSION_', ''));
