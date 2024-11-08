@@ -5,7 +5,7 @@
  * For full license text, see LICENSE.txt file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-import { setFailed, getInput, setOutput, notice } from '@actions/core';
+import { setFailed, setOutput, notice } from '@actions/core';
 
 type VersionData = {
     start: string;
@@ -32,7 +32,8 @@ export const getVersions = async () => {
 
     // Comma separated list of major versions to disable
     // For example: Set `NODE_DISABLE_VERSIONS` to `18,23`
-    const disableVersions = getInput('nodeDisableVersions').split(',');
+    const disableVersions = process.env.NODE_DISABLE_VERSIONS?.split(',') || [];
+
 
     const today = new Date();
 
@@ -44,7 +45,7 @@ export const getVersions = async () => {
             return today >= startDate && today <= endDate;
         })
         .map((version) => version.replace('v', ''))
-        // Remove versions that are disabled via input (via env var)
+        // Remove versions that are disabled via env var
         .filter((version) => {
             if (disableVersions.includes(version)) {
                 notice(`Node version ${version} is disabled via env var`);

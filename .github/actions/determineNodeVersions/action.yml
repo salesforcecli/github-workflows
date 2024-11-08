@@ -30,6 +30,6 @@ runs:
       shell: bash
       id: node-versions
       run: node "$GITHUB_ACTION_PATH/dist/index.js"
-      with:
-        nodeDisableVersions: ${{ inputs.nodeDisableVersions }}
+      env:
+        NODE_DISABLE_VERSIONS: ${{ inputs.nodeDisableVersions }}
 

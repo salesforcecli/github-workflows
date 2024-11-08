@@ -25588,7 +25588,7 @@ const getVersions = async () => {
     const installedNode = process.versions.node;
     // Comma separated list of major versions to disable
     // For example: Set `NODE_DISABLE_VERSIONS` to `18,23`
-    const disableVersions = (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('nodeDisableVersions').split(',');
+    const disableVersions = process.env.NODE_DISABLE_VERSIONS?.split(',') || [];
     const today = new Date();
     // Build an array of versions that the current date is between the start and end dates
     const versions = Object.keys(json)
@@ -25598,7 +25598,7 @@ const getVersions = async () => {
         return today >= startDate && today <= endDate;
     })
         .map((version) => version.replace('v', ''))
-        // Remove versions that are disabled via input (via env var)
+        // Remove versions that are disabled via env var
         .filter((version) => {
         if (disableVersions.includes(version)) {
             (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.notice)(`Node version ${version} is disabled via env var`);
