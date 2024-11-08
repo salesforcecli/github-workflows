@@ -17,6 +17,7 @@ jobs:
         id: determine-node-versions
         with:
           nodeVersionOverride: ${{ vars.NODE_VERSION_OVERRIDE }} # default is 'lts/*'
+          nodeDisableVersions: ${{ vars.NODE_DISABLE_VERSIONS }}
 
   prevent-typescript-dependency:
     if: ${{ inputs.skipTsDepCheck == false }}
