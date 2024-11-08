@@ -25586,10 +25586,9 @@ const getVersions = async () => {
     // Below we will replace the matching major version with this more specific version
     // This will ensure that the unit tests run on the same version that will be shipped
     const installedNode = process.versions.node;
-    console.log("disabled 23:", process.env.NODE_DISABLE_VERSION_23);
-    // Support disabling certain versions via an environment variable
-    // They will be named like `NODE_DISABLE_VERSION_18` and will be set to `true`
-    const disabledVersions = Object.keys(process.env).filter((env) => env.startsWith('NODE_DISABLE_VERSION_')).map((env) => env.replace('NODE_DISABLE_VERSION_', ''));
+    // Comma separated list of major versions to disable
+    // For example: Set `NODE_DISABLE_VERSIONS` to `18,23`
+    const disableVersions = (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('nodeDisableVersions').split(',');
     const today = new Date();
     // Build an array of versions that the current date is between the start and end dates
     const versions = Object.keys(json)
@@ -25599,9 +25598,9 @@ const getVersions = async () => {
         return today >= startDate && today <= endDate;
     })
         .map((version) => version.replace('v', ''))
-        // Remove versions that are disabled via env vars
+        // Remove versions that are disabled via input (via env var)
         .filter((version) => {
-        if (disabledVersions.includes(version)) {
+        if (disableVersions.includes(version)) {
             (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.notice)(`Node version ${version} is disabled via env var`);
             return false;
         }
