@@ -14,10 +14,10 @@ yarn build
 
 ### Disabling specific versions
 
-You can disabled Node versions at the Org or Repo level by setting an environment variable for the version you wish to disable. For example:
+You can disabled Node versions at the Org or Repo level by setting an environment variable for the versions you wish to disable. For example:
 
 ```shell
-NODE_DISABLE_VERSION_18='true'
-NODE_DISABLE_VERSION_23='true'
+NODE_DISABLE_VERSIONS='18'
+NODE_DISABLE_VERSIONS='18,23'
 ```
 
