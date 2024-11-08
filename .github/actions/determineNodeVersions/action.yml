@@ -1,84 +1,29 @@
-name: determine-node-versions
-description: Calculate Node and Node-1 versions for unit tests
-
+name: Determine node versions
+description: "Get all the supported node versions"
 inputs:
   nodeVersionOverride:
-    description: Semver version to set version and version-1
+    description: Set node to a specific Semver version
     required: false
-  nodeDisableCurrent:
-    description: Disable testing on Node "current"
+  nodeDisableVersions:
+    description: A string of major version(s) to disable (18 or 18,23)
     required: false
-  nodeDisablePrevious:
-    description: Disable testing on Node "-1"
-    required: false
-
 outputs:
   nodeVersions:
     description: Node versions to be consumed by a workflow matrix
     value: ${{ steps.node-versions.outputs.nodeVersions }}
-
-# Sample output looks like this:
-#
-# nodeVersions<<EOF
-# [
-#   "current",
-#   "lts/*",
-#   "lts/-1",
-# ]
-# EOF
-#
-# OR...
-#
-# nodeVersions<<EOF
-# [
-#   "18.15.0",
-#   "16"
-# ]
-# EOF
-
 runs:
-  using: composite
+  using: 'composite'
   steps:
-    - name: Determine node versions
+    # Note: this is not typically how you would run javascript in an action
+    # This is need so that we can get the correct node version used elsewhere
+    - name: Set up Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.nodeVersionOverride || 'lts/*' }}
+    - name: Run main script
       shell: bash
       id: node-versions
-      run: |
-        # Current can be disabled by setting the "nodeDisableCurrent" input to "true"
-        # Previous LTS can be disabled by setting the "nodeDisablePrevious" input to "true"
-        # IF "NODE_VERSION" is overridden, "NODE_VERSION_CURRENT" will also be disabled
-
-        NODE_VERSION_CURRENT="current"
-        if [ "$INPUTS_NODE_DISABLE_CURRENT" = "true" ] || [ -n "$INPUTS_NODE_VERSION_OVERRIDE" ]; then
-          NODE_VERSION_CURRENT=""
-        fi
-
-        NODE_VERSION="lts/*"
-        if [ -n "$INPUTS_NODE_VERSION_OVERRIDE" ]; then
-          NODE_VERSION="$INPUTS_NODE_VERSION_OVERRIDE"
-        fi
-
-        NODE_PREVIOUS_LTS="lts/-1"
-        if [ "$INPUTS_NODE_DISABLE_PREVIOUS" = "true" ]; then
-          NODE_PREVIOUS_LTS=""
-        fi
-
-        if [ -n "$INPUTS_NODE_VERSION_OVERRIDE" ] && [ "$INPUTS_NODE_DISABLE_PREVIOUS" != "true" ] ; then
-          NODE_VERSION_MAJOR=$(echo "$INPUTS_NODE_VERSION_OVERRIDE" | cut -d '.' -f 1)
-
-          # LTS-1 will always be the previous LTS, which is always even. Here we calculate the nearest LTS
-          if [ $((NODE_VERSION_MAJOR % 2)) = 0 ]; then
-            NODE_PREVIOUS_LTS="$((NODE_VERSION_MAJOR - 2))"
-          else
-            NODE_PREVIOUS_LTS="$((NODE_VERSION_MAJOR - 1))"
-          fi
-        fi
-
-        {
-        echo "nodeVersions<<EOF"
-          jq -n --arg v1 "$NODE_VERSION_CURRENT" --arg v2 "$NODE_VERSION" --arg v3 "$NODE_PREVIOUS_LTS"  '[$v1, $v2, $v3] | map(select(. != ""))'
-        echo "EOF"
-        } >> "$GITHUB_OUTPUT"
+      run: node "$GITHUB_ACTION_PATH/dist/index.js"
       env:
-        INPUTS_NODE_VERSION_OVERRIDE: ${{ inputs.nodeVersionOverride }}
-        INPUTS_NODE_DISABLE_CURRENT: ${{ inputs.nodeDisableCurrent }}
-        INPUTS_NODE_DISABLE_PREVIOUS: ${{ inputs.nodeDisablePrevious }}
+        NODE_DISABLE_VERSIONS: ${{ inputs.nodeDisableVersions }}
+
