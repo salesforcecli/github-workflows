@@ -5,11 +5,24 @@
  * For full license text, see LICENSE.txt file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-import core from '@actions/core';
+import { setFailed, setOutput, notice } from '@actions/core';
+
+type VersionData = {
+    start: string;
+    end: string;
+    lts?: string;
+    maintenance?: string;
+    codename?: string;
+};
+
+type VersionsJson = {
+    [key: string]: VersionData;
+};
 
 export const getVersions = async () => {
     // Get the node release schedule json
-    const json = await (await fetch("https://raw.githubusercontent.com/nodejs/Release/main/schedule.json")).json();
+    const response = await fetch("https://raw.githubusercontent.com/nodejs/Release/main/schedule.json");
+    const json = await response.json() as VersionsJson;
 
     // This version of node was installed in the composite action before this script runs
     // This defaults to 'lts/*' but allows for the user to override it with an env var
@@ -34,7 +47,7 @@ export const getVersions = async () => {
         // Remove versions that are disabled via env vars
         .filter((version) => {
             if (disabledVersions.includes(version)) {
-                core.notice(`Node version ${version} is disabled via env var`);
+                notice(`Node version ${version} is disabled via env var`);
                 return false;
             }
             return true;
@@ -60,9 +73,8 @@ export const getVersions = async () => {
 export const run = async () => {
     try {
         const versions = await getVersions();
-
-        core.setOutput('nodeVersions', versions)
-    } catch (error) {
-        core.setFailed(error.message);
+        setOutput('nodeVersions', versions)
+    } catch (error: any) {
+        setFailed(error.message);
     }
 };

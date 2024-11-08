@@ -25547,6 +25547,93 @@ module.exports = {
 
 /***/ }),
 
+/***/ 9407:
+/***/ ((module, __unused_webpack___webpack_exports__, __nccwpck_require__) => {
+
+__nccwpck_require__.a(module, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
+/* harmony import */ var _main_js__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(1730);
+// The entrypoint for the action
+
+await (0,_main_js__WEBPACK_IMPORTED_MODULE_0__/* .run */ .e)();
+
+__webpack_async_result__();
+} catch(e) { __webpack_async_result__(e); } }, 1);
+
+/***/ }),
+
+/***/ 1730:
+/***/ ((__unused_webpack_module, __webpack_exports__, __nccwpck_require__) => {
+
+/* harmony export */ __nccwpck_require__.d(__webpack_exports__, {
+/* harmony export */   e: () => (/* binding */ run)
+/* harmony export */ });
+/* unused harmony export getVersions */
+/* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(7484);
+/* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__nccwpck_require__.n(_actions_core__WEBPACK_IMPORTED_MODULE_0__);
+/*
+ * Copyright (c) 2024, salesforce.com, inc.
+ * All rights reserved.
+ * Licensed under the BSD 3-Clause license.
+ * For full license text, see LICENSE.txt file in the repo root or https://opensource.org/licenses/BSD-3-Clause
+ */
+
+const getVersions = async () => {
+    // Get the node release schedule json
+    const response = await fetch("https://raw.githubusercontent.com/nodejs/Release/main/schedule.json");
+    const json = await response.json();
+    // This version of node was installed in the composite action before this script runs
+    // This defaults to 'lts/*' but allows for the user to override it with an env var
+    // Below we will replace the matching major version with this more specific version
+    // This will ensure that the unit tests run on the same version that will be shipped
+    const installedNode = process.versions.node;
+    // Support disabling certain versions via an environment variable
+    // They will be named like `NODE_DISABLE_VERSION_18` and will be set to `true`
+    const disabledVersions = Object.keys(process.env).filter((env) => env.startsWith('NODE_DISABLE_VERSION_')).map((env) => env.replace('NODE_DISABLE_VERSION_', ''));
+    const today = new Date();
+    // Build an array of versions that the current date is between the start and end dates
+    const versions = Object.keys(json)
+        .filter((version) => {
+        const startDate = new Date(json[version].start);
+        const endDate = new Date(json[version].end);
+        return today >= startDate && today <= endDate;
+    })
+        .map((version) => version.replace('v', ''))
+        // Remove versions that are disabled via env vars
+        .filter((version) => {
+        if (disabledVersions.includes(version)) {
+            (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.notice)(`Node version ${version} is disabled via env var`);
+            return false;
+        }
+        return true;
+    })
+        // Override the matching major version with the installed version
+        // for example if the installed version is 18.15.1, replace 18 with 18.15.1
+        .map((version) => {
+        if (version === installedNode.split('.')[0]) {
+            console.log(`Node version ${version} is overridden to ${installedNode}`);
+            return installedNode;
+        }
+        return version;
+    });
+    if (versions.length === 0) {
+        throw new Error('No versions found');
+    }
+    console.log('Found versions: ', versions);
+    return versions;
+};
+const run = async () => {
+    try {
+        const versions = await getVersions();
+        (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.setOutput)('nodeVersions', versions);
+    }
+    catch (error) {
+        (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.setFailed)(error.message);
+    }
+};
+
+
+/***/ }),
+
 /***/ 2613:
 /***/ ((module) => {
 
@@ -27368,101 +27455,6 @@ function parseParams (str) {
 module.exports = parseParams
 
 
-/***/ }),
-
-/***/ 9722:
-/***/ ((__webpack_module__, __unused_webpack___webpack_exports__, __nccwpck_require__) => {
-
-__nccwpck_require__.a(__webpack_module__, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
-/* harmony import */ var _main_js__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(8525);
-// The entrypoint for the action
-
-
-await (0,_main_js__WEBPACK_IMPORTED_MODULE_0__/* .run */ .e)()
-
-__webpack_async_result__();
-} catch(e) { __webpack_async_result__(e); } }, 1);
-
-/***/ }),
-
-/***/ 8525:
-/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __nccwpck_require__) => {
-
-/* harmony export */ __nccwpck_require__.d(__webpack_exports__, {
-/* harmony export */   e: () => (/* binding */ run)
-/* harmony export */ });
-/* unused harmony export getVersions */
-/* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(7484);
-/*
- * Copyright (c) 2024, salesforce.com, inc.
- * All rights reserved.
- * Licensed under the BSD 3-Clause license.
- * For full license text, see LICENSE.txt file in the repo root or https://opensource.org/licenses/BSD-3-Clause
- */
-
-
-
-const getVersions = async () => {
-    // Get the node release schedule json
-    const json = await (await fetch("https://raw.githubusercontent.com/nodejs/Release/main/schedule.json")).json();
-
-    // This version of node was installed in the composite action before this script runs
-    // This defaults to 'lts/*' but allows for the user to override it with an env var
-    // Below we will replace the matching major version with this more specific version
-    // This will ensure that the unit tests run on the same version that will be shipped
-    const installedNode = process.versions.node;
-
-    // Support disabling certain versions via an environment variable
-    // They will be named like `NODE_DISABLE_VERSION_18` and will be set to `true`
-    const disabledVersions = Object.keys(process.env).filter((env) => env.startsWith('NODE_DISABLE_VERSION_')).map((env) => env.replace('NODE_DISABLE_VERSION_', ''));
-
-    const today = new Date();
-
-    // Build an array of versions that the current date is between the start and end dates
-    const versions = Object.keys(json)
-        .filter((version) => {
-            const startDate = new Date(json[version].start);
-            const endDate = new Date(json[version].end);
-            return today >= startDate && today <= endDate;
-        })
-        .map((version) => version.replace('v', ''))
-        // Remove versions that are disabled via env vars
-        .filter((version) => {
-            if (disabledVersions.includes(version)) {
-                _actions_core__WEBPACK_IMPORTED_MODULE_0__.notice(`Node version ${version} is disabled via env var`);
-                return false;
-            }
-            return true;
-        })
-        // Override the matching major version with the installed version
-        // for example if the installed version is 18.15.1, replace 18 with 18.15.1
-        .map((version) => {
-            if (version === installedNode.split('.')[0]) {
-                console.log(`Node version ${version} is overridden to ${installedNode}`);
-                return installedNode;
-            }
-            return version;
-        })
-
-    if (versions.length === 0) {
-        throw new Error('No versions found');
-    }
-
-    console.log('Found versions: ', versions);
-    return versions;
-};
-
-const run = async () => {
-    try {
-        const versions = await getVersions();
-
-        _actions_core__WEBPACK_IMPORTED_MODULE_0__.setOutput('nodeVersions', versions)
-    } catch (error) {
-        _actions_core__WEBPACK_IMPORTED_MODULE_0__.setFailed(error.message);
-    }
-};
-
-
 /***/ })
 
 /******/ });
@@ -27567,6 +27559,18 @@ const run = async () => {
 /******/ 	};
 /******/ })();
 /******/ 
+/******/ /* webpack/runtime/compat get default export */
+/******/ (() => {
+/******/ 	// getDefaultExport function for compatibility with non-harmony modules
+/******/ 	__nccwpck_require__.n = (module) => {
+/******/ 		var getter = module && module.__esModule ?
+/******/ 			() => (module['default']) :
+/******/ 			() => (module);
+/******/ 		__nccwpck_require__.d(getter, { a: getter });
+/******/ 		return getter;
+/******/ 	};
+/******/ })();
+/******/ 
 /******/ /* webpack/runtime/define property getters */
 /******/ (() => {
 /******/ 	// define getter functions for harmony exports
@@ -27593,6 +27597,6 @@ const run = async () => {
 /******/ // startup
 /******/ // Load entry module and return exports
 /******/ // This entry module used 'module' so it can't be inlined
-/******/ var __webpack_exports__ = __nccwpck_require__(9722);
+/******/ var __webpack_exports__ = __nccwpck_require__(9407);
 /******/ __webpack_exports__ = await __webpack_exports__;
 /******/ 
