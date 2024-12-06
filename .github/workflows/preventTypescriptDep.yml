@@ -11,7 +11,10 @@ jobs:
       - run: |
           yarn install --production
           if [ -d node_modules/typescript ]; then
-            echo "Typescript dependency found";
+            echo "ERROR: Typescript dependency found";
+            echo "--- yarn why typescript ---"
             yarn why typescript;
+            echo "--- npm ls typescript---"
+            npm ls typescript
             exit 1;
           fi
