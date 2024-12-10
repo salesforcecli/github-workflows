@@ -7,7 +7,7 @@ jobs:
       nodeVersions: ${{ steps.determine-node-versions.outputs.nodeVersions }}
     runs-on: ubuntu-latest
     steps:
-      - uses: salesforcecli/github-workflows/.github/actions/determineNodeVersions@ew/all-the-nodes
+      - uses: salesforcecli/github-workflows/.github/actions/determineNodeVersions@main
         id: determine-node-versions
         with:
           nodeVersionOverride: ${{ vars.NODE_VERSION_OVERRIDE }} # default is 'lts/*'
