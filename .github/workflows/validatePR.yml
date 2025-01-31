@@ -46,9 +46,9 @@ jobs:
           steps.regex-match-gus-wi-title.outputs.match == '' &&
           steps.regex-match-gus-wi-body.outputs.match == ''
         run: |
-          echo "::warning::PRs need to reference a GUS Work Item in both the PR title AND body\n
-          - PR titles should start with a Work Item followed by a description, ex: W-12345678: My PR title\n
-          - PR bodies must include a Work Item wrapped in @s, ex: @W-12345678@ or [@W-12345678@](https://some-url)\n
+          echo "::warning::PRs need to reference a GUS Work Item in both the PR title AND body%0A
+          - PR titles should start with a Work Item followed by a description, ex: W-12345678: My PR title%0A
+          - PR bodies must include a Work Item wrapped in @s, ex: @W-12345678@ or [@W-12345678@](https://some-url)%0A
           - If you absolutely must skip this validation, add [skip-validate-pr] to the PR title or body"
           exit 1
 
