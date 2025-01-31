@@ -11,7 +11,7 @@ jobs:
         with:
           text: ${{ github.event.pull_request.title }}
           regex: 'W-\d{7,8}'
-          flags: gm
+          flags: gmi
 
       - name: Find GUS Work Item in Body
         uses: kaisugi/action-regex-match@45cc5bacf016a4c0d2c3c9d0f8b7c2f1b79687b8
@@ -19,7 +19,7 @@ jobs:
         with:
           text: ${{ github.event.pull_request.body }}
           regex: '@W-\d{7,8}@'
-          flags: gm
+          flags: gmi
 
       # Disabling GHA Run and Github Issue (for now) due to E360 lookup
 
