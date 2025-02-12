@@ -22,7 +22,7 @@ jobs:
   tarballs:
     env:
       SF_DISABLE_TELEMETRY: true
-    runs-on: ubuntu-20-8core
+    runs-on: ubuntu-22-8core
     steps:
       - uses: actions/checkout@v4
 
