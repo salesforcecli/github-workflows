@@ -12,6 +12,10 @@ inputs:
     description: The name of the prerelease channel (e.g. dev, beta)
   multi:
     description: Create a different markdown page for each topic.
+  package-manager:
+    description: Package manager to use (npm or yarn)
+    required: false
+    default: "yarn"
 
 runs:
   using: composite
@@ -42,13 +46,25 @@ runs:
       if: ${{ steps.is-oclif-plugin.outputs.bool == 'true' && steps.next-version.outputs.skipped == 'false' }}
       shell: bash
       run: |
-        yarn install
-        yarn tsc
-        yarn oclif readme \
-          --no-aliases \
-          --version "$STEPS_NEXT_VERSION_TAG" \
-          ${{ inputs.multi == 'true' && '--multi' || '' }} \
-          --repository-prefix "<%- repo %>/blob/<%- version %>/<%- commandPath %>" \
-          || echo "::warning::'oclif readme' failed. Check the logs."
+        if [ "$INPUTS_PACKAGE_MANAGER" = "npm" ]; then
+          npm install
+          npm run tsc
+          npm run oclif readme \
+            --no-aliases \
+            --version "$STEPS_NEXT_VERSION_TAG" \
+            ${{ inputs.multi == 'true' && '--multi' || '' }} \
+            --repository-prefix "<%- repo %>/blob/<%- version %>/<%- commandPath %>" \
+            || echo "::warning::'oclif readme' failed. Check the logs."
+        else
+          yarn install
+          yarn tsc
+          yarn oclif readme \
+            --no-aliases \
+            --version "$STEPS_NEXT_VERSION_TAG" \
+            ${{ inputs.multi == 'true' && '--multi' || '' }} \
+            --repository-prefix "<%- repo %>/blob/<%- version %>/<%- commandPath %>" \
+            || echo "::warning::'oclif readme' failed. Check the logs."
+        fi
       env:
         STEPS_NEXT_VERSION_TAG: ${{ steps.next-version.outputs.tag }}
+        INPUTS_PACKAGE_MANAGER: ${{ inputs.package-manager }}

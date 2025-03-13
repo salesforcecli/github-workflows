@@ -22,6 +22,11 @@ on:
         type: boolean
         description: "Create a different markdown page for each topic."
         default: false
+      package-manager:
+        type: string
+        description: "Package manager to use (npm or yarn)"
+        default: "yarn"
+        required: false
 
 jobs:
   release:
@@ -40,7 +45,7 @@ jobs:
       - uses: salesforcecli/github-workflows/.github/actions/getPreReleaseTag@main
         id: distTag
 
-      - name: Validate prerelease
+      - name: Fail if prerelease on main
         if: github.ref_name == 'main' && inputs.prerelease
         uses: actions/github-script@v7
         with:
@@ -75,6 +80,7 @@ jobs:
           pre-release: ${{ steps.prereleaseTag.outputs.tag && 'true' || 'false' }}
           pre-release-identifier: ${{ steps.prereleaseTag.outputs.tag }}
           multi: ${{ inputs.readme-multi }}
+          package-manager: ${{ inputs.package-manager }}
 
       - name: Conventional Changelog Action
         id: changelog
