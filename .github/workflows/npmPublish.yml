@@ -118,7 +118,10 @@ jobs:
         if: steps.is-published.outputs.published == 'true'
         uses: actions/github-script@v7
         with:
-          script: core.setFailed(`The version '${process.env.INPUTS_GITHUB_TAG}' has already been published to ${process.env.INPUTS_PUBLISH_TO_GITHUB_PACKAGES === 'true' ? 'GitHub Packages' : 'npm'}`)
+          script: |
+            const message = 'The version \'' + process.env.INPUTS_GITHUB_TAG + '\' has already been published to ' +
+              (process.env.INPUTS_PUBLISH_TO_GITHUB_PACKAGES === 'true' ? 'GitHub Packages' : 'npm');
+            core.setFailed(message);
         env:
           INPUTS_GITHUB_TAG: ${{ inputs.githubTag }}
           INPUTS_PUBLISH_TO_GITHUB_PACKAGES: ${{ inputs.publishToGithubPackages }}
