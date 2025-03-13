@@ -7,6 +7,9 @@ on:
         description: AWS access key id. Only required if sign = true
       AWS_SECRET_ACCESS_KEY:
         description: AWS secret access key. Only required if sign = true
+      SVC_CLI_BOT_GITHUB_TOKEN:
+        description: GitHub token for package publishing. Required if publishToGithubPackages is true
+        required: false
 
     inputs:
       tag:
@@ -50,11 +53,28 @@ on:
         description: the github release tag that you want to publish as an npm package
         required: true
         type: string
+      package-manager:
+        type: string
+        description: "Package manager to use (npm or yarn)"
+        default: "yarn"
+        required: false
+      publishToGithubPackages:
+        type: boolean
+        description: "If true, publish to GitHub Packages instead of npm"
+        default: false
+        required: false
+      scope:
+        type: string
+        description: "Scope for the package (e.g., @organization). Required if publishToGithubPackages is true"
+        required: false
 jobs:
   check-publish:
     outputs:
       published: ${{ steps.is-published.outputs.published }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -63,11 +83,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.nodeVersion }}
+          registry-url: ${{ inputs.publishToGithubPackages && 'https://npm.pkg.github.com' || '' }}
+          scope: ${{ inputs.scope }}
 
       - name: Is published
         id: is-published
         run: |
-          RESPONSE=$(npm view .@$INPUTS_GITHUB_TAG version --json --silent || echo "Not published")
+          if [ "$INPUTS_PUBLISH_TO_GITHUB_PACKAGES" = "true" ]; then
+            # For GitHub Packages, check if the package exists in the registry
+            RESPONSE=$(npm view $INPUTS_SCOPE/$GITHUB_REPOSITORY_NAME@$INPUTS_GITHUB_TAG version --json --silent || echo "Not published")
+          else
+            # For npm, check if the package exists in the npm registry
+            RESPONSE=$(npm view .@$INPUTS_GITHUB_TAG version --json --silent || echo "Not published")
+          fi
 
           # The response is wrapped in double quotes, so we need to compare it with (escaped) quotes
           if [ "$RESPONSE" = "\"$INPUTS_GITHUB_TAG\"" ]; then
@@ -77,7 +105,10 @@ jobs:
           fi
         env:
           INPUTS_GITHUB_TAG: ${{ inputs.githubTag }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          INPUTS_PUBLISH_TO_GITHUB_PACKAGES: ${{ inputs.publishToGithubPackages }}
+          INPUTS_SCOPE: ${{ inputs.scope }}
+          GITHUB_REPOSITORY_NAME: ${{ github.event.repository.name }}
+          NODE_AUTH_TOKEN: ${{ inputs.publishToGithubPackages && secrets.SVC_CLI_BOT_GITHUB_TOKEN || secrets.NPM_TOKEN }}
 
       - run: echo "[INFO] Is package published:\ $STEPS_IS_PUBLISHED_PUBLISHED"
         env:
@@ -87,9 +118,10 @@ jobs:
         if: steps.is-published.outputs.published == 'true'
         uses: actions/github-script@v7
         with:
-          script: core.setFailed(`The version '${process.env.INPUTS_GITHUB_TAG}' has already been published to npm`)
+          script: core.setFailed(`The version '${process.env.INPUTS_GITHUB_TAG}' has already been published to ${process.env.INPUTS_PUBLISH_TO_GITHUB_PACKAGES === 'true' ? 'GitHub Packages' : 'npm'}`)
         env:
           INPUTS_GITHUB_TAG: ${{ inputs.githubTag }}
+          INPUTS_PUBLISH_TO_GITHUB_PACKAGES: ${{ inputs.publishToGithubPackages }}
 
   ctc-open:
     needs: [check-publish]
@@ -101,7 +133,20 @@ jobs:
     needs: [check-publish, ctc-open]
     if: ${{ always() && needs.check-publish.outputs.published == 'false' && (!inputs.ctc || (inputs.ctc && needs.ctc-open.outputs.changeCaseId)) }}
     runs-on: ${{ inputs.runsOn }}
+    permissions:
+      contents: read
+      packages: write
     steps:
+      - name: Validate inputs
+        if: inputs.publishToGithubPackages == 'true'
+        run: |
+          if [ -z "$INPUTS_SCOPE" ]; then
+            echo "Error: scope is required when publishing to GitHub Packages"
+            exit 1
+          fi
+        env:
+          INPUTS_SCOPE: ${{ inputs.scope }}
+
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.githubTag }}
@@ -109,11 +154,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.nodeVersion }}
-          cache: yarn
+          cache: ${{ inputs.package-manager }}
+          registry-url: ${{ inputs.publishToGithubPackages && 'https://npm.pkg.github.com' || '' }}
+          scope: ${{ inputs.scope }}
 
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
+        if: inputs.package-manager == 'yarn'
 
-      - run: yarn build
+      - name: npm install
+        if: inputs.package-manager == 'npm'
+        run: npm ci
+
+      - name: Build
+        run: ${{ inputs.package-manager }} build
 
       - run: npm install -g @salesforce/plugin-release-management
 
@@ -129,7 +182,7 @@ jobs:
         env:
           INPUTS_GITHUB_TAG: ${{ inputs.githubTag }}
           INPUTS_TAG: ${{ inputs.tag }}
-          NPM_TOKEN: ${{secrets.NPM_TOKEN}}
+          NPM_TOKEN: ${{ inputs.publishToGithubPackages && secrets.SVC_CLI_BOT_GITHUB_TOKEN || secrets.NPM_TOKEN }}
           AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
           AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
 
