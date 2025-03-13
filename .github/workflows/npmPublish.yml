@@ -138,7 +138,7 @@ jobs:
     runs-on: ${{ inputs.runsOn }}
     permissions:
       contents: read
-      packages: ${{ inputs.publishToGithubPackages == true && 'write' || 'none' }}
+      packages: ${{ inputs.publishToGithubPackages && 'write' || 'none' }}
     steps:
       - name: Validate inputs
         if: inputs.publishToGithubPackages == 'true'
