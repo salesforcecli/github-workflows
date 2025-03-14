@@ -67,6 +67,16 @@ on:
         type: string
         description: "Scope for the package (e.g., @organization). Required if publishToGithubPackages is true"
         required: false
+      actions-repository:
+        type: string
+        description: "The repository owner/name to use for actions (format: owner/repo)"
+        default: "salesforcecli/github-workflows"
+        required: false
+      actions-ref:
+        type: string
+        description: "The branch, tag or SHA to use for actions"
+        default: "main"
+        required: false
 jobs:
   check-publish:
     outputs:
@@ -129,8 +139,11 @@ jobs:
   ctc-open:
     needs: [check-publish]
     if: inputs.ctc && needs.check-publish.outputs.published == 'false'
-    uses: salesforcecli/github-workflows/.github/workflows/ctcOpen.yml@main
+    uses: ${{ inputs.actions-repository }}/.github/workflows/ctcOpen.yml@${{ inputs.actions-ref }}
     secrets: inherit
+    with:
+      actions-repository: ${{ inputs.actions-repository }}
+      actions-ref: ${{ inputs.actions-ref }}
 
   npm-publish:
     needs: [check-publish, ctc-open]
@@ -161,7 +174,7 @@ jobs:
           registry-url: ${{ inputs.publishToGithubPackages && 'https://npm.pkg.github.com' || '' }}
           scope: ${{ inputs.scope }}
 
-      - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
+      - uses: ${{ inputs.actions-repository }}/.github/actions/yarnInstallWithRetries@${{ inputs.actions-ref }}
         if: inputs.package-manager == 'yarn'
 
       - name: npm install
@@ -192,16 +205,20 @@ jobs:
   ctcCloseSuccess:
     needs: [ctc-open, npm-publish]
     if: needs.ctc-open.result == 'success' && needs.npm-publish.result == 'success' && needs.ctc-open.outputs.changeCaseId
-    uses: salesforcecli/github-workflows/.github/workflows/ctcClose.yml@main
+    uses: ${{ inputs.actions-repository }}/.github/workflows/ctcClose.yml@${{ inputs.actions-ref }}
     secrets: inherit
     with:
       changeCaseId: ${{needs.ctc-open.outputs.changeCaseId}}
+      actions-repository: ${{ inputs.actions-repository }}
+      actions-ref: ${{ inputs.actions-ref }}
 
   ctcCloseFail:
     needs: [ctc-open, npm-publish]
     if: always() && inputs.ctc && needs.ctc-open.outputs.changeCaseId && (needs.ctc-open.result != 'success' || needs.npm-publish.result != 'success')
-    uses: salesforcecli/github-workflows/.github/workflows/ctcClose.yml@main
+    uses: ${{ inputs.actions-repository }}/.github/workflows/ctcClose.yml@${{ inputs.actions-ref }}
     secrets: inherit
     with:
       changeCaseId: ${{ needs.ctc-open.outputs.changeCaseId }}
       status: Not Implemented
+      actions-repository: ${{ inputs.actions-repository }}
+      actions-ref: ${{ inputs.actions-ref }}

@@ -10,6 +10,16 @@ on:
         description: CTC status, like "Implemented - per plan", "Not Implemented"
         default: Implemented - per plan
         type: string
+      actions-repository:
+        type: string
+        description: "The repository owner/name to use for actions (format: owner/repo)"
+        default: "salesforcecli/github-workflows"
+        required: false
+      actions-ref:
+        type: string
+        description: "The branch, tag or SHA to use for actions"
+        default: "main"
+        required: false
 
 jobs:
   ctcClose:

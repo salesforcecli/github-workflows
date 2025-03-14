@@ -27,6 +27,16 @@ on:
         description: "Package manager to use (npm or yarn)"
         default: "yarn"
         required: false
+      actions-repository:
+        type: string
+        description: "The repository owner/name to use for actions (format: owner/repo)"
+        default: "salesforcecli/github-workflows"
+        required: false
+      actions-ref:
+        type: string
+        description: "The branch, tag or SHA to use for actions"
+        default: "main"
+        required: false
 
 jobs:
   release:
@@ -34,7 +44,7 @@ jobs:
     steps:
       - name: Get Github user info
         id: github-user-info
-        uses: salesforcecli/github-workflows/.github/actions/getGithubUserInfo@main
+        uses: ${{ inputs.actions-repository }}/.github/actions/getGithubUserInfo@${{ inputs.actions-ref }}
         with:
           SVC_CLI_BOT_GITHUB_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
 
@@ -42,7 +52,7 @@ jobs:
         with:
           token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
 
-      - uses: salesforcecli/github-workflows/.github/actions/getPreReleaseTag@main
+      - uses: ${{ inputs.actions-repository }}/.github/actions/getPreReleaseTag@${{ inputs.actions-ref }}
         id: distTag
 
       - name: Fail if prerelease on main
@@ -74,7 +84,7 @@ jobs:
 
       - name: Generate oclif readme
         if: ${{ inputs.generate-readme }}
-        uses: salesforcecli/github-workflows/.github/actions/generateOclifReadme@main
+        uses: ${{ inputs.actions-repository }}/.github/actions/generateOclifReadme@${{ inputs.actions-ref }}
         with:
           skip-on-empty: ${{ inputs.skip-on-empty }}
           pre-release: ${{ steps.prereleaseTag.outputs.tag && 'true' || 'false' }}
