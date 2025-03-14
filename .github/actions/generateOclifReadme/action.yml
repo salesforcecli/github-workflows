@@ -47,8 +47,8 @@ runs:
       shell: bash
       run: |
         if [ "$INPUTS_PACKAGE_MANAGER" = "npm" ]; then
-          npm install
-          npm run tsc
+          npm ci
+          npx tsc -b --verbose
           npm run oclif readme \
             --no-aliases \
             --version "$STEPS_NEXT_VERSION_TAG" \
