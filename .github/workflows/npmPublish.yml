@@ -168,8 +168,13 @@ jobs:
         if: inputs.package-manager == 'npm'
         run: npm ci
 
-      - name: Build
-        run: ${{ inputs.package-manager }} build
+      - name: Build with yarn
+        if: inputs.package-manager == 'yarn'
+        run: yarn build
+
+      - name: Build with npm
+        if: inputs.package-manager == 'npm'
+        run: npm run build
 
       - run: npm install -g @salesforce/plugin-release-management
 
