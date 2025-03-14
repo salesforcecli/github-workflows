@@ -67,11 +67,6 @@ on:
         type: string
         description: "Scope for the package (e.g., @organization). Required if publishToGithubPackages is true"
         required: false
-      actions-repository:
-        type: string
-        description: "The repository owner/name to use for actions (format: owner/repo)"
-        default: "salesforcecli/github-workflows"
-        required: false
 jobs:
   check-publish:
     outputs:
@@ -166,7 +161,7 @@ jobs:
           registry-url: ${{ inputs.publishToGithubPackages && 'https://npm.pkg.github.com' || '' }}
           scope: ${{ inputs.scope }}
 
-      - uses: ${{ inputs.actions-repository }}/.github/actions/yarnInstallWithRetries@main
+      - uses: llmzy/salesforcecli-github-workflows/.github/actions/yarnInstallWithRetries@jps/npm-not-yarn
         if: inputs.package-manager == 'yarn'
 
       - name: npm install
