@@ -4,17 +4,6 @@ on:
       changeCaseId:
         description: Id for the change case created
         value: ${{ jobs.ctcOpen.outputs.changeCaseId }}
-    inputs:
-      actions-repository:
-        type: string
-        description: "The repository owner/name to use for actions (format: owner/repo)"
-        default: "salesforcecli/github-workflows"
-        required: false
-      actions-ref:
-        type: string
-        description: "The branch, tag or SHA to use for actions"
-        default: "main"
-        required: false
 
 jobs:
   ctcOpen:

@@ -32,11 +32,6 @@ on:
         description: "The repository owner/name to use for actions (format: owner/repo)"
         default: "salesforcecli/github-workflows"
         required: false
-      actions-ref:
-        type: string
-        description: "The branch, tag or SHA to use for actions"
-        default: "main"
-        required: false
 
 jobs:
   release:
@@ -44,7 +39,7 @@ jobs:
     steps:
       - name: Get Github user info
         id: github-user-info
-        uses: ${{ inputs.actions-repository }}/.github/actions/getGithubUserInfo@${{ inputs.actions-ref }}
+        uses: ${{ inputs.actions-repository }}/.github/actions/getGithubUserInfo@main
         with:
           SVC_CLI_BOT_GITHUB_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
 
@@ -52,7 +47,7 @@ jobs:
         with:
           token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
 
-      - uses: ${{ inputs.actions-repository }}/.github/actions/getPreReleaseTag@${{ inputs.actions-ref }}
+      - uses: ${{ inputs.actions-repository }}/.github/actions/getPreReleaseTag@main
         id: distTag
 
       - name: Fail if prerelease on main
@@ -84,7 +79,7 @@ jobs:
 
       - name: Generate oclif readme
         if: ${{ inputs.generate-readme }}
-        uses: ${{ inputs.actions-repository }}/.github/actions/generateOclifReadme@${{ inputs.actions-ref }}
+        uses: ${{ inputs.actions-repository }}/.github/actions/generateOclifReadme@main
         with:
           skip-on-empty: ${{ inputs.skip-on-empty }}
           pre-release: ${{ steps.prereleaseTag.outputs.tag && 'true' || 'false' }}
