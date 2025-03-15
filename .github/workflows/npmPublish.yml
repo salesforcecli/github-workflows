@@ -69,6 +69,7 @@ on:
         required: false
 jobs:
   check-publish:
+    if: inputs.githubTag != ''
     outputs:
       published: ${{ steps.is-published.outputs.published }}
     runs-on: ubuntu-latest
@@ -76,13 +77,6 @@ jobs:
       contents: read
       packages: read
     steps:
-      - name: Validate GitHub Tag
-        if: inputs.githubTag == ''
-        run: |
-          echo "Error: No GitHub tag provided. This usually happens when the release step was skipped due to empty changelog."
-          echo "No changes to publish - workflow completed successfully."
-          exit 0  # Exit with success to indicate this is expected behavior
-
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.githubTag }}
