@@ -1,5 +1,9 @@
 on:
   workflow_call:
+    inputs:
+      githubTag:
+        description: 'The semver tag of the GitHub Release'
+        type: string
     outputs:
       changeCaseId:
         description: Id for the change case created
@@ -26,7 +30,12 @@ jobs:
         run: |
             # Temp disable exit on error
             set +e
-            CTC_RESULT=$(sfchangecase create --location ${{github.repositoryUrl}} --release ${{github.repository}}.$(date +%F) --json)
+            if [ -n "$GITHUB_TAG" ]; then
+              RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/tag/$GITHUB_TAG"
+            else
+              RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases"
+            fi
+            CTC_RESULT=$(sfchangecase create --location ${{github.repositoryUrl}} --test-environment $RELEASE_URL --release ${{github.repository}}.$(date +%F) --json)
             # Re-enable exit on error
             set -e
 
@@ -42,6 +51,7 @@ jobs:
                 exit 1
             fi
         env:
+          GITHUB_TAG: ${{ inputs.githubTag }}
           SF_CHANGE_CASE_SFDX_AUTH_URL: ${{ secrets.SF_CHANGE_CASE_SFDX_AUTH_URL}}
           SF_CHANGE_CASE_TEMPLATE_ID: ${{ secrets.SF_CHANGE_CASE_TEMPLATE_ID}}
           SF_CHANGE_CASE_CONFIGURATION_ITEM: ${{ secrets.SF_CHANGE_CASE_CONFIGURATION_ITEM}}
