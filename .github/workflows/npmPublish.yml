@@ -95,6 +95,8 @@ jobs:
     needs: [check-publish]
     if: inputs.ctc && needs.check-publish.outputs.published == 'false'
     uses: salesforcecli/github-workflows/.github/workflows/ctcOpen.yml@main
+    with:
+      githubTag: ${{ inputs.githubTag }}
     secrets: inherit
 
   npm-publish:
