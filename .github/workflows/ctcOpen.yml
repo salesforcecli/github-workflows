@@ -13,7 +13,7 @@ jobs:
   ctcOpen:
     outputs:
       changeCaseId: ${{ steps.ctc.outputs.ctcId }}
-    runs-on: static-ip-ubuntu-runners
+    runs-on: static-ip-ubuntu-24-runners
     steps:
       - uses: actions/checkout@v4
 
