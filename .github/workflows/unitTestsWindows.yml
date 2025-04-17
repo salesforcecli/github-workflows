@@ -25,7 +25,7 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - uses: google/wireit@setup-github-actions-caching#f21db1f3a6a4db31f42787a958cf2a18308effed
+      - uses: google/wireit@setup-github-actions-caching/v2
         continue-on-error: true
 
       - uses: actions/setup-node@v4
