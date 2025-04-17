@@ -38,8 +38,8 @@ jobs:
           node-version: ${{ matrix.node_version }}
           cache: yarn
 
-      # - uses: google/wireit@setup-github-actions-caching/v1
-      #   continue-on-error: true
+      - uses: google/wireit@setup-github-actions-caching#f21db1f3a6a4db31f42787a958cf2a18308effed
+        continue-on-error: true
 
       - name: Cache node modules
         id: cache-nodemodules
