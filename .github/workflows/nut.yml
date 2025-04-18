@@ -91,6 +91,9 @@ jobs:
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
 
+      - name: Install newest wireit
+        run: yarn add wireit@latest
+
       - run: yarn compile
 
       - name: Check that oclif config exists
