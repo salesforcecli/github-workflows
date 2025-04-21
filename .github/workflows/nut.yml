@@ -91,8 +91,11 @@ jobs:
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
 
-      - name: Install newest wireit
-        run: yarn add wireit@latest
+      # This is a temporary workaround to ensure wireit is >= 0.14.12
+      # Once all plugins/libs that use this workflow are updated, this can be removed
+      # See: https://github.com/google/wireit/issues/1297#issuecomment-2794737569
+      - name: Install wireit
+        run: yarn add wireit@^0.14.12
 
       - run: yarn compile
 
