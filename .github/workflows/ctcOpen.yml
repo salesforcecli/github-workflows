@@ -35,7 +35,7 @@ jobs:
             else
               RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases"
             fi
-            CTC_RESULT=$(sfchangecase create --location ${{github.repositoryUrl}} --test-environment $RELEASE_URL --release ${{github.repository}}.$(date +%F) --json)
+            CTC_RESULT=$(sfchangecase create --location ${{github.repositoryUrl}} --test-environment $RELEASE_URL --service platform-cli --release ${{github.repository}}.$(date +%F) --json)
             # Re-enable exit on error
             set -e
 
