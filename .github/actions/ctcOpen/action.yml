@@ -14,6 +14,9 @@ inputs:
   SVC_CLI_BOT_GITHUB_TOKEN:
     description: Github token
     required: true
+  githubTag:
+    description: 'The semver tag of the GitHub Release'
+    required: false
 
 outputs:
   changeCaseId:
@@ -39,7 +42,12 @@ runs:
       with:
         max_attempts: 5
         command: |
-          CTC_RESULT=$(sfchangecase create --location ${{ github.repositoryUrl }} --release ${{ github.repository }}.$(date +%F) --json)
+          if [ -n "$GITHUB_TAG" ]; then
+            RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/tag/$GITHUB_TAG"
+          else
+            RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases"
+          fi
+          CTC_RESULT=$(sfchangecase create --location ${{github.repositoryUrl}} --test-environment $RELEASE_URL --service platform-cli --release ${{github.repository}}.$(date +%F) --json)
 
           STATUS=$(printf '%s' "$CTC_RESULT" | jq -r '.status')
           CTC_ID=$(printf '%s' "$CTC_RESULT" | jq -r '.result.id')
@@ -56,6 +64,7 @@ runs:
         SF_CHANGE_CASE_SFDX_AUTH_URL: ${{ inputs.SF_CHANGE_CASE_SFDX_AUTH_URL}}
         SF_CHANGE_CASE_TEMPLATE_ID: ${{ inputs.SF_CHANGE_CASE_TEMPLATE_ID}}
         SF_CHANGE_CASE_CONFIGURATION_ITEM: ${{ inputs.SF_CHANGE_CASE_CONFIGURATION_ITEM}}
+        GITHUB_TAG: ${{ inputs.githubTag }}
 
     - run: echo "[INFO] Change Case ID is:\ $STEPS_CTC_CTCID"
       shell: bash
