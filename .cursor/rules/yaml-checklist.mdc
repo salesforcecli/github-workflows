@@ -3,14 +3,16 @@ globs: *.yml
 alwaysApply: false
 ---
 
-## shell scripts
+Moving stuff to Environment Variables for safer scripting
+ex: there is an input named `githubTag`. Add an `ENV:` to it like `INPUTS_GITHUB_TAG: ${{ inputs.githubTag }}`
+
+### shell scripts
 
 In github worklows that run shell scripts refer to inputs and outputs via the environment variable convention.
-ex: there is an input named `githubTag`.
 BAD: `RESPONSE=$(npm view .@${{ inputs.githubTag }} version --json --silent || echo "Not published")`
 GOOD: `RESPONSE=$(npm view .@$INPUTS_GITHUB_TAG version --json --silent || echo "Not published")`
 
-## script tag
+### script tag
 
 when using `script` from actions/github-script
 BAD: `script: core.setFailed("The version '$INPUTS_GITHUB_TAG' has already been published to npm")`

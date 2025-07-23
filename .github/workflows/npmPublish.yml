@@ -60,6 +60,9 @@ jobs:
     outputs:
       published: ${{ steps.is-published.outputs.published }}
     runs-on: ubuntu-latest
+    env:
+      INPUTS_GITHUB_TAG: ${{ inputs.githubTag }}
+      INPUTS_PACKAGE_MANAGER: ${{ inputs.packageManager }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -86,7 +89,10 @@ jobs:
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          INPUTS_GITHUB_TAG: ${{ inputs.githubTag }}
       - run: echo "published said $STEPS_IS_PUBLISHED_PUBLISHED"
+        env:
+          STEPS_IS_PUBLISHED_PUBLISHED: ${{ steps.is-published.outputs.published }}
       - name: Fail if published
         if: steps.is-published.outputs.published == 'true'
         uses: actions/github-script@v7
@@ -95,14 +101,20 @@ jobs:
 
   ctc-open:
     needs: [check-publish]
-    if: inputs.ctc && needs.check-publish.outputs.published == 'false' && inputs.tag == 'latest'
+    if: inputs.ctc && needs.check-publish.outputs.published == 'false'
     uses: salesforcecli/github-workflows/.github/workflows/ctcOpen.yml@main
+    with:
+      githubTag: ${{ inputs.githubTag }}
     secrets: inherit
 
   npm-publish:
     needs: [check-publish, ctc-open]
     if: ${{ always() && needs.check-publish.outputs.published == 'false' && (!inputs.ctc || (inputs.ctc && needs.ctc-open.outputs.changeCaseId)) }}
     runs-on: ${{ inputs.runsOn }}
+    env:
+      INPUTS_PACKAGE_MANAGER: ${{ inputs.packageManager }}
+      INPUTS_GITHUB_TAG: ${{ inputs.githubTag }}
+      INPUTS_TAG: ${{ inputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -122,8 +134,8 @@ jobs:
       - name: NPM Release
         run: |
           sf-release npm:package:release \
-            --githubtag ${{ inputs.githubTag}} \
-            --npmtag ${{ inputs.tag }} \
+            --githubtag $INPUTS_GITHUB_TAG \
+            --npmtag $INPUTS_TAG \
             --no-install \
             ${{ inputs.dryrun && '--dryrun' || '' }} \
             ${{ inputs.prerelease && format('--prerelease {0}', github.ref_name) || '' }} \
