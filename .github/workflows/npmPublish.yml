@@ -76,6 +76,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.nodeVersion }}
+
       - name: Is published
         id: is-published
         run: |
@@ -89,6 +90,7 @@ jobs:
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - run: echo "[INFO] Is package published:\ $STEPS_IS_PUBLISHED_PUBLISHED"
         env:
           STEPS_IS_PUBLISHED_PUBLISHED: ${{ steps.is-published.outputs.published }}
