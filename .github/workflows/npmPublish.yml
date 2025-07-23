@@ -91,7 +91,7 @@ jobs:
         if: steps.is-published.outputs.published == 'true'
         uses: actions/github-script@v7
         with:
-          script: core.setFailed("The version '$INPUTS_GITHUB_TAG' has already been published to npm")
+          script: core.setFailed(`The version '${process.env.INPUTS_GITHUB_TAG}' has already been published to npm`)
 
   ctc-open:
     needs: [check-publish]
