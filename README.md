@@ -79,6 +79,13 @@ jobs:
     #  NPM_TOKEN: ^&*$
 ```
 
+works with npm, too
+
+```yml
+with:
+  packageManager: npm
+```
+
 ### Plugin Signing
 
 Plugins created by Salesforce teams can be signed automatically with `sign:true` if the repo is in [salesforcecli](https://github.com/salesforcecli) or [forcedotcom](https://github.com/forcedotcom) gitub organization.
@@ -135,12 +142,12 @@ on:
       # point at specific branches, or a naming convention via wildcard
       - prerelease/**
     tags-ignore:
-      - "*"
+      - '*'
   workflow_dispatch:
     inputs:
       prerelease:
         type: string
-        description: "Name to use for the prerelease: beta, dev, etc. NOTE: If this is already set in the package.json, it does not need to be passed in here."
+        description: 'Name to use for the prerelease: beta, dev, etc. NOTE: If this is already set in the package.json, it does not need to be passed in here.'
 
 jobs:
   release:
@@ -294,7 +301,7 @@ name: automerge
 on:
   workflow_dispatch:
   schedule:
-    - cron: "56 2,5,8,11 * * *"
+    - cron: '56 2,5,8,11 * * *'
 
 jobs:
   automerge:
