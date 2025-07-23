@@ -1,9 +1,9 @@
 name: yarn-install-with-retries
-description: "wraps yarn install with retries/timeout to handle network failures"
+description: 'wraps yarn install with retries/timeout to handle network failures'
 inputs:
   ignore-scripts:
     default: 'false'
-    description: "Skip pre/post install scripts"
+    description: 'Skip pre/post install scripts'
 runs:
   using: composite
   steps:
