@@ -89,10 +89,10 @@ jobs:
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          INPUTS_GITHUB_TAG: ${{ inputs.githubTag }}
-      - run: echo "published said $STEPS_IS_PUBLISHED_PUBLISHED"
+      - run: echo "[INFO] Is package published:\ $STEPS_IS_PUBLISHED_PUBLISHED"
         env:
           STEPS_IS_PUBLISHED_PUBLISHED: ${{ steps.is-published.outputs.published }}
+
       - name: Fail if published
         if: steps.is-published.outputs.published == 'true'
         uses: actions/github-script@v7
@@ -134,8 +134,8 @@ jobs:
       - name: NPM Release
         run: |
           sf-release npm:package:release \
-            --githubtag $INPUTS_GITHUB_TAG \
-            --npmtag $INPUTS_TAG \
+            --githubtag "$INPUTS_GITHUB_TAG" \
+            --npmtag "$INPUTS_TAG" \
             --no-install \
             ${{ inputs.dryrun && '--dryrun' || '' }} \
             ${{ inputs.prerelease && format('--prerelease {0}', github.ref_name) || '' }} \
@@ -147,7 +147,7 @@ jobs:
 
   ctcCloseSuccess:
     needs: [ctc-open, npm-publish]
-    if: needs.ctc-open.result == 'success' && needs.npm-publish.result == 'success' && needs.ctc-open.outputs.changeCaseId && inputs.tag == 'latest'
+    if: needs.ctc-open.result == 'success' && needs.npm-publish.result == 'success' && needs.ctc-open.outputs.changeCaseId
     uses: salesforcecli/github-workflows/.github/workflows/ctcClose.yml@main
     secrets: inherit
     with:
@@ -155,7 +155,7 @@ jobs:
 
   ctcCloseFail:
     needs: [ctc-open, npm-publish]
-    if: always() && inputs.ctc && needs.ctc-open.outputs.changeCaseId && (needs.ctc-open.result != 'success' || needs.npm-publish.result != 'success') && inputs.tag == 'latest'
+    if: always() && inputs.ctc && needs.ctc-open.outputs.changeCaseId && (needs.ctc-open.result != 'success' || needs.npm-publish.result != 'success')
     uses: salesforcecli/github-workflows/.github/workflows/ctcClose.yml@main
     secrets: inherit
     with:
