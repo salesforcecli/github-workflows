@@ -138,11 +138,11 @@ jobs:
         uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
       - name: Vulnerability check
         if: inputs.vulnerabilityCheck
-        # Temporary check for known vulnerable packages from the following supply chain attack:
-        # https://www.sonatype.com/blog/npm-chalk-and-debug-packages-hit-in-software-supply-chain-attack
-        # Last updated 10:33 a.m. ET on September 9, 2025
+        # Temporary check for known vulnerable packages from the following supply chain attacks:
         run: |
           vulns=(
+            # https://www.sonatype.com/blog/npm-chalk-and-debug-packages-hit-in-software-supply-chain-attack
+            # Last updated 10:33 a.m. ET on September 9, 2025
             "@coveops/abi@2.0.1"
             "@duckdb/duckdb-wasm@1.29.2"
             "@duckdb/node-api@1.3.3"
@@ -171,6 +171,76 @@ jobs:
             "supports-color@10.2.1"
             "supports-hyperlinks@4.1.1"
             "wrap-ansi@9.0.1"
+            # https://socket.dev/blog/tinycolor-supply-chain-attack-affects-40-packages
+            # Last updated 10:40 a.m. ET on September 16, 2025
+            "angulartics2@14.1.2"
+            "@ctrl/deluge@7.2.2"
+            "@ctrl/golang-template@1.4.3"
+            "@ctrl/magnet-link@4.0.4"
+            "@ctrl/ngx-codemirror@7.0.2"
+            "@ctrl/ngx-csv@6.0.2"
+            "@ctrl/ngx-emoji-mart@9.2.2"
+            "@ctrl/ngx-rightclick@4.0.2"
+            "@ctrl/qbittorrent@9.7.2"
+            "@ctrl/react-adsense@2.0.2"
+            "@ctrl/shared-torrent@6.3.2"
+            "@ctrl/tinycolor@4.1.1"
+            "@ctrl/tinycolor@4.1.2"
+            "@ctrl/torrent-file@4.1.2"
+            "@ctrl/transmission@7.3.1"
+            "@ctrl/ts-base32@4.0.2"
+            "encounter-playground@0.0.5"
+            "json-rules-engine-simplified@0.2.1"
+            "json-rules-engine-simplified@0.2.4"
+            "koa2-swagger-ui@5.11.1"
+            "koa2-swagger-ui@5.11.2"
+            "@nativescript-community/gesturehandler@2.0.35"
+            "@nativescript-community/sentry 4.6.43"
+            "@nativescript-community/text@1.6.13"
+            "@nativescript-community/ui-collectionview@6.0.6"
+            "@nativescript-community/ui-drawer@0.1.30"
+            "@nativescript-community/ui-image@4.5.6"
+            "@nativescript-community/ui-material-bottomsheet@7.2.72"
+            "@nativescript-community/ui-material-core@7.2.76"
+            "@nativescript-community/ui-material-core-tabs@7.2.76"
+            "ngx-color@10.0.2"
+            "ngx-toastr@19.0.2"
+            "ngx-trend@8.0.1"
+            "react-complaint-image@0.0.35"
+            "react-jsonschema-form-conditionals@0.3.21"
+            "react-jsonschema-form-extras@1.0.4"
+            "rxnt-authentication@0.0.6"
+            "rxnt-healthchecks-nestjs@1.0.5"
+            "rxnt-kue@1.0.7"
+            "swc-plugin-component-annotate@1.9.2"
+            "ts-gaussian@3.0.6"
+            # https://socket.dev/blog/ongoing-supply-chain-attack-targets-crowdstrike-npm-packages
+            # Last updated 10:40 a.m. ET on September 16, 2025
+            "@crowdstrike/commitlint@8.1.1"
+            "@crowdstrike/commitlint@8.1.2"
+            "@crowdstrike/falcon-shoelace@0.4.2"
+            "@crowdstrike/foundry-js@0.19.2"
+            "@crowdstrike/glide-core@0.34.2"
+            "@crowdstrike/glide-core@0.34.3"
+            "@crowdstrike/logscale-dashboard@1.205.2"
+            "@crowdstrike/logscale-file-editor@1.205.2"
+            "@crowdstrike/logscale-parser-edit@1.205.1"
+            "@crowdstrike/logscale-parser-edit@1.205.2"
+            "@crowdstrike/logscale-search@1.205.2"
+            "@crowdstrike/tailwind-toucan-base@5.0.2"
+            "browser-webdriver-downloader@3.0.8"
+            "ember-browser-services@5.0.3"
+            "ember-headless-form-yup@1.0.1"
+            "ember-headless-form@1.1.3"
+            "ember-headless-table@2.1.6"
+            "ember-url-hash-polyfill@1.0.13"
+            "ember-velcro@2.2.2"
+            "eslint-config-crowdstrike-node@4.0.4"
+            "eslint-config-crowdstrike@11.0.3"
+            "monorepo-next@13.0.2"
+            "remark-preset-lint-crowdstrike@4.0.2"
+            "verror-extra@6.0.1"
+            "yargs-help-output@5.0.3"
           )
 
           for vuln in "${vulns[@]}"; do
