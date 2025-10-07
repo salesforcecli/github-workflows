@@ -36,9 +36,10 @@ on:
         required: false
       ctc:
         description: |
-          Use CTC.  Requires environment to contain
-          SF_CHANGE_CASE_SFDX_AUTH_URL, SF_CHANGE_CASE_TEMPLATE_ID, SF_CHANGE_CASE_CONFIGURATION_ITEM.
-          Also requires a static ip runner (you can't use ubuntu-latest)
+          Use CTC.
+          - Only opens when publishing to 'latest'. Will NOT open for prerelease tags (e.g. dev, beta, qa)
+          - Requires env vars: SF_CHANGE_CASE_SFDX_AUTH_URL, SF_CHANGE_CASE_TEMPLATE_ID, SF_CHANGE_CASE_CONFIGURATION_ITEM.
+          - Requires a static IP runner (you cannot use ubuntu-latest)
         type: boolean
         required: false
       runsOn:
@@ -108,7 +109,8 @@ jobs:
 
   ctc-open:
     needs: [check-publish]
-    if: inputs.ctc && needs.check-publish.outputs.published == 'false'
+    # CTC will only open when publishing to 'latest'
+    if: inputs.ctc && needs.check-publish.outputs.published == 'false' && inputs.tag == 'latest'
     uses: salesforcecli/github-workflows/.github/workflows/ctcOpen.yml@main
     with:
       githubTag: ${{ inputs.githubTag }}
@@ -116,7 +118,7 @@ jobs:
 
   npm-publish:
     needs: [check-publish, ctc-open]
-    if: ${{ always() && needs.check-publish.outputs.published == 'false' && (!inputs.ctc || (inputs.ctc && needs.ctc-open.outputs.changeCaseId)) }}
+    if: ${{ always() && needs.check-publish.outputs.published == 'false' && (!inputs.ctc || (inputs.ctc && inputs.tag != 'latest') || (inputs.ctc && needs.ctc-open.outputs.changeCaseId)) }}
     runs-on: ${{ inputs.runsOn }}
     env:
       INPUTS_PACKAGE_MANAGER: ${{ inputs.packageManager }}
