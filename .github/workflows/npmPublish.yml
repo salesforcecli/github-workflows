@@ -61,6 +61,12 @@ on:
         required: false
         default: true
         type: boolean
+      packagePath:
+        description: relative path to the package to publish, should start with a ".".  Defaults to the root of the repository.  Useful for monorepos.
+        required: false
+        type: string
+        default: .
+
 jobs:
   check-publish:
     outputs:
@@ -279,6 +285,7 @@ jobs:
             ${{ inputs.dryrun && '--dryrun' || '' }} \
             ${{ inputs.prerelease && format('--prerelease {0}', github.ref_name) || '' }} \
             ${{ inputs.sign && '--sign' || '' }}
+        working-directory: ${{ inputs.packagePath }}
         env:
           NPM_TOKEN: ${{secrets.NPM_TOKEN}}
           AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
