@@ -102,6 +102,7 @@ jobs:
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        working-directory: ${{ inputs.packagePath }}
 
       - run: echo "[INFO] Is package published:\ $STEPS_IS_PUBLISHED_PUBLISHED"
         env:
