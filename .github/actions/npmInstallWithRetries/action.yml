@@ -8,7 +8,7 @@ runs:
   using: composite
   steps:
     - name: timeout config
-      run: npm config set timeout 600000
+      run: npm config set fetch-timeout 600000
       shell: bash
     - name: npm ci
       uses: salesforcecli/github-workflows/.github/actions/retry@main
