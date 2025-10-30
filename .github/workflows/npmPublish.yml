@@ -144,7 +144,7 @@ jobs:
         uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
       - name: Install dependencies with npm
         if: inputs.packageManager == 'npm'
-        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@sm/monorepo-npm-publishes
+        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
       - name: Vulnerability check
         if: inputs.vulnerabilityCheck
         # Temporary check for known vulnerable packages from the following supply chain attacks:
