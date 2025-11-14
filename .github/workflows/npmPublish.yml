@@ -276,7 +276,7 @@ jobs:
             fi
           done
       - run: $INPUTS_PACKAGE_MANAGER run build
-      - run: npm install -g @salesforce/plugin-release-management@5.7.73-jf3.0
+      - run: npm install -g @salesforce/plugin-release-management@5.7.73-jf4.0
       - name: NPM Release
         run: |
           sf-release npm:package:release \
