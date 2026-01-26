@@ -97,7 +97,7 @@ jobs:
         name: cli install
         with:
           max_attempts: ${{ inputs.attempts }}
-          command: npm install -g @salesforce/cli@nightly shx yarn-deduplicate --omit=dev
+          command: npm install -g @salesforce/cli@latest shx yarn-deduplicate --omit=dev
           timeout_minutes: 20
 
       - uses: salesforcecli/github-workflows/.github/actions/retry@main
