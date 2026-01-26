@@ -86,7 +86,7 @@ jobs:
         uses: salesforcecli/github-workflows/.github/actions/retry@main
         with:
           max_attempts: ${{ inputs.retries }}
-          command: npm install @salesforce/cli@nightly -g
+          command: npm install @salesforce/cli@latest -g
 
       - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
         if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
