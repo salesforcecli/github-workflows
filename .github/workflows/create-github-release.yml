@@ -93,7 +93,6 @@ jobs:
           output-file: ${{ steps.prereleaseTag.outputs.tag && 'false' || 'CHANGELOG.md' }} # If prerelease, do not write the changelog file
 
       - name: Create Github Release
-        id: create-github-release
         uses: ncipollo/release-action@2c591bcc8ecdcd2db72b97d6147f871fcd833ba5
         if: ${{ steps.changelog.outputs.skipped == 'false' }}
         with:
@@ -105,9 +104,9 @@ jobs:
           token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
           skipIfReleaseExists: true
 
-      - name: Announce Failure
+      - name: Announce if Github Release was skipped
         id: slack
-        if: ${{ steps.create-github-release.outcome == 'success' && steps.create-github-release.outputs.id == '' }}
+        if: ${{ steps.changelog.outputs.skipped == 'true' }}
         uses: slackapi/slack-github-action@v1.26.0
         env:
           # for non-CLI-team-owned plugins, you can send this anywhere you like
