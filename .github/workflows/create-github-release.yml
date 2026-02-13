@@ -117,20 +117,19 @@ jobs:
           # Only copy over the "blocks" array to the Block Kit Builder
           payload: |
             {
-              "text": "Workflow \"${{ github.event.workflow_run.name }}\" failed in ${{ github.event.workflow_run.repository.name }}",
               "blocks": [
                 {
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": ":uno-skip: Github Release was skipped in ${{ github.event.workflow_run.repository.name }}! :uno-skip:"
+                    "text": ":uno-skip: Github Release was skipped in ${{ github.repository }}! :uno-skip:"
                   }
                 },
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*Repo:* ${{ github.event.workflow_run.repository.html_url }}\n*Workflow name:* `${{ github.event.workflow_run.name }}`\n*Job url:* ${{ github.event.workflow_run.html_url }}"
+                    "text": "*Repo:* ${{ github.server_url }}/${{ github.repository }}\n*Workflow name:* `${{ github.workflow }}`\n*Run url:* ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
                   }
                 }
               ]
