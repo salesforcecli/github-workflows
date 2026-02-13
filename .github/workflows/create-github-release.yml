@@ -122,7 +122,7 @@ jobs:
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": ":uno-skip: Github Release was skipped in ${{ github.repository }}! :uno-skip:"
+                    "text": ":uno-skip-red: Github Release was skipped in ${{ github.repository }}! :uno-skip-red:"
                   }
                 },
                 {
