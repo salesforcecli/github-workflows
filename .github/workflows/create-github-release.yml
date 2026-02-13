@@ -93,6 +93,7 @@ jobs:
           output-file: ${{ steps.prereleaseTag.outputs.tag && 'false' || 'CHANGELOG.md' }} # If prerelease, do not write the changelog file
 
       - name: Create Github Release
+        id: create-github-release
         uses: ncipollo/release-action@2c591bcc8ecdcd2db72b97d6147f871fcd833ba5
         if: ${{ steps.changelog.outputs.skipped == 'false' }}
         with:
@@ -103,3 +104,35 @@ jobs:
           prerelease: ${{ steps.prereleaseTag.outputs.tag && 'true' || 'false' }}
           token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
           skipIfReleaseExists: true
+
+      - name: Announce Failure
+        id: slack
+        if: ${{ steps.create-github-release.outcome == 'success' && steps.create-github-release.outputs.id == '' }}
+        uses: slackapi/slack-github-action@v1.26.0
+        env:
+          # for non-CLI-team-owned plugins, you can send this anywhere you like
+          SLACK_WEBHOOK_URL: ${{ secrets.CLI_ALERTS_SLACK_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        with:
+          # Payload can be visually tested here: https://app.slack.com/block-kit-builder/T01GST6QY0G#%7B%22blocks%22:%5B%5D%7D
+          # Only copy over the "blocks" array to the Block Kit Builder
+          payload: |
+            {
+              "text": "Workflow \"${{ github.event.workflow_run.name }}\" failed in ${{ github.event.workflow_run.repository.name }}",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": ":uno-skip: Github Release was skipped in ${{ github.event.workflow_run.repository.name }}! :uno-skip:"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Repo:* ${{ github.event.workflow_run.repository.html_url }}\n*Workflow name:* `${{ github.event.workflow_run.name }}`\n*Job url:* ${{ github.event.workflow_run.html_url }}"
+                  }
+                }
+              ]
+            }
