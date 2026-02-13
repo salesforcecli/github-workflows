@@ -103,3 +103,34 @@ jobs:
           prerelease: ${{ steps.prereleaseTag.outputs.tag && 'true' || 'false' }}
           token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
           skipIfReleaseExists: true
+
+      - name: Announce if Github Release was skipped
+        id: slack
+        if: ${{ steps.changelog.outputs.skipped == 'true' }}
+        uses: slackapi/slack-github-action@v1.26.0
+        env:
+          # for non-CLI-team-owned plugins, you can send this anywhere you like
+          SLACK_WEBHOOK_URL: ${{ secrets.CLI_ALERTS_SLACK_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        with:
+          # Payload can be visually tested here: https://app.slack.com/block-kit-builder/T01GST6QY0G#%7B%22blocks%22:%5B%5D%7D
+          # Only copy over the "blocks" array to the Block Kit Builder
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": ":uno-skip-red: Github Release was skipped in ${{ github.repository }}! :uno-skip-red:"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Repo:* ${{ github.server_url }}/${{ github.repository }}\n*Workflow name:* `${{ github.workflow }}`\n*Run url:* ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                }
+              ]
+            }
