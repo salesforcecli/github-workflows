@@ -106,7 +106,7 @@ jobs:
 
       - name: Announce if Github Release was skipped
         id: slack
-        if: ${{ steps.changelog.outputs.skipped == 'true' }}
+        if: ${{ steps.changelog.outputs.skipped == 'true' && github.actor != 'dependabot[bot]' }}
         uses: slackapi/slack-github-action@v1.26.0
         env:
           # for non-CLI-team-owned plugins, you can send this anywhere you like
