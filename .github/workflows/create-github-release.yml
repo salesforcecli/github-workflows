@@ -1,6 +1,13 @@
 name: create-github-release
 on:
   workflow_call:
+    secrets:
+      SVC_CLI_BOT_GITHUB_TOKEN:
+        description: A Github PAT with repo write access.
+        required: true
+      CLI_ALERTS_SLACK_WEBHOOK:
+        description: Slack webhook for alerts.
+        required: false
     inputs:
       prerelease:
         type: string
@@ -101,7 +108,7 @@ jobs:
 
       - name: Announce if Github Release was skipped
         id: slack
-        if: ${{ steps.changelog.outputs.skipped == 'true' && github.actor != 'dependabot[bot]' }}
+        if: ${{ steps.changelog.outputs.skipped == 'true' && github.actor != 'dependabot[bot]' && secrets.CLI_ALERTS_SLACK_WEBHOOK != '' }}
         uses: slackapi/slack-github-action@v1.26.0
         env:
           # for non-CLI-team-owned plugins, you can send this anywhere you like
