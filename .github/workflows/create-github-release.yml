@@ -106,18 +106,33 @@ jobs:
           token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
           skipIfReleaseExists: true
 
-      - name: Check for Slack webhook
-        id: check-slack
+      # Determine if we should alert Slack that the release was skipped.
+      # Skip the alert if: no webhook is configured, or the commit is from a Dependabot merge.
+      - name: Should we post to Slack that release was skipped
+        id: should-post-slack
+        if: steps.changelog.outputs.skipped == 'true'
         run: |
-          if [ -n "$SLACK_WEBHOOK" ]; then
-            echo "has_webhook=true" >> "$GITHUB_OUTPUT"
+          if [ -z "$SLACK_WEBHOOK" ]; then
+            echo "[INFO] No Slack webhook configured, skipping alert"
+            exit 0
           fi
+
+          PR_AUTHOR=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq '.[0].user.login // empty')
+          echo "[INFO] PR author: $PR_AUTHOR"
+
+          if [ "$PR_AUTHOR" = "dependabot[bot]" ]; then
+            echo "[INFO] Dependabot merge, skipping alert"
+            exit 0
+          fi
+
+          echo "post_skipped_release_to_slack=true" >> "$GITHUB_OUTPUT"
         env:
           SLACK_WEBHOOK: ${{ secrets.CLI_ALERTS_SLACK_WEBHOOK }}
+          GH_TOKEN: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN }}
 
       - name: Announce if Github Release was skipped
         id: slack
-        if: ${{ steps.changelog.outputs.skipped == 'true' && github.actor != 'dependabot[bot]' && steps.check-slack.outputs.has_webhook == 'true' }}
+        if: steps.should-post-slack.outputs.post_skipped_release_to_slack == 'true'
         uses: slackapi/slack-github-action@v1.26.0
         env:
           # for non-CLI-team-owned plugins, you can send this anywhere you like
