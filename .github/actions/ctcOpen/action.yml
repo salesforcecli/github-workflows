@@ -38,28 +38,30 @@ runs:
 
     - name: Open CTC case
       id: ctc
-      uses: salesforcecli/github-workflows/.github/actions/retry@main
-      with:
-        max_attempts: 5
-        command: |
-          if [ -n "$GITHUB_TAG" ]; then
-            RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/tag/$GITHUB_TAG"
-          else
-            RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases"
-          fi
-          CTC_RESULT=$(sfchangecase create --location ${{github.repositoryUrl}} --test-environment $RELEASE_URL --service platform-cli --release ${{github.repository}}.$(date +%F) --json)
+      shell: bash
+      run: |
+        # Temp disable exit on error
+        set +e
+        if [ -n "$GITHUB_TAG" ]; then
+          RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/tag/$GITHUB_TAG"
+        else
+          RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases"
+        fi
+        CTC_RESULT=$(sfchangecase create --location ${{github.repositoryUrl}} --test-environment $RELEASE_URL --service platform-cli --release ${{github.repository}}.$(date +%F) --json)
+        # Re-enable exit on error
+        set -e
 
-          STATUS=$(printf '%s' "$CTC_RESULT" | jq -r '.status')
-          CTC_ID=$(printf '%s' "$CTC_RESULT" | jq -r '.result.id')
+        STATUS=$(printf '%s' "$CTC_RESULT" | jq -r '.status')
+        CTC_ID=$(printf '%s' "$CTC_RESULT" | jq -r '.result.id')
 
-          if [[ "$STATUS" == "0" && "$CTC_ID" != "null" ]]; then
-              echo "Successfully created case with ID: $CTC_ID"
-              echo "ctcId=$CTC_ID" >> "$GITHUB_OUTPUT"
-          else
-              echo "CTC failed to open a case. Result:"
-              echo "$CTC_RESULT"
-              exit 1
-          fi
+        if [[ "$STATUS" == "0" && "$CTC_ID" != "null" ]]; then
+            echo "Successfully created case with ID: $CTC_ID"
+            echo "ctcId=$CTC_ID" >> "$GITHUB_OUTPUT"
+        else
+            echo "CTC failed to open a case. Result:"
+            echo "$CTC_RESULT"
+            exit 1
+        fi
       env:
         SF_CHANGE_CASE_SFDX_AUTH_URL: ${{ inputs.SF_CHANGE_CASE_SFDX_AUTH_URL}}
         SF_CHANGE_CASE_TEMPLATE_ID: ${{ inputs.SF_CHANGE_CASE_TEMPLATE_ID}}
