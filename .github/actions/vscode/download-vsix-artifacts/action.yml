@@ -1,0 +1,30 @@
+name: 'Download VSIX Artifacts'
+description: 'Downloads and finds VSIX artifacts for publishing workflows'
+
+inputs:
+  artifact-name:
+    description: 'Name for the VSIX artifacts'
+    required: false
+    default: 'vsix-packages'
+    type: string
+
+outputs:
+  vsix_files:
+    description: 'JSON array of VSIX file paths'
+    value: ${{ steps.find_vsix.outputs.vsix_files }}
+
+runs:
+  using: composite
+  steps:
+    - name: Download VSIX artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ./vsix-artifacts
+
+    - name: Find VSIX files
+      id: find_vsix
+      shell: bash
+      run: |
+        VSIX_FILES=$(find ./vsix-artifacts -name "*.vsix" | jq -R -s -c 'split("\n")[:-1]')
+        echo "vsix_files=$VSIX_FILES" >> $GITHUB_OUTPUT 

@@ -1,0 +1,23 @@
+{
+  "name": "github-workflows",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared GitHub Actions workflows and scripts for Salesforce repositories",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/salesforcecli/github-workflows.git"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

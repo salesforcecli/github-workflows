@@ -1,0 +1,215 @@
+name: CI
+
+# Reusable CI workflow template for VS Code extension repositories
+#
+# Usage from consuming repository:
+#   jobs:
+#     ci:
+#       uses: salesforcecli/github-workflows/.github/workflows/vscode/ci-template.yml@main
+#       with:
+#         lint-command: 'npm run lint'
+#         compile-command: 'npm run compile'
+#         test-command: 'npm run test'
+#         test-coverage-command: 'npm run test:coverage'
+#
+# Features:
+#   - Tests across multiple OS (Ubuntu, Windows)
+#   - Tests across Node.js versions (lts/-1, lts/*, current)
+#   - Coverage collection and reporting
+#   - Parallel test execution
+#   - Artifact upload for coverage reports
+
+on:
+  workflow_call:
+    inputs:
+      lint-command:
+        description: 'Command to run linting'
+        required: false
+        default: 'npm run lint'
+        type: string
+      compile-command:
+        description: 'Command to compile'
+        required: false
+        default: 'npm run compile'
+        type: string
+      test-command:
+        description: 'Command to run tests (without coverage)'
+        required: false
+        default: 'npm run test'
+        type: string
+      test-coverage-command:
+        description: 'Command to run tests with coverage'
+        required: false
+        default: 'npm run test:coverage'
+        type: string
+      coverage-report-command:
+        description: 'Command to merge coverage reports'
+        required: false
+        default: 'npm run test:coverage:report'
+        type: string
+  workflow_dispatch:
+    inputs:
+      lint-command:
+        description: 'Command to run linting'
+        required: false
+        default: 'npm run lint'
+        type: string
+
+# Add explicit permissions for security
+permissions:
+  contents: read
+  pull-requests: read
+  actions: read
+
+jobs:
+  test:
+    name: Test
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node-version: ['lts/-1', 'lts/*', 'current']
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          submodules: false
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        uses: ./.github/actions/vscode/npm-install-with-retries
+
+      - name: Run linting
+        run: ${{ inputs.lint-command }}
+
+      - name: Compile project
+        run: ${{ inputs.compile-command }}
+
+      - name: Run tests with coverage (lts/current)
+        if: ${{ matrix.node-version != 'lts/-1' }}
+        run: ${{ inputs.test-coverage-command }}
+
+      - name: Run tests (lts/-1, no coverage)
+        if: ${{ matrix.node-version == 'lts/-1' }}
+        env:
+          # Old-LTS defaults to ~4 GB old-space, which is too low for heavy stdlib suites.
+          # Keep this scoped to lts/-1 and non-coverage runs only.
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: ${{ inputs.test-command }}
+
+      - name: Merge coverage reports
+        if: ${{ matrix.node-version != 'lts/-1' }}
+        run: ${{ inputs.coverage-report-command }}
+
+      - name: Determine Node Label
+        id: node-label
+        shell: bash
+        env:
+          NODE_VERSION: ${{ matrix.node-version }}
+        run: |
+          if [ "$NODE_VERSION" = "lts/*" ]; then
+            echo "value=lts" >> $GITHUB_OUTPUT
+          elif [ "$NODE_VERSION" = "lts/-1" ]; then
+            echo "value=lts-1" >> $GITHUB_OUTPUT
+          elif [ "$NODE_VERSION" = "current" ]; then
+            echo "value=current" >> $GITHUB_OUTPUT
+          else
+            echo "value=$NODE_VERSION" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload coverage report
+        if: ${{ matrix.node-version != 'lts/-1' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report-${{ matrix.os }}-${{ steps.node-label.outputs.value }}
+          path: ./coverage
+
+  test-quality:
+    name: Test Quality
+    needs: test
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node-version: ['lts/*']
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          submodules: false
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        uses: ./.github/actions/vscode/npm-install-with-retries
+
+      - name: Run quality tests
+        run: npm run test:quality
+
+  package:
+    name: Package
+    needs: test
+    if: ${{ needs.test.result == 'success' }}
+    uses: ./.github/workflows/package.yml
+    with:
+      branch: ${{ github.head_ref || github.ref_name }}
+      artifact-name: vsix-packages
+      dry-run: false
+
+  ci-complete:
+    name: CI Complete
+    runs-on: ubuntu-latest
+    needs: [test, package]
+    if: always()
+    steps:
+      - name: Check all jobs result
+        env:
+          TEST_RESULT: ${{ needs.test.result }}
+          PACKAGE_RESULT: ${{ needs.package.result }}
+        run: |
+          if [[ "$TEST_RESULT" != "success" ]]; then
+            echo "Test job(s) failed"
+            exit 1
+          fi
+          if [[ "$PACKAGE_RESULT" != "success" ]]; then
+            echo "Package job failed"
+            exit 1
+          fi
+          echo "All jobs succeeded"
+
+  slack-notify:
+    name: CI Failed Notification
+    needs: [test, package]
+    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'push' && (needs.test.result == 'failure' || needs.package.result == 'failure')
+    steps:
+      - name: Notify Slack
+        uses: slackapi/slack-github-action@v3.0.3
+        with:
+          payload: |
+            {
+              "text": "❌ CI Pipeline Failed",
+              "event": "CI workflow failed, run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+              "repo": "${{ github.repository }}",
+              "test_result": "${{ needs.test.result }}",
+              "package_result": "${{ needs.package.result }}",
+              "branch": "${{ github.ref_name }}",
+              "commit": "${{ github.sha }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.IDEE_MAIN_SLACK_WEBHOOK }}
