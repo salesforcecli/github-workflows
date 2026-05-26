@@ -87,7 +87,7 @@ jobs:
           node-version: '22.x'
 
       - name: Install dependencies
-        uses: ./.github/actions/vscode/npm-install-with-retries
+        uses: salesforcecli/github-workflows/.github/actions/vscode/npm-install-with-retries@feat/add-vscode-extension-ci
 
       - name: Determine changes and version bumps
         id: changes
@@ -116,7 +116,7 @@ jobs:
           node-version: '22.x'
 
       - name: Install dependencies
-        uses: ./.github/actions/vscode/npm-install-with-retries
+        uses: salesforcecli/github-workflows/.github/actions/vscode/npm-install-with-retries@feat/add-vscode-extension-ci
 
       - name: Display Extension Release Plan
         env:
@@ -147,7 +147,7 @@ jobs:
           node-version: '22.x'
 
       - name: Install dependencies
-        uses: ./.github/actions/vscode/npm-install-with-retries
+        uses: salesforcecli/github-workflows/.github/actions/vscode/npm-install-with-retries@feat/add-vscode-extension-ci
 
       - name: Bump versions and tag for selected extensions
         env:
@@ -254,7 +254,7 @@ jobs:
 
       - name: Calculate artifact name
         id: calc
-        uses: ./.github/actions/vscode/calculate-artifact-name
+        uses: salesforcecli/github-workflows/.github/actions/vscode/calculate-artifact-name@feat/add-vscode-extension-ci
         with:
           artifact-name: vsix-packages
           dry-run: ${{ inputs.dry-run || github.event.inputs.dry-run || 'false' }}
@@ -283,7 +283,7 @@ jobs:
           node-version: '22.x'
 
       - name: Install dependencies
-        uses: ./.github/actions/vscode/npm-install-with-retries
+        uses: salesforcecli/github-workflows/.github/actions/vscode/npm-install-with-retries@feat/add-vscode-extension-ci
 
       - name: Determine publish matrix
         id: matrix
@@ -398,7 +398,7 @@ jobs:
           echo "Found VSIX file: $VSIX_FILE"
 
       - name: Publish to ${{ matrix.marketplace }}
-        uses: ./.github/actions/vscode/publish-vsix
+        uses: salesforcecli/github-workflows/.github/actions/vscode/publish-vsix@feat/add-vscode-extension-ci
         env:
           # Pass tokens as environment variables for better security
           VSCE_PERSONAL_ACCESS_TOKEN: ${{ matrix.registry == 'vsce' && secrets.VSCE_PERSONAL_ACCESS_TOKEN || '' }}
@@ -447,7 +447,7 @@ jobs:
           node-version: '22.x'
 
       - name: Install dependencies
-        uses: ./.github/actions/vscode/npm-install-with-retries
+        uses: salesforcecli/github-workflows/.github/actions/vscode/npm-install-with-retries@feat/add-vscode-extension-ci
 
       - name: Download VSIX artifacts
         uses: actions/download-artifact@v8
