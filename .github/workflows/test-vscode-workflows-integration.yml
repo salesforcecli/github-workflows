@@ -55,6 +55,6 @@ jobs:
       - name: Build VSIX package
         working-directory: test-repo/packages/apex-lsp-vscode-extension
         run: |
-          npm run vscode:package
+          npm run package
           ls -la *.vsix
           echo "✓ VSIX packaging successful"
