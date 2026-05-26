@@ -23,12 +23,18 @@ on:
           - both
           - nightly
           - prerelease
+  push:
+    branches:
+      - feat/add-vscode-extension-ci
+    paths:
+      - '.github/workflows/test-vscode-workflows.yml'
+      - '.github/workflows/vscode/**'
 
 jobs:
   test-nightly-workflow:
     name: Test Nightly Workflow (Dry Run)
     if: github.event_name == 'workflow_dispatch' && (inputs.test-workflow == 'nightly' || inputs.test-workflow == 'both')
-    uses: ./.github/workflows/vscode/publish-extensions.yml
+    uses: ./.github/workflows/vscode-publish-extensions.yml
     with:
       # Test parameters - use dry-run to avoid actual publishing
       branch: main
@@ -43,7 +49,7 @@ jobs:
   test-prerelease-promotion:
     name: Test Prerelease Promotion (Dry Run)
     if: github.event_name == 'workflow_dispatch' && (inputs.test-workflow == 'prerelease' || inputs.test-workflow == 'both')
-    uses: ./.github/workflows/vscode/promote-prerelease.yml
+    uses: ./.github/workflows/vscode-promote-prerelease.yml
     with:
       min-tag-age-days: '7'
       dry-run: true
