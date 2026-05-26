@@ -14,6 +14,13 @@ on:
         options:
           - apex-language-support
           - salesforcedx-vscode
+  push:
+    branches:
+      - feat/add-vscode-extension-ci
+    paths:
+      - '.github/workflows/test-vscode-ci.yml'
+      - 'packages/vscode-extension-ci/**'
+      - '.github/actions/vscode/**'
 
 jobs:
   test-npm-package:
@@ -51,7 +58,7 @@ jobs:
   test-with-apex-language-support:
     name: Test with apex-language-support
     runs-on: ubuntu-latest
-    if: inputs.test-repo == 'apex-language-support'
+    if: github.event_name == 'push' || inputs.test-repo == 'apex-language-support'
     steps:
       - name: Checkout github-workflows
         uses: actions/checkout@v6
@@ -92,7 +99,7 @@ jobs:
   test-with-salesforcedx-vscode:
     name: Test with salesforcedx-vscode
     runs-on: ubuntu-latest
-    if: inputs.test-repo == 'salesforcedx-vscode'
+    if: github.event_name == 'workflow_dispatch' && inputs.test-repo == 'salesforcedx-vscode'
     steps:
       - name: Checkout github-workflows
         uses: actions/checkout@v6
