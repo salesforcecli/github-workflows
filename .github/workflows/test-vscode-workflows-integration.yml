@@ -2,6 +2,12 @@ name: Test VS Code Workflows Integration
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feat/add-vscode-extension-ci
+    paths:
+      - '.github/workflows/test-vscode-workflows-integration.yml'
+      - 'packages/vscode-extension-ci/**'
 
 jobs:
   test-with-apex-language-support:
