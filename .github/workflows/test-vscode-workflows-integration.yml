@@ -16,7 +16,8 @@ jobs:
     steps:
       - name: Checkout github-workflows
         uses: actions/checkout@v6
-        path: toolkit
+        with:
+          path: toolkit
 
       - name: Checkout apex-language-support
         uses: actions/checkout@v6
