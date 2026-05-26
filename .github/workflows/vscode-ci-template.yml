@@ -165,7 +165,7 @@ jobs:
     name: Package
     needs: test
     if: ${{ needs.test.result == 'success' }}
-    uses: ./.github/workflows/package.yml
+    uses: salesforcecli/github-workflows/.github/workflows/vscode-package.yml@feat/add-vscode-extension-ci
     with:
       branch: ${{ github.head_ref || github.ref_name }}
       artifact-name: vsix-packages

@@ -261,7 +261,7 @@ jobs:
 
   package:
     needs: [bump-versions, calculate-artifact-name, determine-changes]
-    uses: ./.github/workflows/package.yml
+    uses: salesforcecli/github-workflows/.github/workflows/vscode-package.yml@feat/add-vscode-extension-ci
     with:
       branch: ${{ inputs.branch || github.ref_name }}
       artifact-name: ${{ needs.calculate-artifact-name.outputs.artifact-name }}
