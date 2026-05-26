@@ -98,7 +98,7 @@ jobs:
           IS_PROMOTION: 'false'
           SELECTED_EXTENSIONS: ${{ inputs.extensions }}
         run: |
-          npx vscode-ext-ci ext-change-detector
+          node node_modules/github-workflows/packages/vscode-extension-ci/dist/cli.js ext-change-detector
 
   display-release-plan:
     needs: [determine-changes]
@@ -128,7 +128,7 @@ jobs:
           PRE_RELEASE: 'true'
           SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
         run: |
-          npx vscode-ext-ci ext-release-plan
+          node node_modules/github-workflows/packages/vscode-extension-ci/dist/cli.js ext-release-plan
 
   bump-versions:
     needs: [determine-changes]
@@ -157,7 +157,7 @@ jobs:
           IS_NIGHTLY: 'true'
           IS_PROMOTION: 'false'
         run: |
-          npx vscode-ext-ci ext-version-bumper
+          node node_modules/github-workflows/packages/vscode-extension-ci/dist/cli.js ext-version-bumper
 
       - name: Validate GitHub authentication
         env:
@@ -297,7 +297,7 @@ jobs:
             echo "Nightly build detected - skipping marketplace publishing"
             echo 'matrix=[]' >> $GITHUB_OUTPUT
           else
-            npx vscode-ext-ci ext-publish-matrix
+            node node_modules/github-workflows/packages/vscode-extension-ci/dist/cli.js ext-publish-matrix
           fi
 
   publish:
@@ -467,7 +467,7 @@ jobs:
           BRANCH: ${{ inputs.branch || github.ref_name }}
           VSIX_ARTIFACTS_PATH: ./vsix-artifacts
         run: |
-          npx vscode-ext-ci ext-github-releases
+          node node_modules/github-workflows/packages/vscode-extension-ci/dist/cli.js ext-github-releases
 
   publish-to-cbweb-marketplace:
     name: Publish to CBWeb Internal Marketplace
