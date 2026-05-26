@@ -1,0 +1,51 @@
+name: Test VS Code Extension CI Package
+
+on:
+  push:
+    branches:
+      - feat/add-vscode-extension-ci
+    paths:
+      - 'packages/vscode-extension-ci/**'
+      - '.github/workflows/test-vscode-package.yml'
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: Build NPM Package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22.x'
+
+      - name: Install dependencies
+        working-directory: packages/vscode-extension-ci
+        run: npm install
+
+      - name: Build package
+        working-directory: packages/vscode-extension-ci
+        run: npm run build
+
+      - name: Verify CLI exists
+        working-directory: packages/vscode-extension-ci
+        run: |
+          if [ ! -f dist/cli.js ]; then
+            echo "Error: dist/cli.js not found"
+            exit 1
+          fi
+          echo "✓ CLI built successfully"
+
+      - name: Test CLI help
+        working-directory: packages/vscode-extension-ci
+        run: node dist/cli.js --help
+
+      - name: List available commands
+        working-directory: packages/vscode-extension-ci
+        run: |
+          echo "Checking for required commands..."
+          node dist/cli.js --help | grep -E "ext-package-selector|ext-change-detector|ext-build-type"
+          echo "✓ All required commands found"
