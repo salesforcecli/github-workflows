@@ -6,7 +6,7 @@
  * repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-import { appendFileSync, existsSync } from 'fs';
+import { appendFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
 interface AuditLogEntry {
@@ -39,8 +39,7 @@ function getAuditLogPath(): string {
   // Ensure log directory exists
   if (!existsSync(logDir)) {
     // Create directory if it doesn't exist
-    const fs = require('fs');
-    fs.mkdirSync(logDir, { recursive: true });
+    mkdirSync(logDir, { recursive: true });
   }
 
   return logFile;

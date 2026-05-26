@@ -6,10 +6,11 @@
  * repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, appendFileSync } from 'fs';
 import { join } from 'path';
 import { z } from 'zod';
 import chalk from 'chalk';
+import { execSync } from 'child_process';
 import type { SemanticVersion } from './types.js';
 import semver from 'semver';
 
@@ -123,8 +124,7 @@ export function parseEnvironment(): {
 export function setOutput(name: string, value: string): void {
   const githubOutput = process.env['GITHUB_OUTPUT'];
   if (githubOutput) {
-    const fs = require('fs');
-    fs.appendFileSync(githubOutput, `${name}=${value}\n`);
+    appendFileSync(githubOutput, `${name}=${value}\n`);
   } else {
     // Fallback for local development outside GitHub Actions
     console.log(`[output] ${name}=${value}`);
