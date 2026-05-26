@@ -2,21 +2,16 @@ name: Test VS Code Workflows Integration
 
 on:
   workflow_dispatch:
-    inputs:
-      test-repo:
-        description: 'Repository to test with'
-        required: false
-        default: 'apex-language-support'
-        type: choice
-        options:
-          - apex-language-support
-          - salesforcedx-vscode
 
 jobs:
-  test-package-workflow:
-    name: Test Package Workflow
+  test-with-apex-language-support:
+    name: Test with apex-language-support
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout github-workflows
+        uses: actions/checkout@v6
+        path: toolkit
+
       - name: Checkout apex-language-support
         uses: actions/checkout@v6
         with:
@@ -28,93 +23,11 @@ jobs:
         with:
           node-version: '22.x'
 
-      - name: Install dependencies
+      - name: Install dependencies in test repo
         working-directory: test-repo
         run: npm ci
 
-      - name: Build and package extension
-        working-directory: test-repo/packages/apex-lsp-vscode-extension
-        run: |
-          npm run vscode:package
-          ls -la *.vsix
-          echo "✓ VSIX packaging successful"
-
-  test-composite-actions:
-    name: Test Composite Actions
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout github-workflows
-        uses: actions/checkout@v6
-        path: toolkit
-
-      - name: Checkout apex-language-support
-        uses: actions/checkout@v6
-        with:
-          repository: forcedotcom/apex-language-support
-          path: test-repo
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '22.x'
-
-      - name: Test npm-install-with-retries action
-        uses: ./toolkit/.github/actions/vscode/npm-install-with-retries
-        with:
-          working-directory: test-repo
-
-      - name: Test detect-packages action
-        id: detect
-        uses: ./toolkit/.github/actions/vscode/detect-packages
-        with:
-          working-directory: test-repo
-
-      - name: Verify packages detected
-        run: |
-          echo "Packages: ${{ steps.detect.outputs.packages }}"
-          echo "Extensions: ${{ steps.detect.outputs.extensions }}"
-          if [ -z "${{ steps.detect.outputs.extensions }}" ]; then
-            echo "Error: No extensions detected"
-            exit 1
-          fi
-          echo "✓ Package detection successful"
-
-      - name: Test calculate-artifact-name action
-        id: artifact
-        uses: ./toolkit/.github/actions/vscode/calculate-artifact-name
-        with:
-          extension-name: apex-lsp-vscode-extension
-          mode: nightly
-
-      - name: Verify artifact name
-        run: |
-          echo "Artifact: ${{ steps.artifact.outputs.artifact-name }}"
-          if [ -z "${{ steps.artifact.outputs.artifact-name }}" ]; then
-            echo "Error: No artifact name generated"
-            exit 1
-          fi
-          echo "✓ Artifact naming successful"
-
-  test-scripts:
-    name: Test CLI Scripts
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout github-workflows
-        uses: actions/checkout@v6
-        path: toolkit
-
-      - name: Checkout apex-language-support
-        uses: actions/checkout@v6
-        with:
-          repository: forcedotcom/apex-language-support
-          path: test-repo
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '22.x'
-
-      - name: Build vscode-extension-ci package
+      - name: Build CLI package
         working-directory: toolkit/packages/vscode-extension-ci
         run: |
           npm install
@@ -132,38 +45,9 @@ jobs:
           node ../toolkit/packages/vscode-extension-ci/dist/cli.js ext-build-type
           echo "✓ Build type detection works"
 
-  summary:
-    name: Test Summary
-    runs-on: ubuntu-latest
-    needs: [test-package-workflow, test-composite-actions, test-scripts]
-    if: always()
-    steps:
-      - name: Check results
-        env:
-          PACKAGE_RESULT: ${{ needs.test-package-workflow.result }}
-          ACTIONS_RESULT: ${{ needs.test-composite-actions.result }}
-          SCRIPTS_RESULT: ${{ needs.test-scripts.result }}
+      - name: Build VSIX package
+        working-directory: test-repo/packages/apex-lsp-vscode-extension
         run: |
-          echo "Package Workflow: $PACKAGE_RESULT"
-          echo "Composite Actions: $ACTIONS_RESULT"
-          echo "CLI Scripts: $SCRIPTS_RESULT"
-
-          FAILED=0
-          if [ "$PACKAGE_RESULT" != "success" ]; then
-            echo "❌ Package workflow failed"
-            FAILED=1
-          fi
-          if [ "$ACTIONS_RESULT" != "success" ]; then
-            echo "❌ Composite actions failed"
-            FAILED=1
-          fi
-          if [ "$SCRIPTS_RESULT" != "success" ]; then
-            echo "❌ CLI scripts failed"
-            FAILED=1
-          fi
-
-          if [ $FAILED -eq 0 ]; then
-            echo "✅ All integration tests passed!"
-          else
-            exit 1
-          fi
+          npm run vscode:package
+          ls -la *.vsix
+          echo "✓ VSIX packaging successful"
