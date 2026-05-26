@@ -27,7 +27,7 @@ on:
 jobs:
   test-nightly-workflow:
     name: Test Nightly Workflow (Dry Run)
-    if: inputs.test-workflow == 'nightly' || inputs.test-workflow == 'both'
+    if: github.event_name == 'workflow_dispatch' && (inputs.test-workflow == 'nightly' || inputs.test-workflow == 'both')
     uses: ./.github/workflows/vscode/publish-extensions.yml
     with:
       # Test parameters - use dry-run to avoid actual publishing
@@ -42,7 +42,7 @@ jobs:
 
   test-prerelease-promotion:
     name: Test Prerelease Promotion (Dry Run)
-    if: inputs.test-workflow == 'prerelease' || inputs.test-workflow == 'both'
+    if: github.event_name == 'workflow_dispatch' && (inputs.test-workflow == 'prerelease' || inputs.test-workflow == 'both')
     uses: ./.github/workflows/vscode/promote-prerelease.yml
     with:
       min-tag-age-days: '7'
