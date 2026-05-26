@@ -8,7 +8,7 @@
  */
 
 import { log } from '../core/utils.js';
-import { readdirSync, existsSync } from 'fs';
+import { readdirSync, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 
 interface PublishMatrixEntry {
@@ -45,7 +45,7 @@ function getAvailableExtensions(): string[] {
     if (existsSync(packageJsonPath)) {
       try {
         const packageJson = JSON.parse(
-          require('fs').readFileSync(packageJsonPath, 'utf-8'),
+          readFileSync(packageJsonPath, 'utf-8'),
         );
 
         // Only include packages that have a publisher (VS Code extensions)
