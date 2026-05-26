@@ -71,7 +71,7 @@ jobs:
           node-version: '22.x'
 
       - name: Install dependencies
-        uses: ./.github/actions/vscode/npm-install-with-retries
+        uses: salesforcecli/github-workflows/.github/actions/vscode/npm-install-with-retries@feat/add-vscode-extension-ci
 
       - name: Find eligible nightly
         id: find
@@ -94,7 +94,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Check CI status for candidate commit
-        uses: ./.github/actions/vscode/check-ci-status
+        uses: salesforcecli/github-workflows/.github/actions/vscode/check-ci-status@feat/add-vscode-extension-ci
         with:
           commit-sha: ${{ needs.find-nightly-candidate.outputs.commit-sha }}
           token: ${{ secrets.IDEE_GH_TOKEN }}
@@ -121,7 +121,7 @@ jobs:
           node-version: '22.x'
 
       - name: Install dependencies
-        uses: ./.github/actions/vscode/npm-install-with-retries
+        uses: salesforcecli/github-workflows/.github/actions/vscode/npm-install-with-retries@feat/add-vscode-extension-ci
 
       - name: Download VSIX from nightly GitHub release
         env:
@@ -144,7 +144,7 @@ jobs:
           echo "VSIX_PATH=$VSIX_FILE" >> $GITHUB_ENV
 
       - name: Publish to ${{ matrix.registry }}
-        uses: ./.github/actions/vscode/publish-vsix
+        uses: salesforcecli/github-workflows/.github/actions/vscode/publish-vsix@feat/add-vscode-extension-ci
         with:
           vsix-path: ${{ env.VSIX_PATH }}
           publish-tool: ${{ matrix.publish-tool }}
