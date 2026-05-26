@@ -78,7 +78,7 @@ jobs:
         env:
           MIN_TAG_AGE_DAYS: ${{ inputs.min-tag-age-days || '7' }}
         run: |
-          npx vscode-ext-ci ext-nightly-finder
+          node node_modules/github-workflows/packages/vscode-extension-ci/dist/cli.js ext-nightly-finder
 
       - name: Fail if no candidate found
         if: steps.find.outputs.nightly-tag == ''
