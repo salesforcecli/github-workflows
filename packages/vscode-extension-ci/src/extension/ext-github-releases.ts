@@ -6,9 +6,9 @@
  * repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { readFileSync, writeFileSync, unlinkSync } from 'fs';
-import { basename, join } from 'path';
+import { join } from 'path';
 import { glob } from 'glob';
 
 interface PackageJson {
@@ -46,41 +46,52 @@ function getPackageDetails(extensionPath: string): PackageJson | null {
   }
 }
 
-function findVsixFiles(extension: string, artifactsPath: string): string[] {
-  try {
-    // Map extension names to their actual VSIX file patterns
-    let vsixPattern: string;
-    switch (extension) {
-      case 'apex-lsp-vscode-extension':
-        vsixPattern = '*apex-language-server-extension-*.vsix';
-        break;
-      default:
-        vsixPattern = `*${extension}*.vsix`;
-    }
-
-    // Artifacts are organized in subdirectories: vsix-artifacts/extension-name/file.vsix
-    // Try both the subdirectory and root level
-    const patterns = [
-      join(artifactsPath, extension, vsixPattern), // Subdirectory structure
-      join(artifactsPath, '**', vsixPattern), // Recursive search as fallback
-      join(artifactsPath, vsixPattern), // Root level as fallback
-    ];
-
-    const foundFiles: string[] = [];
-    for (const pattern of patterns) {
-      const files = glob.sync(pattern);
-      if (files.length > 0) {
-        foundFiles.push(...files);
-        break; // Found files, no need to check other patterns
-      }
-    }
-
-    // Universal VSIX only: exclude legacy vsce --target web builds (*-web-* in filename)
-    return foundFiles.filter((f) => !basename(f).includes('-web-'));
-  } catch (error) {
-    console.warn(`Warning: Could not find VSIX files for ${extension}:`, error);
-    return [];
+function resolveVsixGlob(extension: string): string {
+  const vsixGlob = process.env.VSIX_GLOB;
+  if (!vsixGlob) {
+    throw new Error('VSIX_GLOB env var is required');
   }
+  if (vsixGlob.trim().startsWith('{')) {
+    let map: Record<string, string>;
+    try {
+      map = JSON.parse(vsixGlob);
+    } catch (err) {
+      throw new Error(
+        `VSIX_GLOB looks like JSON but failed to parse: ${(err as Error).message}`,
+      );
+    }
+    const pattern = map[extension];
+    if (!pattern) {
+      throw new Error(
+        `VSIX_GLOB map has no entry for extension '${extension}'.`,
+      );
+    }
+    return pattern;
+  }
+  return vsixGlob;
+}
+
+function findVsixFiles(extension: string, artifactsPath: string): string[] {
+  const vsixPattern = resolveVsixGlob(extension);
+
+  // Artifacts are organized in subdirectories: vsix-artifacts/extension-name/file.vsix
+  // Try both the subdirectory and root level
+  const patterns = [
+    join(artifactsPath, extension, vsixPattern), // Subdirectory structure
+    join(artifactsPath, '**', vsixPattern), // Recursive search as fallback
+    join(artifactsPath, vsixPattern), // Root level as fallback
+  ];
+
+  const foundFiles: string[] = [];
+  for (const pattern of patterns) {
+    const files = glob.sync(pattern);
+    if (files.length > 0) {
+      foundFiles.push(...files);
+      break; // Found files, no need to check other patterns
+    }
+  }
+
+  return foundFiles;
 }
 
 function generateReleaseNotes(
@@ -94,15 +105,23 @@ function generateReleaseNotes(
 
   try {
     // Find the last release tag for this extension
-    const lastTag = execSync(
-      'git tag --sort=-version:refname | grep "^v" | head -1',
+    // Replaces shell pipeline `git tag --sort=-version:refname | grep "^v" | head -1`
+    // with execFileSync + JS-side filtering (no shell expansion).
+    const allTags = execFileSync(
+      'git',
+      ['tag', '--sort=-version:refname'],
       { encoding: 'utf8' },
-    ).trim();
+    );
+    const lastTag = allTags
+      .split('\n')
+      .map((t) => t.trim())
+      .filter((t) => /^v\d/.test(t))[0] || '';
 
     if (lastTag) {
       // Get commits since the last release
-      const recentCommits = execSync(
-        `git log --oneline "${lastTag}"..HEAD -- "packages/${extension}/"`,
+      const recentCommits = execFileSync(
+        'git',
+        ['log', '--oneline', `${lastTag}..HEAD`, '--', `packages/${extension}/`],
         { encoding: 'utf8' },
       ).trim();
       if (recentCommits) {
@@ -115,8 +134,9 @@ function generateReleaseNotes(
       }
     } else {
       // First release - get all commits for this extension
-      const allCommits = execSync(
-        `git log --oneline -- "packages/${extension}/"`,
+      const allCommits = execFileSync(
+        'git',
+        ['log', '--oneline', '--', `packages/${extension}/`],
         { encoding: 'utf8' },
       ).trim();
       if (allCommits) {
@@ -153,7 +173,7 @@ function generateReleaseNotes(
     releaseNotes += `\n🌙 **This is a nightly build from ${nightlyDate}**\n`;
     releaseNotes += '\n### Nightly Build Information\n';
     releaseNotes += `- **Build Date**: ${nightlyDate}\n`;
-    releaseNotes += `- **Version**: ${currentVersion} (odd minor for pre-release)\n`;
+    releaseNotes += `- **Version**: ${currentVersion} (pre-release build)\n`;
     releaseNotes += '- **Type**: Nightly pre-release for testing\n';
   }
 
@@ -203,15 +223,15 @@ function createGitHubRelease(
     console.log(`Pre-release: ${preRelease}`);
 
     try {
-      const repo = process.env.GITHUB_REPOSITORY;
-      const vsixArgs = vsixFiles.map((file) => `"${file}"`).join(' ');
+      const repo = process.env.GITHUB_REPOSITORY || '';
 
       // Check if release already exists (idempotency)
       let releaseExists = false;
       let hasAssets = false;
       try {
-        const viewOutput = execSync(
-          `gh release view "${releaseTag}" --repo "${repo}" --json assets`,
+        const viewOutput = execFileSync(
+          'gh',
+          ['release', 'view', releaseTag, '--repo', repo, '--json', 'assets'],
           { encoding: 'utf8' },
         );
         const releaseData = JSON.parse(viewOutput);
@@ -230,19 +250,13 @@ function createGitHubRelease(
         console.log(
           `📎 Release ${releaseTag} exists but has no assets — uploading`,
         );
-        execSync(
-          `gh release upload "${releaseTag}" ${vsixArgs} --repo "${repo}"`,
+        execFileSync(
+          'gh',
+          ['release', 'upload', releaseTag, ...vsixFiles, '--repo', repo],
           { stdio: 'inherit' },
         );
         console.log(`✅ Assets uploaded to existing release for ${extension}`);
       } else {
-        // Verify the tag exists locally before attempting release creation
-        try {
-          execSync(`git rev-parse "${releaseTag}"`, { encoding: 'utf8', stdio: 'pipe' });
-        } catch {
-          // Tag doesn't exist locally — gh release create will create one from HEAD
-        }
-
         // Write release notes to a temporary file to avoid shell escaping issues
         const notesFile = join(process.cwd(), `.release-notes-${Date.now()}.tmp`);
         try {
@@ -252,13 +266,22 @@ function createGitHubRelease(
           throw writeError;
         }
 
-        const command =
-          `gh release create "${releaseTag}" --title "${releaseTitle}" ` +
-          `--notes-file "${notesFile}" --prerelease="${preRelease}" ` +
-          `--repo "${repo}" ${vsixArgs}`;
+        const ghArgs = [
+          'release',
+          'create',
+          releaseTag,
+          '--title',
+          releaseTitle,
+          '--notes-file',
+          notesFile,
+          ...(preRelease === 'true' ? ['--prerelease'] : []),
+          '--repo',
+          repo,
+          ...vsixFiles,
+        ];
 
         try {
-          execSync(command, { stdio: 'inherit' });
+          execFileSync('gh', ghArgs, { stdio: 'inherit' });
 
           // Clean up notes file after successful creation
           try {

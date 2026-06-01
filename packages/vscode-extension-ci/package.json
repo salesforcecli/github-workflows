@@ -33,7 +33,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/forcedotcom/vscode-extension-ci-toolkit.git",
+    "url": "https://github.com/salesforcecli/github-workflows.git",
     "directory": "packages/vscode-extension-ci"
   },
   "license": "BSD-3-Clause",

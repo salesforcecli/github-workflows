@@ -85,7 +85,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/vscode/npm-install-with-retries@feat/add-vscode-extension-ci
+        uses: ./.github/actions/vscode/npm-install-with-retries
 
       - name: Run linting
         run: ${{ inputs.lint-command }}
@@ -156,7 +156,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/vscode/npm-install-with-retries@feat/add-vscode-extension-ci
+        uses: ./.github/actions/vscode/npm-install-with-retries
 
       - name: Run quality tests
         run: npm run test:quality
@@ -165,7 +165,7 @@ jobs:
     name: Package
     needs: test
     if: ${{ needs.test.result == 'success' }}
-    uses: salesforcecli/github-workflows/.github/workflows/vscode-package.yml@feat/add-vscode-extension-ci
+    uses: ./.github/workflows/vscode-package.yml
     with:
       branch: ${{ github.head_ref || github.ref_name }}
       artifact-name: vsix-packages

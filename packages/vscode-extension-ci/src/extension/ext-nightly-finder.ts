@@ -103,6 +103,12 @@ export async function findNightlyCandidate(): Promise<NightlyCandidate | null> {
   const minAgeSeconds = minAgeDays * 24 * 60 * 60;
   const now = Math.floor(Date.now() / 1000);
 
+  const extensionId = process.env.EXTENSION_ID;
+  if (!extensionId) {
+    throw new Error('EXTENSION_ID env var is required');
+  }
+  const tagPrefix = process.env.TAG_PREFIX || 'marketplace';
+
   log.info(`Finding nightly candidate (min age: ${minAgeDays} days)...`);
 
   const git: SimpleGitType = simpleGit();
@@ -129,23 +135,18 @@ export async function findNightlyCandidate(): Promise<NightlyCandidate | null> {
     }
 
     // Filter 2: not already promoted to pre-release
-    const tagPrefix = process.env.TAG_PREFIX || 'marketplace';
-    const preReleaseTrackingPrefix = `${tagPrefix}-prerelease-`;
-    if (hasTrackingTag(allTagNames, `${preReleaseTrackingPrefix}`)) {
-      // Check specifically for this version
-      const versionSpecificPrefix = `${tagPrefix}-prerelease-apex-lsp-vscode-extension-v${version}`;
-      if (hasTrackingTag(allTagNames, versionSpecificPrefix)) {
-        log.debug(
-          `Skipping ${name}: already has ${tagPrefix}-prerelease tracking tag for v${version}`,
-        );
-        continue;
-      }
+    const versionSpecificPrefix = `${tagPrefix}-prerelease-${extensionId}-v${version}`;
+    if (hasTrackingTag(allTagNames, versionSpecificPrefix)) {
+      log.debug(
+        `Skipping ${name}: already has ${tagPrefix}-prerelease tracking tag for v${version}`,
+      );
+      continue;
     }
 
     // Filter 3: floor check — derived stable version not already published
     const derivedStable = semver.inc(version, 'minor');
     if (derivedStable) {
-      const stableTrackingPrefix = `${tagPrefix}-stable-apex-lsp-vscode-extension-v${derivedStable}`;
+      const stableTrackingPrefix = `${tagPrefix}-stable-${extensionId}-v${derivedStable}`;
       if (hasTrackingTag(allTagNames, stableTrackingPrefix)) {
         log.debug(
           `Skipping ${name}: derived stable v${derivedStable} already published`,

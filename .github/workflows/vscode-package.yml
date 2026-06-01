@@ -88,9 +88,10 @@ jobs:
           node-version: ${{ inputs.node-version || '22.x' }}
 
       - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/vscode/npm-install-with-retries@feat/add-vscode-extension-ci
+        uses: ./.github/actions/vscode/npm-install-with-retries
 
-      # Universal + web-target VSIXs are defined in packages/apex-lsp-vscode-extension (Wireit: package + package-web).
+      # Consumer repo defines `npm run package:packages` (and optionally `:prerelease`)
+      # which produces VSIX files under packages/**.
       - name: Package packages
         run: |
           if [ "${{ inputs.pre-release }}" = "true" ]; then
@@ -104,7 +105,7 @@ jobs:
         run: |
           echo "Generating MD5 checksums for VSIX files..."
           
-          # Universal + web-target VSIX under packages/
+          # All VSIX files produced by the consumer repo's package script(s)
           VSIX_FILES=$(find packages -name "*.vsix" -type f)
           
           if [ -z "$VSIX_FILES" ]; then
@@ -165,7 +166,7 @@ jobs:
 
       - name: Calculate artifact name
         id: calc-artifact-name
-        uses: salesforcecli/github-workflows/.github/actions/vscode/calculate-artifact-name@feat/add-vscode-extension-ci
+        uses: ./.github/actions/vscode/calculate-artifact-name
         with:
           artifact-name: ${{ inputs.artifact-name }}
           dry-run: ${{ inputs.dry-run }}

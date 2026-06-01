@@ -67,13 +67,32 @@ function getAvailableExtensions(): string[] {
 }
 
 function getVsixPattern(extension: string): string {
-  switch (extension) {
-    case 'apex-lsp-vscode-extension':
-      // Universal VSIX (main + browser); nightly-extensions publish uses explicit find excluding *-web-*
-      return '*apex-language-server-extension*-[0-9]*.vsix';
-    default:
-      return `*${extension}*.vsix`;
+  const vsixGlob = process.env.VSIX_GLOB;
+  if (!vsixGlob) {
+    throw new Error('VSIX_GLOB env var is required');
   }
+
+  // VSIX_GLOB is either a single glob (applies to all extensions)
+  // or a JSON map of extension name → glob.
+  if (vsixGlob.trim().startsWith('{')) {
+    let map: Record<string, string>;
+    try {
+      map = JSON.parse(vsixGlob);
+    } catch (err) {
+      throw new Error(
+        `VSIX_GLOB looks like JSON but failed to parse: ${(err as Error).message}`,
+      );
+    }
+    const pattern = map[extension];
+    if (!pattern) {
+      throw new Error(
+        `VSIX_GLOB map has no entry for extension '${extension}'. Available keys: ${Object.keys(map).join(', ')}`,
+      );
+    }
+    return pattern;
+  }
+
+  return vsixGlob;
 }
 
 function getMarketplaceName(registry: string): string {
