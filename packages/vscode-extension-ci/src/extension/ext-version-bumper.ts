@@ -6,7 +6,7 @@
  * repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -18,99 +18,190 @@ interface PackageJson {
 }
 
 interface VersionBumpOptions {
-  versionBump: string;
   selectedExtensions: string;
   preRelease: string;
   isNightly: string;
-  isPromotion: string;
-  promotionCommitSha?: string;
+  extensionId?: string;
+  newMajor?: string;
 }
 
-// Export for use in other modules
 export type { VersionBumpOptions };
 
-function parseVersion(version: string): {
+interface ParsedSemver {
+  semver: string;
   major: number;
   minor: number;
   patch: number;
-} {
-  const [major, minor, patch] = version.split('.').map(Number);
-  return { major, minor, patch };
 }
 
-function calculateNewVersion(
-  currentVersion: string,
-  versionBump: string,
-  isNightly: boolean,
-  isPromotion: boolean,
-  preRelease: boolean,
-): string {
-  const { major, minor, patch } = parseVersion(currentVersion);
+const isCI = (): boolean => process.env.CI === 'true';
 
-  if (isNightly) {
-    // Nightly build strategy: respect conventional commit bump type, enforce odd minor
-    if (versionBump === 'major') {
-      // Breaking change: new major, start at first odd minor
-      return `${major + 1}.1.0`;
-    } else if (versionBump === 'minor') {
-      // New feature: skip to next odd minor (even minors reserved for stable)
-      const nextMinor = minor % 2 === 0 ? minor + 1 : minor + 2;
-      return `${major}.${nextMinor}.0`;
-    } else {
-      // Patch / auto / default: ensure odd minor then increment patch
-      if (minor % 2 === 0) {
-        // Even minor — enter nightly track at next odd minor
-        return `${major}.${minor + 1}.0`;
-      }
-      return `${major}.${minor}.${patch + 1}`;
-    }
-  } else if (isPromotion) {
-    // Promotion strategy: bump from odd minor (nightly) to even minor (stable)
-    if (minor % 2 === 1) {
-      // Current is odd (nightly), bump to next even (stable)
-      return `${major}.${minor + 1}.0`;
-    } else {
-      // Current is already even, this shouldn't happen for promotions
-      console.warn(
-        'Warning: Current version has even minor, expected odd for promotion',
-      );
-      return `${major}.${minor + 2}.0`;
-    }
-  } else {
-    // Regular build strategy: use smart version bumping
-    switch (versionBump) {
-      case 'patch':
-        return `${major}.${minor}.${patch + 1}`;
-      case 'minor':
-        if (preRelease) {
-          // Pre-release: ensure odd minor version (no auto-update)
-          if (minor % 2 === 0) {
-            return `${major}.${minor + 1}.0`;
-          } else {
-            return `${major}.${minor + 2}.0`;
-          }
-        } else {
-          // Stable release: ensure even minor version (auto-update enabled)
-          if (minor % 2 === 1) {
-            return `${major}.${minor + 1}.0`;
-          } else {
-            return `${major}.${minor + 2}.0`;
-          }
-        }
-      case 'major':
-        if (preRelease) {
-          return `${major + 1}.1.0`; // Pre-release: start with odd minor
-        } else {
-          return `${major + 1}.0.0`; // Stable release: start with even minor
-        }
-      case 'auto':
-      default:
-        return `${major}.${minor}.${patch + 1}`;
-    }
+const errorAndExit = (msg: string): never => {
+  const prefix = isCI() ? '::error::' : '\x1b[31m[Error]\x1b[0m ';
+  console.log(`${prefix}${msg}`);
+  process.exit(isCI() ? 1 : 0);
+};
+
+const validateNewMajor = (rawValue?: string): number | undefined => {
+  const major = rawValue ?? process.env.NEW_MAJOR;
+  if (!major) return undefined;
+  if (major.includes('.') || isNaN(parseInt(major, 10))) {
+    errorAndExit(`Invalid NEW_MAJOR value (${major}). Must be a whole number`);
   }
-}
+  return parseInt(major, 10);
+};
 
-function getPackageDetails(extensionPath: string): PackageJson | null {
+const parseSemver = (version: string): ParsedSemver => {
+  const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/);
+  if (!match) {
+    errorAndExit(`Invalid version format: ${version}`);
+    // errorAndExit normally process.exits, so this return is only reached
+    // when the exit is mocked (in tests). Return a sentinel that callers
+    // shouldn't rely on; production never sees this path.
+    return { semver: version, major: 0, minor: 0, patch: 0 };
+  }
+  const [semver, major, minor, patch, prerelease] = match;
+  if (prerelease) {
+    errorAndExit(
+      'Prerelease versions (e.g. 1.2.3-beta.0) are not currently supported in the VSCode Marketplace',
+    );
+    return { semver: version, major: 0, minor: 0, patch: 0 };
+  }
+  return {
+    semver,
+    major: parseInt(major, 10),
+    minor: parseInt(minor, 10),
+    patch: parseInt(patch, 10),
+  };
+};
+
+/**
+ * Query the VS Code Marketplace for the highest pre-release version of an extension.
+ * Returns null if no pre-release has ever been published (bootstrap case).
+ * Throws if vsce show fails or returns malformed data.
+ */
+const getLatestPreReleaseVersionFromMarketplace = (
+  extensionId: string,
+): string | null => {
+  let versionsJson: string;
+  try {
+    versionsJson = execFileSync('npx', [
+      '@vscode/vsce',
+      'show',
+      extensionId,
+      '--json',
+    ])
+      .toString()
+      .trim();
+  } catch (error) {
+    throw new Error(
+      `Failed to query marketplace for ${extensionId}: ${(error as Error).message}`,
+    );
+  }
+
+  if (versionsJson === 'undefined') {
+    throw new Error(
+      `No version info found for ${extensionId}. Run 'npx @vscode/vsce show ${extensionId} --json' locally to debug.`,
+    );
+  }
+
+  const parsed = JSON.parse(versionsJson);
+  const preReleaseVersions = parsed.versions.filter((version: any) =>
+    version.properties?.some(
+      (prop: any) =>
+        prop.key === 'Microsoft.VisualStudio.Code.PreRelease' &&
+        prop.value === 'true',
+    ),
+  );
+
+  if (preReleaseVersions.length === 0) {
+    console.log(
+      `No pre-release versions found for ${extensionId}. Treating as bootstrap (first prerelease).`,
+    );
+    return null;
+  }
+
+  // vsce returns versions ordered by lastUpdated descending.
+  return preReleaseVersions[0].version;
+};
+
+/**
+ * Decide the next version based on:
+ *   - main: the version in main's package.json (what we're building from)
+ *   - marketplace: the latest prerelease in the marketplace, or null if none yet
+ *   - newMajor: optional major override (engineer-driven)
+ *
+ * Decision tree:
+ *   1. newMajor passed → validate (must be main.major + 1, unless FORCE_NEW_MAJOR=true) → return ${newMajor}.0.0
+ *   2. marketplace is null (bootstrap) → bump main.minor by 1, reset patch
+ *   3. main matches marketplace → "promotions just ran" → bump main.minor by 1, reset patch
+ *   4. main minor ahead of marketplace → bump main.patch
+ *   5. main major ahead of marketplace → bump main.patch
+ *   6. Otherwise (main < marketplace) → throw with diagnostic
+ */
+export const buildNextVersion = (
+  main: ParsedSemver,
+  marketplace: ParsedSemver | null,
+  newMajor?: number,
+): string => {
+  if (newMajor !== undefined) {
+    if (process.env.FORCE_NEW_MAJOR === 'true') {
+      console.log(
+        `::warning::FORCE_NEW_MAJOR is set to true. Bypassing new major version checks.`,
+      );
+    } else {
+      if (marketplace !== null && main.major !== marketplace.major) {
+        errorAndExit(
+          `A new major was passed (${newMajor}), however the major versions in 'main' (${main.semver}) and the 'marketplace' (${marketplace.semver}) already do NOT match. This suggests that a new major was just recently published as a pre-release in the marketplace. Please confirm versions in main and in the marketplace.`,
+        );
+      }
+      if (newMajor - main.major !== 1) {
+        errorAndExit(
+          `The new major version (${newMajor}) is not exactly 1 greater than the current major version in 'main' (${main.major}). Please confirm the correct new major version.`,
+        );
+      }
+      console.log(`New major version passed validation: ${newMajor}`);
+    }
+    console.log(`::warning::Setting new major version to ${newMajor}.0.0`);
+    return `${newMajor}.0.0`;
+  }
+
+  if (marketplace === null) {
+    console.log(
+      `Bootstrap: no marketplace prerelease yet. Bumping minor from main (${main.semver}).`,
+    );
+    return `${main.major}.${main.minor + 1}.0`;
+  }
+
+  if (main.semver === marketplace.semver) {
+    console.log(
+      `Versions match (${main.semver}). Promotions likely just ran, bumping MINOR.`,
+    );
+    return `${main.major}.${main.minor + 1}.0`;
+  }
+
+  if (main.major === marketplace.major && main.minor > marketplace.minor) {
+    console.log(
+      `Majors match and main minor is greater (${main.semver} > ${marketplace.semver}). Nightly already ahead, bumping PATCH.`,
+    );
+    return `${main.major}.${main.minor}.${main.patch + 1}`;
+  }
+
+  if (main.major > marketplace.major) {
+    console.log(
+      `Main major already ahead (${main.semver} > ${marketplace.semver}). Bumping PATCH.`,
+    );
+    return `${main.major}.${main.minor}.${main.patch + 1}`;
+  }
+
+  throw new Error(
+    `Cannot determine next version: main (${main.semver}) is behind marketplace prerelease (${marketplace.semver}). ` +
+      `This shouldn't happen — main should always be ahead of or equal to the latest prerelease. ` +
+      `Check whether main was reverted or whether the marketplace lookup is returning a stale value.`,
+  );
+};
+
+const getPackageDetails = (extensionPath: string): PackageJson | null => {
   try {
     const packageJsonPath = join(
       process.cwd(),
@@ -127,17 +218,14 @@ function getPackageDetails(extensionPath: string): PackageJson | null {
     );
     return null;
   }
-}
+};
 
-function createGitTag(
+const createGitTag = (
   packageName: string,
   version: string,
   isPreRelease: boolean,
-  promotionCommitSha?: string,
-  isNightly?: boolean,
-): void {
-  // For nightly builds, create tag in format: v{version}-nightly.{date}
-  // This matches what GitHub release creation expects
+  isNightly: boolean,
+): void => {
   let tagName: string;
   if (isNightly) {
     const nightlyDate = new Date()
@@ -149,73 +237,76 @@ function createGitTag(
       branch === 'main' ? '' : `.${branch.replace(/\//g, '-')}`;
     tagName = `v${version}-nightly${branchSuffix}.${nightlyDate}`;
   } else {
-    // For non-nightly builds, use package name format
     tagName = isPreRelease
       ? `${packageName}-v${version}-pre-release`
       : `${packageName}-v${version}`;
   }
 
   try {
-    // Check if tag already exists locally or remotely (idempotency)
     let tagExists = false;
     try {
-      // Check local tags first
-      execSync(`git rev-parse "${tagName}"`, { encoding: 'utf8', stdio: 'pipe' });
+      execFileSync('git', ['rev-parse', tagName], {
+        encoding: 'utf8',
+        stdio: 'pipe',
+      });
       tagExists = true;
     } catch {
-      // Tag doesn't exist locally, check remote
       try {
-        execSync(`git ls-remote --tags origin "${tagName}"`, { encoding: 'utf8', stdio: 'pipe' });
+        execFileSync('git', ['ls-remote', '--tags', 'origin', tagName], {
+          encoding: 'utf8',
+          stdio: 'pipe',
+        });
         tagExists = true;
       } catch {
-        // Tag doesn't exist locally or remotely, proceed to create
         tagExists = false;
       }
     }
 
     if (tagExists) {
-      console.log(`⏭️ Tag ${tagName} already exists — skipping (idempotent rerun)`);
+      console.log(
+        `⏭️ Tag ${tagName} already exists — skipping (idempotent rerun)`,
+      );
       return;
     }
 
-    if (promotionCommitSha) {
-      // For promotions, create tag on specific commit
-      console.log(
-        `Creating tag ${tagName} on promotion commit ${promotionCommitSha}...`,
-      );
-      execSync(`git tag "${tagName}" "${promotionCommitSha}"`, {
-        stdio: 'inherit',
-      });
-    } else {
-      // For regular builds, create tag on current commit
-      console.log(`Creating tag ${tagName} on current commit...`);
-      execSync(`git tag "${tagName}"`, {
-        stdio: 'inherit',
-      });
-    }
+    console.log(`Creating tag ${tagName} on current commit...`);
+    execFileSync('git', ['tag', tagName], { stdio: 'inherit' });
     console.log(`✅ Tag created: ${tagName}`);
   } catch (error) {
     console.error(`Failed to create tag ${tagName}:`, error);
     throw error;
   }
-}
+};
 
-function bumpVersions(options: VersionBumpOptions): void {
+/**
+ * Public entry point. Iterates over selected extensions, decides the next
+ * version using marketplace-lookup, runs `npm version`, and creates git tags.
+ */
+export const bumpVersions = (options: VersionBumpOptions): void => {
   const {
-    versionBump,
     selectedExtensions,
     preRelease,
     isNightly,
-    isPromotion,
-    promotionCommitSha,
+    extensionId,
+    newMajor: newMajorRaw,
   } = options;
 
-  console.log(`Version bump type: ${versionBump}`);
   console.log(`Selected extensions: ${selectedExtensions}`);
   console.log(`Pre-release mode: ${preRelease}`);
   console.log(`Is nightly build: ${isNightly}`);
-  console.log(`Is promotion: ${isPromotion}`);
-  console.log(`Promotion commit SHA: ${promotionCommitSha || 'N/A'}`);
+  console.log(
+    `Extension ID for marketplace lookup: ${extensionId || '(not set)'}`,
+  );
+  console.log(`New major override: ${newMajorRaw || '(not set)'}`);
+
+  if (!extensionId) {
+    errorAndExit(
+      'EXTENSION_ID env var is required for marketplace-lookup version selection. ' +
+        'Pass the marketplace extension id (e.g. salesforce.salesforcedx-vscode).',
+    );
+  }
+
+  const newMajor = validateNewMajor(newMajorRaw);
 
   const extensions = selectedExtensions.split(',').filter(Boolean);
 
@@ -226,53 +317,43 @@ function bumpVersions(options: VersionBumpOptions): void {
       continue;
     }
 
-    console.log(`Processing ${ext}...`);
-    console.log(`Current version: ${packageDetails.version}`);
-
-    const newVersion = calculateNewVersion(
-      packageDetails.version,
-      versionBump,
-      isNightly === 'true',
-      isPromotion === 'true',
-      preRelease === 'true',
+    console.log(`\nProcessing ${ext}...`);
+    console.log(
+      `Current version (from package.json on main): ${packageDetails.version}`,
     );
+
+    const main = parseSemver(packageDetails.version);
+    const marketplaceVersion =
+      newMajor !== undefined
+        ? null
+        : getLatestPreReleaseVersionFromMarketplace(extensionId!);
+    const marketplace = marketplaceVersion
+      ? parseSemver(marketplaceVersion)
+      : null;
+
+    if (marketplace) {
+      console.log(`Marketplace prerelease: ${marketplace.semver}`);
+    }
+
+    const newVersion = buildNextVersion(main, marketplace, newMajor);
 
     console.log(
       `🔄 Bumping ${ext} from ${packageDetails.version} to ${newVersion}`,
     );
 
-    // Update package.json version
     const originalDir = process.cwd();
     try {
       process.chdir(join(originalDir, 'packages', ext));
-      execSync(`npm version "${newVersion}" --no-git-tag-version`, {
+      execFileSync('npm', ['version', newVersion, '--no-git-tag-version'], {
         stdio: 'inherit',
       });
       process.chdir(originalDir);
 
-      // Create git tag for this extension
-      const isNightlyBuild = isNightly === 'true';
-      let expectedTagName: string;
-      if (isNightlyBuild) {
-        const nightlyDate = new Date()
-          .toISOString()
-          .split('T')[0]
-          .replace(/-/g, '');
-        const branch = process.env.BRANCH || 'main';
-        const branchSuffix =
-          branch === 'main' ? '' : `.${branch.replace(/\//g, '-')}`;
-        expectedTagName = `v${newVersion}-nightly${branchSuffix}.${nightlyDate}`;
-      } else {
-        expectedTagName = preRelease === 'true'
-          ? `${packageDetails.name}-v${newVersion}-pre-release`
-          : `${packageDetails.name}-v${newVersion}`;
-      }
       createGitTag(
         packageDetails.name,
         newVersion,
         preRelease === 'true',
-        promotionCommitSha,
-        isNightlyBuild,
+        isNightly === 'true',
       );
     } catch (error) {
       console.error(`Failed to bump version for ${ext}:`, error);
@@ -281,8 +362,14 @@ function bumpVersions(options: VersionBumpOptions): void {
     }
   }
 
-  console.log('✅ Version bumps and tags applied');
-}
+  console.log('\n✅ Version bumps and tags applied');
+};
 
-// Export for use in other modules
-export { bumpVersions };
+// Exported for testability of internal helpers.
+export {
+  isCI,
+  errorAndExit,
+  validateNewMajor,
+  parseSemver,
+  getLatestPreReleaseVersionFromMarketplace,
+};

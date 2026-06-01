@@ -281,12 +281,11 @@ program
   .action(async () => {
     try {
       bumpVersions({
-        versionBump: process.env.VERSION_BUMP || 'auto',
         selectedExtensions: process.env.SELECTED_EXTENSIONS || '',
         preRelease: process.env.PRE_RELEASE || 'false',
         isNightly: process.env.IS_NIGHTLY || 'false',
-        isPromotion: process.env.IS_PROMOTION || 'false',
-        promotionCommitSha: process.env.PROMOTION_COMMIT_SHA,
+        extensionId: process.env.EXTENSION_ID,
+        newMajor: process.env.NEW_MAJOR,
       });
     } catch (error) {
       log.error(`Failed to bump versions: ${error}`);
