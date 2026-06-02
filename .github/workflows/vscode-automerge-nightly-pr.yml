@@ -1,0 +1,110 @@
+name: Automerge Nightly PR
+
+# Reusable workflow that automerges a "Release PR for <version> as nightly"
+# pull request once tests pass. Uses the `cli:release:automerge` command
+# from @salesforce/plugin-release-management.
+#
+# Usage from consuming repository (pin to a version tag like @v1, not @main):
+#   on:
+#     pull_request:
+#       types: [labeled]
+#   jobs:
+#     automerge:
+#       if: |
+#         github.event.label.name == 'nightly-automerge' &&
+#         startsWith(github.event.pull_request.title, 'Release PR for') &&
+#         endsWith(github.event.pull_request.title, 'as nightly')
+#       uses: salesforcecli/github-workflows/.github/workflows/vscode-automerge-nightly-pr.yml@v1
+#       with:
+#         pr-number: ${{ github.event.pull_request.number }}
+#         bot-user: <bot-username>
+#       secrets:
+#         bot-github-token: ${{ secrets.<your-bot-pat-secret> }}
+#
+# Required secret:
+#   bot-github-token (no default) — PAT for the bot account that authored
+#     the PR and will perform the merge. Needs `repo` scope. The PR author
+#     must match the bot identity owning this PAT.
+
+on:
+  workflow_call:
+    inputs:
+      pr-number:
+        description: 'Pull request number to automerge'
+        required: true
+        type: number
+      bot-user:
+        description: |
+          GitHub username of the bot that authored the PR. Passed to the
+          automerge command for verification.
+        required: true
+        type: string
+      max-attempts:
+        description: 'Maximum number of automerge retry attempts'
+        required: false
+        default: 30
+        type: number
+      retry-wait-seconds:
+        description: 'Seconds to wait between retry attempts'
+        required: false
+        default: 120
+        type: number
+    secrets:
+      bot-github-token:
+        description: 'PAT for the bot account performing the merge. See header docstring.'
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    name: Automerge Nightly Release PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (for local actions)
+        uses: actions/checkout@v6
+
+      # Defense in depth: validate by querying the PR directly via GitHub's API.
+      # The previous approach checked `github.event.pull_request.*`, which only
+      # populates on `pull_request: [labeled]` events. If a caller invoked this
+      # via `workflow_dispatch` or another event, that `if:` silently no-op'd
+      # and marked the job green. This step always runs and explicitly fails
+      # if the PR doesn't match the release-PR sentinel.
+      - name: Verify PR title and label sentinel
+        env:
+          GH_TOKEN: ${{ secrets.bot-github-token }}
+          PR_NUMBER: ${{ inputs.pr-number }}
+        run: |
+          set -euo pipefail
+          PR_DATA=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json title,labels)
+          TITLE=$(echo "$PR_DATA" | jq -r '.title')
+          HAS_LABEL=$(echo "$PR_DATA" | jq -r '.labels[]? | select(.name=="nightly-automerge") | .name' | head -1)
+
+          # Match: "Release PR for X.Y.Z as nightly"
+          if ! [[ "$TITLE" =~ ^Release\ PR\ for\ [0-9]+\.[0-9]+\.[0-9]+\ as\ nightly$ ]]; then
+            echo "::error::PR title does not match release-PR sentinel: $TITLE"
+            exit 1
+          fi
+          if [ -z "$HAS_LABEL" ]; then
+            echo "::error::PR is missing the 'nightly-automerge' label"
+            exit 1
+          fi
+          echo "PR sentinel verified: $TITLE"
+
+      - name: Install plugin-release-management
+        run: npm install -g @salesforce/plugin-release-management@dev --omit=dev
+
+      - name: Run cli:release:automerge with retry
+        uses: ./.github/actions/retry
+        env:
+          GITHUB_TOKEN: ${{ secrets.bot-github-token }}
+          OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          PR_NUMBER: ${{ inputs.pr-number }}
+        with:
+          max_attempts: ${{ inputs.max-attempts }}
+          retry_wait_seconds: ${{ inputs.retry-wait-seconds }}
+          retry_on: error
+          command: sf-release cli:release:automerge --owner "$OWNER" --repo "$REPO_NAME" --pull-number "$PR_NUMBER" --verbose

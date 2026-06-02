@@ -1,0 +1,46 @@
+name: Parse Release PR Title
+description: |
+  Parse a release PR title in the form "Release PR for <semver> as <channel>"
+  and emit version + channel as outputs.
+
+  Channel is one of: nightly | pre-release | stable | rc.
+  Fails with a clear error message if the title does not match the expected pattern.
+
+inputs:
+  title:
+    required: true
+    description: |
+      The release PR title to parse, e.g. "Release PR for 65.9.0 as nightly".
+
+outputs:
+  version:
+    description: 'Parsed semver (e.g. 65.9.0)'
+    value: ${{ steps.parse.outputs.version }}
+  channel:
+    description: 'Parsed channel token (e.g. nightly)'
+    value: ${{ steps.parse.outputs.channel }}
+
+runs:
+  using: composite
+  steps:
+    - name: Parse title
+      id: parse
+      shell: bash
+      env:
+        TITLE: ${{ inputs.title }}
+      run: |
+        set -euo pipefail
+        # Pattern: "Release PR for <X.Y.Z> as <channel>"
+        # X.Y.Z is a 3-segment semver. Channel is restricted to a closed set
+        # to reject pathological tokens (e.g. trailing/double dashes).
+        regex='^Release PR for ([0-9]+\.[0-9]+\.[0-9]+) as (nightly|pre-release|stable|rc)$'
+        if [[ "$TITLE" =~ $regex ]]; then
+          version="${BASH_REMATCH[1]}"
+          channel="${BASH_REMATCH[2]}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          echo "Parsed title: version=$version channel=$channel"
+        else
+          echo "::error::Could not parse release PR title. Expected 'Release PR for <semver> as <channel>' but got: $TITLE"
+          exit 1
+        fi

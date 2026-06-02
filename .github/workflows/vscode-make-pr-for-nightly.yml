@@ -1,0 +1,292 @@
+name: Make PR for Nightly
+
+# Reusable workflow that creates a "Release PR for <version> as nightly" pull
+# request. The PR is labeled `nightly-automerge` so a separate consumer-side
+# workflow (which calls vscode-automerge-nightly-pr.yml) can merge it once
+# checks pass.
+#
+# Usage from consuming repository (pin to a version tag like @v1, not @main):
+#   jobs:
+#     make-nightly-pr:
+#       uses: salesforcecli/github-workflows/.github/workflows/vscode-make-pr-for-nightly.yml@v1
+#       with:
+#         extension-id: salesforce.salesforcedx-vscode
+#         vsix-glob: salesforcedx-vscode-*.vsix
+#         bot-user: <bot-username>
+#       secrets:
+#         bot-github-token: ${{ secrets.<your-bot-pat-secret> }}
+#
+# Requirements:
+#   - Consuming repo must have @salesforce/vscode-extension-ci installed as devDependency
+#     (so `node node_modules/github-workflows/packages/vscode-extension-ci/dist/cli.js`
+#     resolves at runtime). Mirrors the requirement of `vscode-publish-extensions.yml`.
+#
+# Required secret:
+#   bot-github-token (no default) — Personal Access Token (PAT) for the bot
+#     account identified by `bot-user`. The PAT must:
+#       - own the same identity as `bot-user` (so commits/PRs are authored by it)
+#       - have `repo` and `workflow` scopes
+#       - be able to push to `inputs.branch` (typically `main` requires admin
+#         or specific branch-protection bypass for the bot)
+
+on:
+  workflow_call:
+    inputs:
+      branch:
+        description: 'Branch to read main version from and open the PR against'
+        required: false
+        default: 'main'
+        type: string
+      extension-id:
+        description: 'Marketplace extension id (e.g. salesforce.salesforcedx-vscode) used for marketplace lookup'
+        required: true
+        type: string
+      vsix-glob:
+        description: 'VSIX filename glob. Single pattern (e.g. "salesforcedx-vscode-*.vsix") or JSON map of extension name to pattern. Passed through for forward-compat with downstream steps.'
+        required: true
+        type: string
+      tag-prefix:
+        description: 'Prefix used for marketplace tracking tags'
+        required: false
+        default: 'marketplace'
+        type: string
+      bot-user:
+        description: 'GitHub username of the bot account that creates the PR. No default — consumer must be explicit.'
+        required: true
+        type: string
+      new-major:
+        description: 'Manual override for major version (whole number). Leave empty to use auto-bump.'
+        required: false
+        type: string
+      force-new-major:
+        description: 'Set to "true" to bypass new-major +1 validation. Use with care.'
+        required: false
+        default: 'false'
+        type: string
+      slack-name:
+        description: 'Display name used in Slack release notifications'
+        required: false
+        default: 'VS Code Extension'
+        type: string
+    secrets:
+      bot-github-token:
+        description: 'PAT for bot-user. Needs `repo` + `workflow` scopes. See header docstring.'
+        required: true
+      slack-webhook:
+        description: 'Slack webhook URL for notifications. Optional; if omitted the slack step is skipped.'
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create_pull_request:
+    name: Create Nightly Release PR
+    runs-on: ubuntu-latest
+    outputs:
+      new-version: ${{ steps.bump.outputs.new-version }}
+      pr-url: ${{ steps.create-pr.outputs.pr-url }}
+      pr-branch: ${{ steps.create-pr.outputs.pr-branch }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 0
+          token: ${{ secrets.bot-github-token }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22.x'
+
+      - name: Install dependencies
+        uses: ./.github/actions/vscode/npm-install-with-retries
+
+      - name: Run version bumper
+        id: bump
+        env:
+          EXTENSION_ID: ${{ inputs.extension-id }}
+          VSIX_GLOB: ${{ inputs.vsix-glob }}
+          TAG_PREFIX: ${{ inputs.tag-prefix }}
+          IS_NIGHTLY: 'true'
+          PRE_RELEASE: 'true'
+          IS_PROMOTION: 'false'
+          SELECTED_EXTENSIONS: 'all'
+          NEW_MAJOR: ${{ inputs.new-major }}
+          FORCE_NEW_MAJOR: ${{ inputs.force-new-major }}
+          GITHUB_TOKEN: ${{ secrets.bot-github-token }}
+          BRANCH: ${{ inputs.branch }}
+        run: |
+          set -euo pipefail
+          node node_modules/github-workflows/packages/vscode-extension-ci/dist/cli.js ext-version-bumper
+
+          # Determine the new version. Rather than reading from `packages/*/package.json`
+          # (which is fragile if non-extension packages exist in `packages/`), we ask
+          # git which `package.json` files were modified by the bumper, parse `version`
+          # from each, and assert they all agree (same-semver invariant — see
+          # SESSION-LOG.md §8 #1).
+          NEW_VERSION=""
+          # Use git to find package.json files that were actually modified.
+          # `git diff HEAD` covers both staged and unstaged changes — works whether
+          # the bumper auto-stages its edits or leaves them in the working tree.
+          MODIFIED_PJS=$(git diff HEAD --name-only -- '**/package.json' 'package.json')
+          if [ -z "$MODIFIED_PJS" ]; then
+            echo "::error::Version bumper did not modify any package.json files."
+            exit 1
+          fi
+          while IFS= read -r pj; do
+            [ -z "$pj" ] && continue
+            [ ! -f "$pj" ] && continue
+            # Let parse failures crash the step. The bumper succeeded earlier, so a
+            # malformed package.json now indicates a real problem worth failing on.
+            V=$(node -p "require('./$pj').version")
+            if [ -z "$NEW_VERSION" ]; then
+              NEW_VERSION="$V"
+            elif [ "$V" != "$NEW_VERSION" ]; then
+              echo "::error::Inconsistent versions across modified package.json files. Got '$V' in $pj but expected '$NEW_VERSION'. The same-semver invariant requires all extensions in the pack to share a version (see SESSION-LOG.md §8 #1)."
+              exit 1
+            fi
+          done <<< "$MODIFIED_PJS"
+          if [ -z "$NEW_VERSION" ]; then
+            echo "::error::Could not determine new version from modified package.json files."
+            exit 1
+          fi
+          echo "Resolved new version: $NEW_VERSION"
+          echo "new-version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Configure git identity for bot
+        env:
+          BOT_USER: ${{ inputs.bot-user }}
+        run: |
+          set -euo pipefail
+          # Bot accounts hide their email by default, so `gh api user --jq .email`
+          # returns null. Use the noreply email pattern directly — that's what
+          # GitHub recommends for bot-authored commits.
+          git config --local user.name "$BOT_USER"
+          git config --local user.email "${BOT_USER}@users.noreply.github.com"
+          echo "Configured git identity: $BOT_USER <${BOT_USER}@users.noreply.github.com>"
+
+      - name: Commit and push release branch
+        id: create-pr
+        env:
+          GH_TOKEN: ${{ secrets.bot-github-token }}
+          NEW_VERSION: ${{ steps.bump.outputs.new-version }}
+          BASE_BRANCH: ${{ inputs.branch }}
+        run: |
+          set -euo pipefail
+
+          PR_BRANCH="nightly/v${NEW_VERSION}"
+          echo "Release branch: $PR_BRANCH"
+
+          # Use bot token for push.
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          # Re-run guard: this workflow always pushes a fresh branch. If the branch
+          # already exists on the remote, a previous run partially failed — bail out
+          # and require manual cleanup rather than silently overwriting.
+          if git ls-remote --heads origin "$PR_BRANCH" | grep -q "$PR_BRANCH"; then
+            echo "::error::Branch '$PR_BRANCH' already exists on origin. A previous run likely failed mid-way. Manually delete the stale branch (git push origin --delete '$PR_BRANCH') and close any open PR before re-running."
+            exit 1
+          fi
+
+          git checkout -b "$PR_BRANCH"
+          git add -A
+          # Skipping `git diff --staged --quiet` guard here: the version-bumper
+          # step above already asserted that the bumper produced edits to one or
+          # more package.json files, so this guard would never trigger.
+          git commit -m "chore: release ${NEW_VERSION} as nightly [skip ci]"
+          # Plain push: branch should not exist yet (we just guarded above). If a
+          # concurrent re-run wins the race, plain push will fail loudly rather than
+          # force-clobbering — preferred behavior.
+          git push origin "$PR_BRANCH"
+
+          PR_TITLE="Release PR for ${NEW_VERSION} as nightly"
+
+          # Build the PR body via printf to a file. Avoids heredoc-indentation
+          # pitfalls (a YAML-indented EOF marker won't terminate the heredoc).
+          PR_BODY_FILE="$(mktemp)"
+          printf '%s\n' \
+            "Auto-generated nightly release PR." \
+            "" \
+            "- Version: \`${NEW_VERSION}\`" \
+            "- Channel: \`nightly\`" \
+            "- Source branch: \`${BASE_BRANCH}\`" \
+            "" \
+            "When checks pass, the \`nightly-automerge\` label triggers the" \
+            "automerge workflow. After merge, the draft-release workflow builds" \
+            "VSIXes and publishes a GitHub draft release for testing." \
+            "" \
+            "Do not edit this PR by hand." \
+            > "$PR_BODY_FILE"
+
+          PR_URL=$(gh pr create \
+            --repo "$GITHUB_REPOSITORY" \
+            --base "$BASE_BRANCH" \
+            --head "$PR_BRANCH" \
+            --title "$PR_TITLE" \
+            --body-file "$PR_BODY_FILE" \
+            --label "nightly-automerge")
+
+          echo "Created PR: $PR_URL"
+          echo "pr-url=$PR_URL" >> "$GITHUB_OUTPUT"
+          echo "pr-branch=$PR_BRANCH" >> "$GITHUB_OUTPUT"
+
+  slack_notification:
+    name: Slack Notification
+    needs: [create_pull_request]
+    runs-on: ubuntu-latest
+    if: always() && needs.create_pull_request.result == 'success'
+    # SLACK_WEBHOOK_URL must be at job level so the step `if:` can read it.
+    # Step-level `env:` is not materialized before the step's `if:` evaluates.
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.slack-webhook }}
+    steps:
+      - name: Notify Slack
+        if: env.SLACK_WEBHOOK_URL != ''
+        uses: slackapi/slack-github-action@v3.0.3
+        # Injection-safe payload: `slackapi/slack-github-action@v3` does NOT
+        # do bash-style `${VAR}` expansion inside `payload:`. Inputs/outputs
+        # are interpolated by GitHub Actions templating before the action runs.
+        # We wrap untrusted values (inputs.slack-name, outputs from prior jobs)
+        # in `toJSON(format(...))`, which produces a properly-quoted JSON string
+        # — embedded `"` and newlines are escaped — making JSON injection
+        # impossible regardless of input contents. Static GitHub-controlled
+        # fields (github.repository, github.run_id, github.server_url) are safe
+        # to inject directly without `toJSON`.
+        with:
+          payload: |
+            {
+              "text": ${{ toJSON(format('📬 {0} — Nightly release PR opened', inputs.slack-name)) }},
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": ${{ toJSON(format('📬 {0} — Nightly Release PR Opened', inputs.slack-name)) }}
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Repository:*\n${{ github.repository }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": ${{ toJSON(format('*Version:*{0}{1}', '\n', needs.create_pull_request.outputs.new-version)) }}
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": ${{ toJSON(format('*PR:*{0}<{1}|View PR>', '\n', needs.create_pull_request.outputs.pr-url)) }}
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Workflow Run:*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    }
+                  ]
+                }
+              ]
+            }

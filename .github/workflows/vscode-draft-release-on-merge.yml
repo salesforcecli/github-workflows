@@ -1,0 +1,250 @@
+name: Draft Release on Merge
+
+# Reusable workflow that fires when a "Release PR for <version> as nightly"
+# pull request is merged. It builds VSIXes via `vscode-package.yml` and
+# publishes a GitHub *draft* release with the VSIXes attached.
+#
+# IMPORTANT — design invariant (SESSION-LOG section 3, section 8 #2):
+#   This workflow does NOT publish to the VS Code Marketplace. Nightlies are
+#   GitHub draft releases ONLY. Promotion to the Marketplace happens via the
+#   separate `vscode-promote-prerelease.yml` workflow on a longer cadence.
+#
+# Usage from consuming repository (pin to a version tag like @v1, not @main):
+#   on:
+#     pull_request:
+#       types: [closed]
+#   jobs:
+#     draft-release:
+#       if: |
+#         github.event.pull_request.merged == true &&
+#         startsWith(github.event.pull_request.title, 'Release PR for') &&
+#         endsWith(github.event.pull_request.title, 'as nightly')
+#       uses: salesforcecli/github-workflows/.github/workflows/vscode-draft-release-on-merge.yml@v1
+#       with:
+#         extension-id: salesforce.salesforcedx-vscode
+#         vsix-glob: salesforcedx-vscode-*.vsix
+#         pr-title: ${{ github.event.pull_request.title }}
+#       secrets:
+#         bot-github-token: ${{ secrets.<your-bot-pat-secret> }}
+#
+# Required secret:
+#   bot-github-token (no default) — PAT used by `gh release create` to attach
+#     VSIXes and publish the draft release. Needs `repo` scope.
+
+on:
+  workflow_call:
+    inputs:
+      branch:
+        description: 'Branch the merged PR targeted (used as the build source)'
+        required: false
+        default: 'main'
+        type: string
+      extension-id:
+        description: |
+          Marketplace extension id (e.g. salesforce.salesforcedx-vscode).
+          Currently unused inside this workflow but accepted for forward-compatibility
+          and parity with vscode-publish-extensions.yml / vscode-make-pr-for-nightly.yml
+          callers. Will be wired up once vscode-package.yml supports per-extension globs (Phase 4).
+        required: true
+        type: string
+      vsix-glob:
+        description: |
+          VSIX filename glob. Single pattern (e.g. "salesforcedx-vscode-*.vsix") or JSON map.
+          Currently unused inside this workflow but accepted for forward-compatibility
+          and parity with vscode-publish-extensions.yml / vscode-make-pr-for-nightly.yml
+          callers. Will be wired up once vscode-package.yml supports per-extension globs (Phase 4).
+        required: true
+        type: string
+      tag-prefix:
+        description: 'Prefix used for marketplace tracking tags'
+        required: false
+        default: 'marketplace'
+        type: string
+      slack-name:
+        description: 'Display name used in Slack release notifications'
+        required: false
+        default: 'VS Code Extension'
+        type: string
+      pr-title:
+        description: 'The merged PR title, e.g. "Release PR for 65.9.0 as nightly". Used to extract the version + channel.'
+        required: true
+        type: string
+    secrets:
+      bot-github-token:
+        description: 'PAT used by `gh release create` to publish the draft release. See header docstring.'
+        required: true
+      slack-webhook:
+        description: 'Slack webhook URL for notifications. Optional; if omitted the slack step is skipped.'
+        required: false
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  parse-title:
+    name: Parse PR Title
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.parse.outputs.version }}
+      channel: ${{ steps.parse.outputs.channel }}
+    steps:
+      - name: Checkout (for local action)
+        uses: actions/checkout@v6
+
+      - name: Parse PR title
+        id: parse
+        uses: ./.github/actions/vscode/parse-pr-title
+        with:
+          title: ${{ inputs.pr-title }}
+
+      - name: Validate channel is nightly
+        env:
+          CHANNEL: ${{ steps.parse.outputs.channel }}
+        run: |
+          set -euo pipefail
+          if [ "$CHANNEL" != "nightly" ]; then
+            echo "::error::This workflow only handles the nightly channel. Got channel='$CHANNEL'. Use vscode-promote-prerelease.yml for other channels."
+            exit 1
+          fi
+          echo "Channel validated: $CHANNEL"
+
+  build-vsixes:
+    name: Build VSIXes
+    needs: [parse-title]
+    uses: ./.github/workflows/vscode-package.yml
+    with:
+      branch: ${{ inputs.branch }}
+      pre-release: 'true'
+      artifact-name: vsix-packages-nightly-draft
+
+  create-draft-release:
+    name: Create Draft Release
+    needs: [parse-title, build-vsixes]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.branch }}
+
+      - name: Download VSIX artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.build-vsixes.outputs.artifact-name }}
+          path: ./vsix-artifacts
+
+      - name: List downloaded VSIXes
+        run: |
+          set -euo pipefail
+          echo "Contents of ./vsix-artifacts:"
+          find ./vsix-artifacts -type f \( -name '*.vsix' -o -name '*.md5' -o -name '*.json' \) | sort
+          if [ -z "$(find ./vsix-artifacts -type f -name '*.vsix' -print -quit)" ]; then
+            echo "::error::No VSIX files found in artifacts."
+            exit 1
+          fi
+
+      - name: Create draft GitHub release (idempotent)
+        env:
+          GH_TOKEN: ${{ secrets.bot-github-token }}
+          VERSION: ${{ needs.parse-title.outputs.version }}
+        run: |
+          set -euo pipefail
+          TAG="v${VERSION}"
+          TITLE="Nightly v${VERSION}"
+          NOTES="Nightly draft for testing.
+
+          Install via:
+            gh release download ${TAG} --repo ${GITHUB_REPOSITORY}
+            code --install-extension <vsix-file>
+
+          This is a draft release — not published to the VS Code Marketplace."
+
+          # Collect VSIX paths.
+          mapfile -t VSIX_FILES < <(find ./vsix-artifacts -type f -name '*.vsix' | sort)
+          echo "Found ${#VSIX_FILES[@]} VSIX file(s) to attach"
+
+          # Idempotency / safety:
+          #   - If release does not exist → create as draft (normal path).
+          #   - If release exists AND is still a draft → upload assets with --clobber (re-run).
+          #   - If release exists AND is published (isDraft=false) → fail loudly. A
+          #     human likely promoted the draft via the GitHub UI; auto-uploading
+          #     assets to a published release would silently corrupt a release the
+          #     team has signed off on.
+          if RELEASE_JSON=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft 2>/dev/null); then
+            IS_DRAFT=$(echo "$RELEASE_JSON" | jq -r '.isDraft')
+            if [ "$IS_DRAFT" = "true" ]; then
+              echo "Release $TAG already exists as draft — uploading VSIX assets with --clobber."
+              gh release upload "$TAG" "${VSIX_FILES[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+            else
+              echo "::error::Release $TAG is already published (not a draft). Manual investigation required — refusing to upload assets to a published release."
+              exit 1
+            fi
+          else
+            echo "Creating new draft release $TAG"
+            gh release create "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --draft \
+              --title "$TITLE" \
+              --notes "$NOTES" \
+              "${VSIX_FILES[@]}"
+          fi
+          echo "Draft release ready: $TAG"
+
+  slack-notify:
+    name: Slack Notification
+    needs: [parse-title, create-draft-release]
+    runs-on: ubuntu-latest
+    if: always() && needs.create-draft-release.result == 'success'
+    # SLACK_WEBHOOK_URL must be at job level so the step `if:` can read it.
+    # Step-level `env:` is not materialized before the step's `if:` evaluates.
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.slack-webhook }}
+    steps:
+      - name: Notify Slack
+        if: env.SLACK_WEBHOOK_URL != ''
+        uses: slackapi/slack-github-action@v3.0.3
+        # Injection-safe payload: `slackapi/slack-github-action@v3` does NOT
+        # do bash-style `${VAR}` expansion inside `payload:`. Inputs/outputs
+        # are interpolated by GitHub Actions templating before the action runs.
+        # We wrap untrusted values (inputs.slack-name, outputs from prior jobs)
+        # in `toJSON(format(...))`, which produces a properly-quoted JSON string
+        # — embedded `"` and newlines are escaped — making JSON injection
+        # impossible regardless of input contents. Static GitHub-controlled
+        # fields (github.repository, github.run_id, github.server_url) are safe
+        # to inject directly without `toJSON`.
+        with:
+          payload: |
+            {
+              "text": ${{ toJSON(format('📦 {0} — Nightly draft release published', inputs.slack-name)) }},
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": ${{ toJSON(format('📦 {0} — Nightly Draft Release Published', inputs.slack-name)) }}
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Repository:*\n${{ github.repository }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": ${{ toJSON(format('*Version:*{0}v{1}', '\n', needs.parse-title.outputs.version)) }}
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": ${{ toJSON(format('*Release:*{0}<{1}/{2}/releases/tag/v{3}|View Release>', '\n', github.server_url, github.repository, needs.parse-title.outputs.version)) }}
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Workflow Run:*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    }
+                  ]
+                }
+              ]
+            }
