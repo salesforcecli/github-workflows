@@ -43,6 +43,23 @@ runs:
 
         echo "✅ Input validation passed"
 
+    - name: Validate VSIX has pre-release marker (when publishing as pre-release)
+      if: inputs.pre-release == 'true'
+      shell: bash
+      env:
+        VSIX_PATH: ${{ inputs.vsix-path }}
+      run: |
+        set -euo pipefail
+        # OpenVSX silently ignores --pre-release at publish time if the VSIX
+        # manifest does not declare Microsoft.VisualStudio.Code.PreRelease="true".
+        # The publish succeeds but ships as Stable. Catch it pre-publish so we
+        # never corrupt the marketplace listing.
+        if ! unzip -p "$VSIX_PATH" extension.vsixmanifest | grep -q 'Microsoft.VisualStudio.Code.PreRelease'; then
+          echo "::error file=$VSIX_PATH::VSIX manifest is missing Microsoft.VisualStudio.Code.PreRelease. Refusing to publish as pre-release — would silently ship as Stable on OpenVSX. Re-package the VSIX with the --pre-release flag (e.g. via the shared vscode-package.yml workflow with pre-release: 'true', or 'vsce package --pre-release' / '@vscode/vsce package --pre-release' directly)."
+          exit 1
+        fi
+        echo "✅ Pre-release marker present in $VSIX_PATH"
+
     - name: Audit publish attempt
       shell: bash
       run: |
