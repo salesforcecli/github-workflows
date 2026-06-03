@@ -94,7 +94,7 @@ jobs:
           echo "PR sentinel verified: $TITLE"
 
       - name: Install plugin-release-management
-        run: npm install -g @salesforce/plugin-release-management@dev --omit=dev
+        run: npm install -g @salesforce/plugin-release-management@latest --omit=dev
 
       - name: Run cli:release:automerge with retry
         uses: ./.github/actions/retry
