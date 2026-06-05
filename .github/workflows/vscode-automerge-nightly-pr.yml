@@ -102,7 +102,7 @@ jobs:
         run: npm install -g @salesforce/plugin-release-management@latest --omit=dev
 
       - name: Run cli:release:automerge with retry
-        uses: ./.github/actions/retry
+        uses: salesforcecli/github-workflows/.github/actions/retry@npz/vscode-extension-ci
         env:
           GITHUB_TOKEN: ${{ secrets.bot-github-token }}
           OWNER: ${{ github.repository_owner }}

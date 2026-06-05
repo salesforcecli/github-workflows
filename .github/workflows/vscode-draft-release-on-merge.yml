@@ -99,7 +99,7 @@ jobs:
 
       - name: Parse PR title
         id: parse
-        uses: ./.github/actions/vscode/parse-pr-title
+        uses: salesforcecli/github-workflows/.github/actions/vscode/parse-pr-title@npz/vscode-extension-ci
         with:
           title: ${{ inputs.pr-title }}
 
@@ -117,7 +117,7 @@ jobs:
   build-vsixes:
     name: Build VSIXes
     needs: [parse-title]
-    uses: ./.github/workflows/vscode-package.yml
+    uses: salesforcecli/github-workflows/.github/workflows/vscode-package.yml@npz/vscode-extension-ci
     with:
       branch: ${{ inputs.branch }}
       pre-release: 'true'
