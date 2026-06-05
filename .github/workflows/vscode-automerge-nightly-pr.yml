@@ -49,6 +49,11 @@ on:
         required: false
         default: 120
         type: number
+      dry-run:
+        description: 'Pass --dry-run to sf-release; verifies PR but does not merge. Use for cross-repo testing.'
+        required: false
+        default: 'false'
+        type: string
     secrets:
       bot-github-token:
         description: 'PAT for the bot account performing the merge. See header docstring.'
@@ -103,8 +108,9 @@ jobs:
           OWNER: ${{ github.repository_owner }}
           REPO_NAME: ${{ github.event.repository.name }}
           PR_NUMBER: ${{ inputs.pr-number }}
+          DRY_RUN_FLAG: ${{ inputs.dry-run == 'true' && '--dry-run' || '' }}
         with:
           max_attempts: ${{ inputs.max-attempts }}
           retry_wait_seconds: ${{ inputs.retry-wait-seconds }}
           retry_on: error
-          command: sf-release cli:release:automerge --owner "$OWNER" --repo "$REPO_NAME" --pull-number "$PR_NUMBER" --verbose
+          command: sf-release cli:release:automerge --owner "$OWNER" --repo "$REPO_NAME" --pull-number "$PR_NUMBER" --verbose $DRY_RUN_FLAG

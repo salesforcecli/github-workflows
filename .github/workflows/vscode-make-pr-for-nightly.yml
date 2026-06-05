@@ -68,6 +68,11 @@ on:
         required: false
         default: 'VS Code Extension'
         type: string
+      dry-run:
+        description: 'Run without pushing the branch or opening the PR. Bumper still runs and version is computed. The pr-url output is set to "(dry-run, no PR created)" sentinel; pr-branch and new-version outputs are populated as in a real run. Use for cross-repo testing.'
+        required: false
+        default: 'false'
+        type: string
     secrets:
       bot-github-token:
         description: 'PAT for bot-user. Needs `repo` + `workflow` scopes. See header docstring.'
@@ -174,6 +179,7 @@ jobs:
           GH_TOKEN: ${{ secrets.bot-github-token }}
           NEW_VERSION: ${{ steps.bump.outputs.new-version }}
           BASE_BRANCH: ${{ inputs.branch }}
+          DRY_RUN: ${{ inputs.dry-run }}
         run: |
           set -euo pipefail
 
@@ -186,6 +192,7 @@ jobs:
           # Re-run guard: this workflow always pushes a fresh branch. If the branch
           # already exists on the remote, a previous run partially failed — bail out
           # and require manual cleanup rather than silently overwriting.
+          # In dry-run mode we still run the guard so we surface stale branches early.
           if git ls-remote --heads origin "$PR_BRANCH" | grep -q "$PR_BRANCH"; then
             echo "::error::Branch '$PR_BRANCH' already exists on origin. A previous run likely failed mid-way. Manually delete the stale branch (git push origin --delete '$PR_BRANCH') and close any open PR before re-running."
             exit 1
@@ -197,12 +204,24 @@ jobs:
           # step above already asserted that the bumper produced edits to one or
           # more package.json files, so this guard would never trigger.
           git commit -m "chore: release ${NEW_VERSION} as nightly [skip ci]"
+
+          PR_TITLE="Release PR for ${NEW_VERSION} as nightly"
+
+          if [ "$DRY_RUN" = "true" ]; then
+            # Note: the bumper edits, `git checkout -b`, and `git commit` above
+            # all ran — they only mutate the runner workspace. We never push,
+            # and the workspace is discarded when the job ends. Safe.
+            echo "DRY RUN: would push branch $PR_BRANCH"
+            echo "DRY RUN: would open PR titled '$PR_TITLE' against base '$BASE_BRANCH' with label 'nightly-automerge'"
+            echo "pr-url=(dry-run, no PR created)" >> "$GITHUB_OUTPUT"
+            echo "pr-branch=$PR_BRANCH" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           # Plain push: branch should not exist yet (we just guarded above). If a
           # concurrent re-run wins the race, plain push will fail loudly rather than
           # force-clobbering — preferred behavior.
           git push origin "$PR_BRANCH"
-
-          PR_TITLE="Release PR for ${NEW_VERSION} as nightly"
 
           # Build the PR body via printf to a file. Avoids heredoc-indentation
           # pitfalls (a YAML-indented EOF marker won't terminate the heredoc).
@@ -237,7 +256,7 @@ jobs:
     name: Slack Notification
     needs: [create_pull_request]
     runs-on: ubuntu-latest
-    if: always() && needs.create_pull_request.result == 'success'
+    if: always() && needs.create_pull_request.result == 'success' && inputs.dry-run != 'true'
     # SLACK_WEBHOOK_URL must be at job level so the step `if:` can read it.
     # Step-level `env:` is not materialized before the step's `if:` evaluates.
     env:

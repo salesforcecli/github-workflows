@@ -69,6 +69,11 @@ on:
         description: 'The merged PR title, e.g. "Release PR for 65.9.0 as nightly". Used to extract the version + channel.'
         required: true
         type: string
+      dry-run:
+        description: 'Build VSIXes but do not create or update the GitHub draft release. Use for cross-repo testing.'
+        required: false
+        default: 'false'
+        type: string
     secrets:
       bot-github-token:
         description: 'PAT used by `gh release create` to publish the draft release. See header docstring.'
@@ -148,6 +153,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.bot-github-token }}
           VERSION: ${{ needs.parse-title.outputs.version }}
+          DRY_RUN: ${{ inputs.dry-run }}
         run: |
           set -euo pipefail
           TAG="v${VERSION}"
@@ -163,6 +169,12 @@ jobs:
           # Collect VSIX paths.
           mapfile -t VSIX_FILES < <(find ./vsix-artifacts -type f -name '*.vsix' | sort)
           echo "Found ${#VSIX_FILES[@]} VSIX file(s) to attach"
+
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "DRY RUN: would create or update draft release $TAG with these VSIXes:"
+            printf '  %s\n' "${VSIX_FILES[@]}"
+            exit 0
+          fi
 
           # Idempotency / safety:
           #   - If release does not exist → create as draft (normal path).
@@ -195,7 +207,7 @@ jobs:
     name: Slack Notification
     needs: [parse-title, create-draft-release]
     runs-on: ubuntu-latest
-    if: always() && needs.create-draft-release.result == 'success'
+    if: always() && needs.create-draft-release.result == 'success' && inputs.dry-run != 'true'
     # SLACK_WEBHOOK_URL must be at job level so the step `if:` can read it.
     # Step-level `env:` is not materialized before the step's `if:` evaluates.
     env:
