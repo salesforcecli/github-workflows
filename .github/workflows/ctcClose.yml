@@ -20,7 +20,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
-          cache: npm
+          # No `cache: npm`: it requires an npm lockfile and so hard-fails on
+          # pnpm/yarn consumer repos; the CTC CLI below is a one-off global install.
       - run: npm install -g @salesforce/change-case-management --omit=dev
       - id: ctc
         run: |
