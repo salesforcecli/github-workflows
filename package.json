@@ -1,23 +1,57 @@
 {
-  "name": "github-workflows",
+  "name": "@salesforce/vscode-extension-ci",
   "version": "1.0.0",
-  "private": true,
-  "description": "Shared GitHub Actions workflows and scripts for Salesforce repositories",
+  "description": "Shared CI/CD infrastructure for Salesforce VS Code extensions",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "vscode-ext-ci": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "test": "echo \"Tests not yet implemented\"",
+    "lint": "eslint src --ext .ts",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "vscode",
+    "extension",
+    "ci",
+    "cd",
+    "release",
+    "automation",
+    "salesforce"
+  ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/salesforcecli/github-workflows.git"
+    "url": "https://github.com/forcedotcom/vscode-extension-ci-toolkit.git",
+    "directory": "packages/vscode-extension-ci"
   },
-  "workspaces": [
-    "packages/*"
-  ],
-  "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present"
+  "license": "BSD-3-Clause",
+  "dependencies": {
+    "commander": "^14.0.3",
+    "chalk": "^5.3.0",
+    "zod": "^4.4.3",
+    "semver": "^7.7.4",
+    "simple-git": "^3.36.0",
+    "glob": "^10.3.10"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "@types/node": "^22.15.1",
+    "@types/semver": "^7.5.8"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=9.0.0"
+    "node": ">=22.0.0"
   }
 }

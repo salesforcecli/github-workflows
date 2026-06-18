@@ -1,382 +1,98 @@
-# Github Workflows
+# @salesforce/vscode-extension-ci
 
-Reusable workflows and actions
+Shared CI/CD infrastructure for Salesforce VS Code extensions.
 
-> [!IMPORTANT]
-> Many of these workflows require a Personal Access Token to function.
->
-> - Create a new PAT with Repo access
->   - It is recommended that this is a service account user
->   - Note: This user/bot will need to have access to push to your repo's default branch. This can be configured in the branch protection rules.
-> - Add the PAT as an Actions [Organization secret](https://github.com/organizations/salesforcecli/settings/secrets/actions)
->   - Set the `Name` to `SVC_CLI_BOT_GITHUB_TOKEN`
->   - Paste in your new PAT as the `Value`
->   - Set `Repository Access` to 'Selected Repositories'
->   - Click the gear icon to select repos that need access to the PAT
->     - This can be edited later
->   - Click `Add Secret`
+## Installation
 
-## Opinionated publish process for npm
-
-> github is the source of truth for code AND releases. Get the version/tag/release right on github, then publish to npm based on that.
-
-![](./images/plugin-release.png)
-
-1. work on a feature branch, commiting with conventional-commits
-2. merge to main
-3. A push to main produces (if your commits have `fix:` or `feat:`) a bumped package.json and a tagged github release via `githubRelease`
-4. A release cause `npmPublish` to run.
-
-Just need to publish to npm? You could use any public action to do step 4.
-Use this repo's `npmPublish` if you need either
-
-1. codesigning for Salesforce CLIs
-2. integration with CTC
-   or if you own other repos that need those features and just want consistency.
-
-### githubRelease
-
-> creates a github release based on conventional commit prefixes. Using commits like `fix: etc` (patch version) and `feat: wow` (minor version).
-> A commit whose **body** (not the title) contains `BREAKING CHANGES:` will cause the action to update the packageVersion to the next major version, produce a changelog, tag and release.
-
-```yml
-name: create-github-release
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  release:
-    uses: salesforcecli/github-workflows/.github/workflows/create-github-release.yml@main
-    secrets: inherit
-    # you can also pass in values for the secrets
-    # secrets:
-    #  SVC_CLI_BOT_GITHUB_TOKEN: gh_pat00000000
+```bash
+npm install --save-dev @salesforce/vscode-extension-ci
 ```
 
-### npmPublish
+## CLI Usage
 
-> This will verify that the version has not already been published. There are additional params for signing your plugin and integrating with Change Traffic Control (release moratoriums) that you probably only care about if your work for Salesforce.
+The package provides a CLI tool for running release automation scripts:
 
-example usage
-
-```yml
-on:
-  release:
-    # the result of the githubRelease workflow
-    types: [published]
-
-jobs:
-  my-publish:
-    uses: salesforcecli/github-workflows/.github/workflows/npmPublish.yml
-    with:
-      tag: latest
-      githubTag: ${{ github.event.release.tag_name }}
-    secrets: inherit
-    # you can also pass in values for the secrets
-    # secrets:
-    #  NPM_TOKEN: ^&*$
+```bash
+npx vscode-ext-ci <command>
 ```
 
-### Plugin Signing
+### Available Commands
 
-Plugins created by Salesforce teams can be signed automatically with `sign:true` if the repo is in [salesforcecli](https://github.com/salesforcecli) or [forcedotcom](https://github.com/forcedotcom) gitub organization.
+**Extension Management:**
+- `ext-build-type` - Determine build type (nightly/promotion/regular)
+- `ext-change-detector` - Detect changes in extensions and determine version bump
+- `ext-nightly-finder` - Find eligible nightly builds for pre-release promotion
+- `ext-package-selector` - Discover available VS Code extensions
+- `ext-publish-matrix` - Generate publish matrix for marketplace publishing
+- `ext-release-plan` - Display extension release plan
+- `ext-version-bumper` - Bump versions for selected extensions
+- `ext-github-releases` - Create GitHub releases with VSIX artifacts
 
-You'll need the CLI team to enable your repo for signing. Ask in https://salesforce-internal.slack.com/archives/C0298EE05PU
+**NPM Package Management:**
+- `npm-change-detector` - Detect changes in NPM packages
+- `npm-package-selector` - Select NPM packages for release
+- `npm-package-details` - Extract package details for notifications
+- `npm-release-plan` - Generate NPM release plan
 
-Plugin signing is not available outside of Salesforce. Your users can add your plugin to their allow list (`unsignedPluginAllowList.json`)
+**Utilities:**
+- `audit-logger` - Log audit events for compliance
 
-```yml
-on:
-  release:
-    # the result of the githubRelease workflow
-    types: [published]
+## Environment Variables
 
-jobs:
-  my-publish:
-    uses: salesforcecli/github-workflows/.github/workflows/npmPublish.yml
-    with:
-      sign: true
-      tag: latest
-      githubTag: ${{ github.event.release.tag_name }}
-    secrets: inherit
+Configure behavior with environment variables:
+
+- `PACKAGES_ROOT` - Root directory for packages (default: `packages`)
+- `TAG_PREFIX` - Git tag prefix (default: `marketplace`)
+- `AUDIT_LOG_DIR` - Audit log directory (default: `.github/audit-logs`)
+
+## Programmatic API
+
+```typescript
+import {
+  detectExtensionChanges,
+  bumpVersions,
+  createGitHubReleases,
+  determinePublishMatrix
+} from '@salesforce/vscode-extension-ci';
+
+// Detect changes
+const changes = await detectExtensionChanges(buildContext, commitSha, extensions);
+
+// Bump versions
+bumpVersions({
+  versionBump: 'auto',
+  selectedExtensions: 'my-extension',
+  preRelease: 'true',
+  isNightly: 'true'
+});
 ```
 
-### Prereleases
+## Features
 
-`main` will release to `latest`. Other branches can create github prereleases and publish to other npm dist tags.
+### Smart Version Bumping
 
-You can create a prerelease one of two ways:
+Uses conventional commits and even/odd minor versioning:
 
-1. Create a branch with the `prerelease/**` prefix. Example `prerelease/my-fix`
-   1. Once a PR is opened, every commit pushed to this branch will create a prerelease
-   2. The default prerelease tag will be `dev`. If another tag is desired, manually set it in your `package.json`. Example: `1.2.3-beta.0`
-1. Manually run the `create-github-release` workflow in the Actions tab
-   1. Click `Run workflow`
-      1. Select the branch you want to create a prerelease from
-      1. Enter the desired prerelease tag: `dev`, `beta`, etc
+- **Even minor** (0.2.x, 0.4.x) → Stable releases
+- **Odd minor** (0.3.x, 0.5.x) → Pre-releases
+- `fix:` commits → patch bump
+- `feat:` commits → minor bump
+- `feat!:` or `BREAKING CHANGE:` → major bump
 
-> [!NOTE]  
-> Since conventional commits are used, there is no need to manually remove the prerelease tag from your `package.json`. Once the PR is merged into `main`, conventional commits will bump the version as expected (patch for `fix:`, minor for `feat:`, etc)
+### Change Detection
 
-Setup:
+Analyzes git history and conventional commits to determine:
+- Which extensions have changes
+- What type of version bump is needed
+- Whether to create a release
 
-1. Configure the branch rules for wherever you want to release from
-1. Modify your release and publish workflows like the following
+### GitHub Releases
 
-```yml
-name: create-github-release
+Automatically creates GitHub releases with:
+- VSIX artifacts attached
+- Release notes from commits
+- Proper tagging (pre-release vs stable)
 
-on:
-  push:
-    branches:
-      - main
-      # point at specific branches, or a naming convention via wildcard
-      - prerelease/**
-    tags-ignore:
-      - "*"
-  workflow_dispatch:
-    inputs:
-      prerelease:
-        type: string
-        description: "Name to use for the prerelease: beta, dev, etc. NOTE: If this is already set in the package.json, it does not need to be passed in here."
+## License
 
-jobs:
-  release:
-    uses: salesforcecli/github-workflows/.github/workflows/create-github-release.yml@main
-    secrets: inherit
-    with:
-      prerelease: ${{ inputs.prerelease }}
-      # If this is a push event, we want to skip the release if there are no semantic commits
-      # However, if this is a manual release (workflow_dispatch), then we want to disable skip-on-empty
-      # This helps recover from forgetting to add semantic commits ('fix:', 'feat:', etc.)
-      skip-on-empty: ${{ github.event_name == 'push' }}
-```
-
-```yml
-name: publish
-
-on:
-  release:
-    # both release and prereleases
-    types: [published]
-  # support manual release in case something goes wrong and needs to be repeated or tested
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: github tag that needs to publish
-        type: string
-        required: true
-
-jobs:
-  # parses the package.json version and detects prerelease tag (ex: beta from 4.4.4-beta.0)
-  getDistTag:
-    outputs:
-      tag: ${{ steps.distTag.outputs.tag }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.release.tag_name || inputs.tag  }}
-      - uses: salesforcecli/github-workflows/.github/actions/getPreReleaseTag@main
-        id: distTag
-
-  npm:
-    uses: salesforcecli/github-workflows/.github/workflows/npmPublish.yml@main
-    needs: [getDistTag]
-    with:
-      tag: ${{ needs.getDistTag.outputs.tag || 'latest' }}
-      githubTag: ${{ github.event.release.tag_name || inputs.tag }}
-    secrets: inherit
-```
-
-### Publishing from multiple long-lived branches
-
-> In this example `main` publishes to npm on a 1.x.x version and uses `latest`. `some-other-branch` publishes version 2.x.x and uses the `v2` dist tag
-
-```yml
-name: version, tag and github release
-
-on:
-  push:
-    # add the other branch so that it causes github releases just like main does
-    branches: [main, some-other-branch]
-
-jobs:
-  release:
-    uses: salesforcecli/github-workflows/.github/workflows/githubRelease.yml@main
-    secrets: inherit
-```
-
-```yml
-on:
-  release:
-    # the result of the githubRelease workflow
-    types: [published]
-
-jobs:
-  my-publish:
-    uses: salesforcecli/github-workflows/.github/workflows/npmPublish.yml
-    with:
-      # ternary-ish https://github.com/actions/runner/issues/409#issuecomment-752775072
-      # if the version is 2.x we release it on the `v2` dist tag
-      tag: ${{ startsWith( github.event.release.tag_name || inputs.tag, '1.') && 'latest' || 'v2'}}
-      githubTag: ${{ github.event.release.tag_name }}
-    secrets: inherit
-```
-
-## Opinionated Testing Process
-
-Write unit tests to tests units of code (a function/method).
-
-Write not-unit-tests to tests larger parts of code (a command) against real environments/APIs.
-
-Run the UT first (faster, less expensive for infrastructure/limits).
-
-```yml
-name: tests
-on:
-  push:
-    branches-ignore: [main]
-  workflow_dispatch:
-
-jobs:
-  unit-tests:
-    uses: salesforcecli/github-workflows/.github/workflows/unitTest.yml@main
-  nuts:
-    needs: unit-tests
-    uses: salesforcecli/github-workflows/.github/workflows/nut.yml@main
-    secrets: inherit
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-      fail-fast: false
-    with:
-      os: ${{ matrix.os }}
-```
-
-## Other Tooling
-
-### nut conditional on commit message
-
-```yml
-# conditional nuts based on commit message includes a certain string
-sandbox-nuts:
-  needs: [nuts, unit-tests]
-  if: contains(github.event.push.head_commit.message,'[sb-nuts]')
-  uses: salesforcecli/github-workflows/.github/workflows/nut.yml@main
-  secrets: inherit
-  with:
-    command: test:nuts:sandbox
-    os: ubuntu-latest
-```
-
-### externalNut
-
-> Scenario
->
-> 1. you have NUTs on a plugin that uses a library
-> 2. you want to check changes to the library against those NUTs
-
-see https://github.com/forcedotcom/source-deploy-retrieve/blob/> e09d635a7b852196701e71a4b2fba401277da313/.github/workflows/test.yml#L25 for an example
-
-### automerge
-
-> This example calls the automerge job. It'll merge PRs from dependabot that are
->
-> 1. up to date with main
-> 2. mergeable (per github)
-> 3. all checks have completed and none failed (skipped may not have run)
-
-```yml
-name: automerge
-on:
-  workflow_dispatch:
-  schedule:
-    - cron: "56 2,5,8,11 * * *"
-
-jobs:
-  automerge:
-    uses: salesforcecli/github-workflows/.github/workflows/automerge.yml@main
-    # secrets are needed
-    secrets: inherit
-```
-
-need squash?
-
-```yml
-automerge:
-  with:
-    mergeMethod: squash
-```
-
-### versionInfo
-
-> requires npm to exist. Use in a workflow that has already done that
->
-> given an npmTag (ex: `7.100.0` or `latest`) returns the numeric version (`foo` => `7.100.0`) plus > the xz linux tarball url and the short (7 char) sha.
->
-> Intended for releasing CLIs, not for general use on npm packages.
-
-```yml
-# inside steps
-- uses: salesforcecli/github-workflows/.github/actions/versionInfo@main
-  id: version-info
-  with:
-    version: ${{ inputs.version }}
-    npmPackage: sfdx-cli
-- run: echo "version is ${{ steps.version-info.outputs.version }}
-- run: echo "sha is ${{ steps.version-info.outputs.sha }}
-- run: echo "url is ${{ steps.version-info.outputs.url }}
-```
-
-### validatePR
-
-> Checks that PRs have a link to a github issue OR a GUS WI in the form of `@W-12456789@` (the `@` are to be compatible with [git2gus](https://github.com/forcedotcom/git2gus))
-
-```yml
-name: pr-validation
-
-on:
-  pull_request:
-    types: [opened, reopened, edited]
-    # only applies to PRs that want to merge to main
-    branches: [main]
-
-jobs:
-  pr-validation:
-    uses: salesforcecli/github-workflows/.github/workflows/validatePR.yml@main
-```
-
-### prNotification
-
-> Mainly used to notify Slack when Pull Requests are opened.
->
-> For more info see [.github/actions/prNotification/README.md](.github/actions/prNotification/README.md)
-
-```yaml
-name: Slack Pull Request Notification
-
-on:
-  pull_request:
-    types: [opened, reopened]
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Notify Slack on PR open
-        env:
-          WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          PULL_REQUEST_AUTHOR_ICON_URL: ${{ github.event.pull_request.user.avatar_url }}
-          PULL_REQUEST_AUTHOR_NAME: ${{ github.event.pull_request.user.login }}
-          PULL_REQUEST_AUTHOR_PROFILE_URL: ${{ github.event.pull_request.user.html_url }}
-          PULL_REQUEST_BASE_BRANCH_NAME: ${{ github.event.pull_request.base.ref }}
-          PULL_REQUEST_COMPARE_BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
-          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
-          PULL_REQUEST_REPO: ${{ github.event.pull_request.head.repo.name }}
-          PULL_REQUEST_TITLE: ${{ github.event.pull_request.title }}
-          PULL_REQUEST_URL: ${{ github.event.pull_request.html_url }}
-        uses: salesforcecli/github-workflows/.github/actions/prNotification@main
-```
+BSD-3-Clause
