@@ -13,7 +13,6 @@
     "clean": "rm -rf dist",
     "test": "echo \"Tests not yet implemented\"",
     "lint": "eslint src --ext .ts",
-    "prepare": "npm run build",
     "prepublishOnly": "npm run build"
   },
   "files": [
