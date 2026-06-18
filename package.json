@@ -43,11 +43,6 @@
     "simple-git": "^3.36.0",
     "glob": "^10.3.10"
   },
-  "devDependencies": {
-    "typescript": "^5.9.3",
-    "@types/node": "^22.15.1",
-    "@types/semver": "^7.5.8"
-  },
   "publishConfig": {
     "access": "public"
   },
