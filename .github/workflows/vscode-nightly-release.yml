@@ -187,10 +187,14 @@ jobs:
           cd ${{ matrix.extension }}
           npx ovsx publish ${{ inputs.pre-release && '--pre-release' || '' }} -p $OVSX_PAT
 
+      - name: Prepare artifact name
+        id: artifact
+        run: echo "name=$(echo '${{ matrix.extension }}' | tr '/' '-')-vsix" >> $GITHUB_OUTPUT
+
       - name: Upload VSIX artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.extension }}-vsix
+          name: ${{ steps.artifact.outputs.name }}
           path: ${{ matrix.extension }}/*.vsix
 
   summary:
