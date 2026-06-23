@@ -77,7 +77,7 @@ jobs:
           done
 
           # Convert to JSON array
-          extension_json=$(printf '%s\n' "${extensions[@]}" | jq -R . | jq -s .)
+          extension_json=$(printf '%s\n' "${extensions[@]}" | jq -R . | jq -s -c .)
           echo "extensions=$extension_json" >> $GITHUB_OUTPUT
           echo "Found ${#extensions[@]} extensions"
 
