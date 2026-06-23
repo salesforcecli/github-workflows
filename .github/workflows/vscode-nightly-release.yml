@@ -42,6 +42,11 @@ on:
         required: false
         type: string
         default: 'vsce package'
+      bundle-command:
+        description: 'Command to bundle extension code (e.g., "npm run vscode:bundle"). Set to empty string to skip bundling.'
+        required: false
+        type: string
+        default: 'npm run vscode:bundle'
     secrets:
       VSCE_PAT:
         description: 'VS Code Marketplace Personal Access Token'
@@ -132,9 +137,15 @@ jobs:
         run: npm ci
 
       - name: Bundle extension
+        if: inputs.bundle-command != ''
         run: |
           cd ${{ matrix.extension }}
-          npm run vscode:bundle
+          # Check if the bundle script exists in package.json
+          if npm run | grep -q "vscode:bundle"; then
+            ${{ inputs.bundle-command }}
+          else
+            echo "⏭️ Skipping bundle step - vscode:bundle script not found"
+          fi
 
       - name: Build extension
         run: |
