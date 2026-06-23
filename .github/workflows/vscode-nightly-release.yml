@@ -131,8 +131,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Bundle extensions
-        run: npm run vscode:bundle
+      - name: Bundle extension
+        run: |
+          cd ${{ matrix.extension }}
+          npm run vscode:bundle
 
       - name: Build extension
         run: |
