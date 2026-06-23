@@ -87,7 +87,11 @@ jobs:
           done
 
           # Convert to JSON array
-          extension_json=$(printf '%s\n' "${extensions[@]}" | jq -R . | jq -s -c .)
+          if [ ${#extensions[@]} -eq 0 ]; then
+            extension_json="[]"
+          else
+            extension_json=$(printf '%s\n' "${extensions[@]}" | jq -R . | jq -s -c .)
+          fi
           echo "extensions=$extension_json" >> $GITHUB_OUTPUT
           echo "Found ${#extensions[@]} extensions"
 
@@ -114,7 +118,11 @@ jobs:
           done <<< "$extensions"
 
           # Convert to JSON
-          changed_json=$(printf '%s\n' "${changed_extensions[@]}" | jq -R . | jq -s .)
+          if [ ${#changed_extensions[@]} -eq 0 ]; then
+            changed_json="[]"
+          else
+            changed_json=$(printf '%s\n' "${changed_extensions[@]}" | jq -R . | jq -s -c .)
+          fi
           echo "changed=$changed_json" >> $GITHUB_OUTPUT
           echo "Found ${#changed_extensions[@]} changed extensions"
 
