@@ -134,6 +134,12 @@ jobs:
       - name: Compile extensions
         run: npm run compile
 
+      - name: Debug - List compiled files
+        run: |
+          echo "Checking dist files for ${{ matrix.extension }}:"
+          ls -la ${{ matrix.extension }}/dist/ || echo "No dist directory found"
+          ls -la ${{ matrix.extension }}/out/ || echo "No out directory found"
+
       - name: Build extension
         run: |
           cd ${{ matrix.extension }}
