@@ -37,6 +37,11 @@ on:
         required: false
         type: boolean
         default: false
+      package-command:
+        description: 'Command to build VSIX packages (e.g., "npm run vscode:package" or "vsce package")'
+        required: false
+        type: string
+        default: 'vsce package'
     secrets:
       VSCE_PAT:
         description: 'VS Code Marketplace Personal Access Token'
@@ -129,7 +134,7 @@ jobs:
       - name: Build extension
         run: |
           cd ${{ matrix.extension }}
-          npm run vscode:package || npm run package || vsce package
+          ${{ inputs.package-command }}
 
       - name: Publish (dry-run)
         if: inputs.dry-run
