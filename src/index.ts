@@ -9,7 +9,6 @@
 // Core utilities and types
 export * from './core/types.js';
 export * from './core/utils.js';
-export * from './core/audit-logger.js';
 
 // Extension management
 export { determineBuildType, setBuildTypeOutputs } from './extension/ext-build-type.js';
@@ -20,9 +19,3 @@ export { getAvailableExtensions, setExtensionDiscoveryOutputs } from './extensio
 export { determinePublishMatrix } from './extension/ext-publish-matrix.js';
 export { displayExtensionReleasePlan } from './extension/ext-release-plan.js';
 export { bumpVersions } from './extension/ext-version-bumper.js';
-
-// NPM package management
-export { detectNpmChanges, setNpmChangeDetectionOutputs } from './npm/npm-change-detector.js';
-export { extractPackageDetails, setPackageDetailsOutputs } from './npm/npm-package-details.js';
-export { npmPackageSelectorMain } from './npm/npm-package-selector.js';
-export { generateReleasePlan, displayReleasePlan } from './npm/npm-release-plan.js';

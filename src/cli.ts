@@ -23,22 +23,10 @@ import {
   setExtensionDiscoveryOutputs,
 } from './extension/ext-package-selector.js';
 
-import {
-  detectNpmChanges,
-  setNpmChangeDetectionOutputs,
-} from './npm/npm-change-detector.js';
-import { npmPackageSelectorMain } from './npm/npm-package-selector.js';
-
-import {
-  extractPackageDetails,
-  setPackageDetailsOutputs,
-} from './npm/npm-package-details.js';
-import { generateReleasePlan, displayReleasePlan } from './npm/npm-release-plan.js';
 import { displayExtensionReleasePlan } from './extension/ext-release-plan.js';
 import { bumpVersions } from './extension/ext-version-bumper.js';
 import { determinePublishMatrix } from './extension/ext-publish-matrix.js';
 import { createGitHubReleases } from './extension/ext-github-releases.js';
-import { logAuditEvent } from './core/audit-logger.js';
 
 import { log, setOutput } from './core/utils.js';
 
@@ -108,33 +96,6 @@ program
     }
   });
 
-program
-  .command('npm-change-detector')
-  .description('Detect changes in NPM packages')
-  .action(async () => {
-    try {
-      const baseBranch = process.env.INPUT_BASE_BRANCH || 'main';
-      const result = await detectNpmChanges(baseBranch);
-      setNpmChangeDetectionOutputs(result);
-    } catch (error) {
-      log.error(`Failed to detect NPM changes: ${error}`);
-      process.exit(1);
-    }
-  });
-
-program
-  .command('npm-package-selector')
-  .description(
-    'Discover available NPM packages or select packages based on user input',
-  )
-  .action(async () => {
-    try {
-      await npmPackageSelectorMain();
-    } catch (error) {
-      log.error(`Failed to handle NPM packages: ${error}`);
-      process.exit(1);
-    }
-  });
 
 program
   .command('ext-package-selector')
@@ -149,51 +110,6 @@ program
     }
   });
 
-program
-  .command('npm-package-details')
-  .description('Extract NPM package details for notifications')
-  .action(async () => {
-    try {
-      const selectedPackagesJson = process.env.SELECTED_PACKAGES || '[]';
-      const versionBump = process.env.VERSION_BUMP || 'patch';
-
-      const details = extractPackageDetails(
-        selectedPackagesJson,
-        versionBump as any,
-      );
-      setPackageDetailsOutputs(details);
-    } catch (error) {
-      log.error(`Failed to extract package details: ${error}`);
-      process.exit(1);
-    }
-  });
-
-program
-  .command('npm-release-plan')
-  .description('Generate NPM release plan')
-  .action(async () => {
-    try {
-      const packageName = process.env.MATRIX_PACKAGE;
-      const versionBump = process.env.VERSION_BUMP || 'patch';
-      const dryRun = process.env.DRY_RUN === 'true';
-
-      if (!packageName) {
-        log.error('MATRIX_PACKAGE environment variable is required');
-        process.exit(1);
-      }
-
-      const plan = generateReleasePlan(packageName, versionBump as any, dryRun);
-      if (plan) {
-        displayReleasePlan(plan);
-      } else {
-        log.error('Failed to generate release plan');
-        process.exit(1);
-      }
-    } catch (error) {
-      log.error(`Failed to generate release plan: ${error}`);
-      process.exit(1);
-    }
-  });
 
 program
   .command('ext-release-plan')
@@ -216,26 +132,6 @@ program
     }
   });
 
-program
-  .command('audit-logger')
-  .description('Log audit events for release operations')
-  .action(async () => {
-    try {
-      logAuditEvent({
-        action: process.env.ACTION || '',
-        actor: process.env.ACTOR || '',
-        repository: process.env.REPOSITORY || '',
-        branch: process.env.BRANCH || '',
-        workflow: process.env.WORKFLOW || '',
-        runId: process.env.RUN_ID || '',
-        details: process.env.DETAILS || '{}',
-        logFile: process.env.LOG_FILE,
-      });
-    } catch (error) {
-      log.error(`Failed to log audit event: ${error}`);
-      process.exit(1);
-    }
-  });
 
 program
   .command('ext-github-releases')
