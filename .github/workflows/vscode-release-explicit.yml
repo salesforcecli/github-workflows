@@ -1,0 +1,132 @@
+name: VS Code Extension Release (Explicit List)
+
+on:
+  workflow_call:
+    inputs:
+      extensions:
+        description: 'JSON array of extension paths (e.g., ["packages/ext1", "packages/ext2"])'
+        required: true
+        type: string
+      registries:
+        description: 'Where to publish: marketplace | openvsx | all'
+        required: false
+        type: string
+        default: 'all'
+      pre-release:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: true
+      version-bump:
+        description: 'Version bump strategy: auto | major | minor | patch'
+        required: false
+        type: string
+        default: 'auto'
+      dry-run:
+        description: 'Skip actual publishing (for testing)'
+        required: false
+        type: boolean
+        default: false
+      package-command:
+        description: 'Command to build VSIX packages (e.g., "npm run vscode:package" or "vsce package")'
+        required: false
+        type: string
+        default: 'vsce package'
+      bundle-command:
+        description: 'Command to bundle extension code (e.g., "npm run vscode:bundle"). Set to empty string to skip bundling.'
+        required: false
+        type: string
+        default: 'npm run vscode:bundle'
+    secrets:
+      VSCE_PAT:
+        description: 'VS Code Marketplace Personal Access Token'
+        required: false
+      OVSX_PAT:
+        description: 'Open VSX Personal Access Token'
+        required: false
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        extension: ${{ fromJson(inputs.extensions) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Bundle extension
+        if: inputs.bundle-command != ''
+        run: |
+          cd ${{ matrix.extension }}
+          # Check if the bundle script exists in package.json
+          if npm run | grep -q "vscode:bundle"; then
+            ${{ inputs.bundle-command }}
+          else
+            echo "⏭️ Skipping bundle step - vscode:bundle script not found"
+          fi
+
+      - name: Build extension
+        run: |
+          cd ${{ matrix.extension }}
+          ${{ inputs.package-command }}
+
+      - name: Publish (dry-run)
+        if: inputs.dry-run
+        run: |
+          echo "🔍 DRY RUN: Would publish ${{ matrix.extension }}"
+          echo "  Registry: ${{ inputs.registries }}"
+          echo "  Pre-release: ${{ inputs.pre-release }}"
+
+      - name: Publish to VS Code Marketplace
+        if: |
+          !inputs.dry-run &&
+          (inputs.registries == 'marketplace' || inputs.registries == 'all')
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          cd ${{ matrix.extension }}
+          npx vsce publish ${{ inputs.pre-release && '--pre-release' || '' }}
+
+      - name: Publish to Open VSX
+        if: |
+          !inputs.dry-run &&
+          (inputs.registries == 'openvsx' || inputs.registries == 'all')
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: |
+          cd ${{ matrix.extension }}
+          npx ovsx publish ${{ inputs.pre-release && '--pre-release' || '' }} -p $OVSX_PAT
+
+      - name: Prepare artifact name
+        id: artifact
+        run: echo "name=$(echo '${{ matrix.extension }}' | tr '/' '-')-vsix" >> $GITHUB_OUTPUT
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          path: ${{ matrix.extension }}/*.vsix
+
+  summary:
+    needs: build-and-publish
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Extensions:** ${{ inputs.extensions }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Registries:** ${{ inputs.registries }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Pre-release:** ${{ inputs.pre-release }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Dry-run:** ${{ inputs.dry-run }}" >> $GITHUB_STEP_SUMMARY
