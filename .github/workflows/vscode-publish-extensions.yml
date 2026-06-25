@@ -70,40 +70,9 @@ permissions:
   actions: read
 
 jobs:
-  determine-changes:
-    runs-on: ubuntu-latest
-    outputs:
-      selected-extensions: ${{ steps.changes.outputs.selected-extensions }}
-      version-bumps: ${{ steps.changes.outputs.version-bumps }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '22.x'
-
-      - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/vscode/npm-install-with-retries@feat/add-vscode-extension-ci
-
-      - name: Determine changes and version bumps
-        id: changes
-        env:
-          IS_NIGHTLY: 'true'
-          VERSION_BUMP: 'auto'
-          PRE_RELEASE: 'true'
-          IS_PROMOTION: 'false'
-          SELECTED_EXTENSIONS: ${{ inputs.extensions }}
-        run: |
-          node node_modules/github-workflows/packages/vscode-extension-ci/dist/cli.js ext-change-detector
-
   display-release-plan:
-    needs: [determine-changes]
     runs-on: ubuntu-latest
-    if: needs.determine-changes.outputs.selected-extensions != ''
+    if: inputs.extensions != ''
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -123,10 +92,10 @@ jobs:
           BRANCH: ${{ inputs.branch || github.ref_name }}
           BUILD_TYPE: ${{ github.event_name }}
           IS_NIGHTLY: 'true'
-          VERSION_BUMP: ${{ needs.determine-changes.outputs.version-bumps }}
+          VERSION_BUMP: ${{ inputs.version-bump }}
           REGISTRIES: ${{ inputs.registries }}
           PRE_RELEASE: 'true'
-          SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
+          SELECTED_EXTENSIONS: ${{ inputs.extensions }}
         run: |
           echo "=== EXTENSION RELEASE PLAN ==="
           echo "Branch: $BRANCH"
@@ -179,9 +148,9 @@ jobs:
           echo "=== END OF RELEASE PLAN ==="
 
   bump-versions:
-    needs: [determine-changes]
+    needs: []
     runs-on: ubuntu-latest
-    if: needs.determine-changes.outputs.selected-extensions != ''
+    if: inputs.extensions != ''
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -199,8 +168,8 @@ jobs:
 
       - name: Bump versions and tag for selected extensions
         env:
-          VERSION_BUMP: ${{ needs.determine-changes.outputs.version-bumps }}
-          SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
+          VERSION_BUMP: ${{ inputs.version-bump }}
+          SELECTED_EXTENSIONS: ${{ inputs.extensions }}
           PRE_RELEASE: ${{ inputs.pre-release || github.event.inputs.pre-release || 'false' }}
           IS_NIGHTLY: 'true'
           IS_PROMOTION: 'false'
@@ -297,18 +266,29 @@ jobs:
     outputs:
       artifact-name: ${{ steps.calc.outputs.artifact-name }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
       - name: Calculate artifact name
         id: calc
-        uses: salesforcecli/github-workflows/.github/actions/vscode/calculate-artifact-name@feat/add-vscode-extension-ci
-        with:
-          artifact-name: vsix-packages
-          dry-run: ${{ inputs.dry-run || github.event.inputs.dry-run || 'false' }}
+        run: |
+          BASE_NAME="vsix-packages"
+          RUN_NUMBER="${{ github.run_number }}"
+          IS_DRY_RUN="${{ inputs.dry-run || github.event.inputs.dry-run || 'false' }}"
+
+          # Check if already suffixed
+          if [[ "$BASE_NAME" =~ -dry-run$ ]] || [[ "$BASE_NAME" =~ -release$ ]]; then
+            ARTIFACT_NAME="$BASE_NAME"
+          else
+            if [ "$IS_DRY_RUN" = "true" ]; then
+              ARTIFACT_NAME="${BASE_NAME}-${RUN_NUMBER}-dry-run"
+            else
+              ARTIFACT_NAME="${BASE_NAME}-${RUN_NUMBER}-release"
+            fi
+          fi
+
+          echo "artifact-name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+          echo "Artifact name: $ARTIFACT_NAME"
 
   package:
-    needs: [bump-versions, calculate-artifact-name, determine-changes]
+    needs: [bump-versions, calculate-artifact-name]
     uses: salesforcecli/github-workflows/.github/workflows/vscode-package.yml@feat/add-vscode-extension-ci
     with:
       branch: ${{ inputs.branch || github.ref_name }}
@@ -317,7 +297,7 @@ jobs:
       pre-release: ${{ inputs.pre-release || github.event.inputs.pre-release || 'false' }}
 
   determine-publish-matrix:
-    needs: [determine-changes, calculate-artifact-name]
+    needs: [calculate-artifact-name]
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
@@ -337,7 +317,7 @@ jobs:
         id: matrix
         env:
           REGISTRIES: ${{ inputs.registries }}
-          SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
+          SELECTED_EXTENSIONS: ${{ inputs.extensions }}
           IS_NIGHTLY: 'true'
         run: |
           # Skip marketplace publishing for nightly builds
@@ -527,9 +507,9 @@ jobs:
 
   create-github-releases:
     name: Create GitHub Releases
-    needs: [package, determine-changes, calculate-artifact-name]
+    needs: [package, calculate-artifact-name]
     runs-on: ubuntu-latest
-    if: needs.package.result == 'success' && needs.determine-changes.outputs.selected-extensions != '' && github.event_name != 'pull_request'
+    if: needs.package.result == 'success' && inputs.extensions != '' && github.event_name != 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -555,10 +535,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
+          SELECTED_EXTENSIONS: ${{ inputs.extensions }}
           IS_NIGHTLY: 'true'
           PRE_RELEASE: 'true'
-          VERSION_BUMP: ${{ needs.determine-changes.outputs.version-bumps }}
+          VERSION_BUMP: ${{ inputs.version-bump }}
           DRY_RUN: ${{ inputs.dry-run || github.event.inputs.dry-run || 'false' }}
           BRANCH: ${{ inputs.branch || github.ref_name }}
           VSIX_ARTIFACTS_PATH: ./vsix-artifacts
@@ -707,7 +687,7 @@ jobs:
   slack-notify:
     name: Slack Notification
     needs:
-      [determine-changes, bump-versions, package, publish]
+      [bump-versions, package, publish]
     runs-on: ubuntu-latest
     if: always() && needs.publish.result == 'success' && (inputs.dry-run != 'true' && github.event.inputs.dry-run != 'true')
     steps:
@@ -720,8 +700,8 @@ jobs:
         id: extension-details
         run: |
           # Get selected extensions and their details
-          SELECTED_EXTENSIONS="${{ needs.determine-changes.outputs.selected-extensions }}"
-          VERSION_BUMP="${{ needs.determine-changes.outputs.version-bumps }}"
+          SELECTED_EXTENSIONS="${{ inputs.extensions }}"
+          VERSION_BUMP="${{ inputs.version-bump }}"
           PRE_RELEASE="true"
 
           # Initialize arrays for extension details
@@ -814,7 +794,7 @@ jobs:
   slack-notify-failure:
     name: Slack Failure Notification
     needs:
-      [determine-changes, bump-versions, package, publish]
+      [bump-versions, package, publish]
     runs-on: ubuntu-latest
     if: always() && needs.publish.result == 'failure' && (inputs.dry-run != 'true' && github.event.inputs.dry-run != 'true')
     steps:
@@ -827,8 +807,8 @@ jobs:
         id: extension-details
         run: |
           # Get selected extensions and their details
-          SELECTED_EXTENSIONS="${{ needs.determine-changes.outputs.selected-extensions }}"
-          VERSION_BUMP="${{ needs.determine-changes.outputs.version-bumps }}"
+          SELECTED_EXTENSIONS="${{ inputs.extensions }}"
+          VERSION_BUMP="${{ inputs.version-bump }}"
           PRE_RELEASE="true"
 
           # Initialize arrays for extension details

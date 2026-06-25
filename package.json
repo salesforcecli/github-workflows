@@ -3,20 +3,12 @@
   "version": "1.0.1-feat-vscode-ci.0",
   "description": "Shared CI/CD infrastructure for Salesforce VS Code extensions",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "bin": {
-    "vscode-ext-ci": "./dist/cli.js"
-  },
   "scripts": {
-    "build": "tsc",
-    "clean": "rm -rf dist",
-    "test": "echo \"Tests not yet implemented\"",
-    "lint": "eslint src --ext .ts",
-    "prepublishOnly": "npm run build"
+    "test": "echo \"This package only provides reusable GitHub Actions workflows\""
   },
   "files": [
-    "dist",
+    ".github/workflows",
+    ".github/actions",
     "README.md",
     "LICENSE"
   ],
@@ -35,24 +27,10 @@
     "directory": "packages/vscode-extension-ci"
   },
   "license": "BSD-3-Clause",
-  "dependencies": {
-    "chalk": "^5.3.0",
-    "commander": "^14.0.3",
-    "glob": "^10.3.10",
-    "semver": "^7.7.4",
-    "simple-git": "^3.36.0",
-    "zod": "^4.4.3"
-  },
   "publishConfig": {
     "access": "public"
   },
   "engines": {
     "node": ">=22.0.0"
-  },
-  "devDependencies": {
-    "@types/node": "^22.19.21",
-    "@types/semver": "^7.7.1",
-    "eslint": "^10.5.0",
-    "typescript": "^5.9.3"
   }
 }

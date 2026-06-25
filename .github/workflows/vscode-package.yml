@@ -165,10 +165,24 @@ jobs:
 
       - name: Calculate artifact name
         id: calc-artifact-name
-        uses: salesforcecli/github-workflows/.github/actions/vscode/calculate-artifact-name@feat/add-vscode-extension-ci
-        with:
-          artifact-name: ${{ inputs.artifact-name }}
-          dry-run: ${{ inputs.dry-run }}
+        run: |
+          BASE_NAME="${{ inputs.artifact-name }}"
+          RUN_NUMBER="${{ github.run_number }}"
+          IS_DRY_RUN="${{ inputs.dry-run }}"
+
+          # Check if already suffixed
+          if [[ "$BASE_NAME" =~ -dry-run$ ]] || [[ "$BASE_NAME" =~ -release$ ]]; then
+            ARTIFACT_NAME="$BASE_NAME"
+          else
+            if [ "$IS_DRY_RUN" = "true" ]; then
+              ARTIFACT_NAME="${BASE_NAME}-${RUN_NUMBER}-dry-run"
+            else
+              ARTIFACT_NAME="${BASE_NAME}-${RUN_NUMBER}-release"
+            fi
+          fi
+
+          echo "artifact-name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+          echo "Artifact name: $ARTIFACT_NAME"
 
       - name: Upload VSIX artifacts
         id: upload
