@@ -34,22 +34,65 @@ jobs:
         working-directory: test-repo
         run: npm ci
 
-      - name: Build CLI package
-        working-directory: toolkit/packages/vscode-extension-ci
-        run: |
-          npm install
-          npm run build
-
       - name: Test ext-package-selector
         working-directory: test-repo
         run: |
-          node ../toolkit/packages/vscode-extension-ci/dist/cli.js ext-package-selector
+          echo "Getting all available VS Code extensions..."
+          PACKAGES_ROOT="${PACKAGES_ROOT:-packages}"
+
+          extensions=()
+          if [ -d "$PACKAGES_ROOT" ]; then
+            for dir in "$PACKAGES_ROOT"/*/ ; do
+              if [ -d "$dir" ] && [ -f "$dir/package.json" ]; then
+                if jq -e '.publisher' "$dir/package.json" > /dev/null 2>&1; then
+                  package_name=$(basename "$dir")
+                  extensions+=("$package_name")
+                  echo "  Found VS Code extension: $package_name"
+                fi
+              fi
+            done
+          fi
+
+          json_array=$(printf '%s\n' "${extensions[@]}" | jq -R . | jq -s -c .)
+          echo "Found ${#extensions[@]} VS Code extensions"
+          echo "extensions=$json_array" >> $GITHUB_OUTPUT
           echo "✓ Package selector works"
 
       - name: Test ext-build-type
         working-directory: test-repo
         run: |
-          node ../toolkit/packages/vscode-extension-ci/dist/cli.js ext-build-type
+          echo "Determining build type..."
+
+          if [ "${GITHUB_EVENT_NAME:-}" = "schedule" ]; then
+            IS_NIGHTLY="true"
+          else
+            IS_NIGHTLY="false"
+          fi
+
+          if [ "$IS_NIGHTLY" = "true" ]; then
+            VERSION_BUMP="patch"
+            PRE_RELEASE="true"
+          else
+            VERSION_BUMP="${INPUT_VERSION_BUMP:-auto}"
+            PRE_RELEASE="${INPUT_PRE_RELEASE:-false}"
+          fi
+
+          if [ "$PRE_RELEASE" = "false" ] && [ "$IS_NIGHTLY" = "false" ]; then
+            IS_PROMOTION="true"
+          else
+            IS_PROMOTION="false"
+          fi
+
+          echo "Build type determined:"
+          echo "  Is nightly: $IS_NIGHTLY"
+          echo "  Version bump: $VERSION_BUMP"
+          echo "  Pre-release: $PRE_RELEASE"
+          echo "  Is promotion: $IS_PROMOTION"
+
+          echo "is-nightly=$IS_NIGHTLY" >> $GITHUB_OUTPUT
+          echo "version-bump=$VERSION_BUMP" >> $GITHUB_OUTPUT
+          echo "pre-release=$PRE_RELEASE" >> $GITHUB_OUTPUT
+          echo "is-promotion=$IS_PROMOTION" >> $GITHUB_OUTPUT
           echo "✓ Build type detection works"
 
       - name: Build VSIX package

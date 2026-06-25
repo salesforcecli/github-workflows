@@ -128,7 +128,55 @@ jobs:
           PRE_RELEASE: 'true'
           SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
         run: |
-          node node_modules/github-workflows/packages/vscode-extension-ci/dist/cli.js ext-release-plan
+          echo "=== EXTENSION RELEASE PLAN ==="
+          echo "Branch: $BRANCH"
+          echo "Build type: $BUILD_TYPE"
+          echo "Is nightly: $IS_NIGHTLY"
+          echo "Version bump type: $VERSION_BUMP"
+          echo "Registries: $REGISTRIES"
+          echo "Pre-release: $PRE_RELEASE"
+          echo "Dry run mode: ENABLED"
+          echo ""
+          echo "Extensions to release: $SELECTED_EXTENSIONS"
+          echo ""
+
+          IFS=',' read -ra extensions <<< "$SELECTED_EXTENSIONS"
+          for ext in "${extensions[@]}"; do
+            [ -z "$ext" ] && continue
+
+            package_json="packages/$ext/package.json"
+            if [ ! -f "$package_json" ]; then
+              echo "Extension: $ext (package.json not found)"
+              continue
+            fi
+
+            current_version=$(jq -r '.version' "$package_json")
+            publisher=$(jq -r '.publisher // "N/A"' "$package_json")
+
+            echo "Extension: $ext"
+            echo "  Current version: $current_version"
+            echo "  Publisher: $publisher"
+
+            if [ "$IS_NIGHTLY" = "true" ]; then
+              echo "  Version strategy: Nightly build (odd minor + nightly timestamp)"
+            elif [ "$PRE_RELEASE" = "true" ]; then
+              echo "  Version strategy: Pre-release (odd minor version)"
+            else
+              echo "  Version strategy: Stable release (even minor version)"
+            fi
+
+            echo "  Would create GitHub release"
+            echo "  Would package VSIX"
+
+            case "$REGISTRIES" in
+              marketplace) echo "  Would publish to: VS Code Marketplace only" ;;
+              openvsx) echo "  Would publish to: Open VSX only" ;;
+              all) echo "  Would publish to: VS Code Marketplace and Open VSX" ;;
+            esac
+            echo ""
+          done
+
+          echo "=== END OF RELEASE PLAN ==="
 
   bump-versions:
     needs: [determine-changes]
@@ -297,7 +345,55 @@ jobs:
             echo "Nightly build detected - skipping marketplace publishing"
             echo 'matrix=[]' >> $GITHUB_OUTPUT
           else
-            node node_modules/github-workflows/packages/vscode-extension-ci/dist/cli.js ext-publish-matrix
+            # Parse extensions
+            IFS=',' read -ra extensions <<< "$SELECTED_EXTENSIONS"
+
+            # Determine registries
+            if [ "$REGISTRIES" = "all" ]; then
+              registries=("vsce" "ovsx")
+            else
+              IFS=',' read -ra registries <<< "$REGISTRIES"
+            fi
+
+            # Build matrix JSON
+            matrix_entries=()
+            for ext in "${extensions[@]}"; do
+              [ -z "$ext" ] && continue
+
+              # Map extension names to VSIX patterns
+              if [ "$ext" = "apex-lsp-vscode-extension" ]; then
+                vsix_pattern="*apex-language-server-extension*-[0-9]*.vsix"
+              else
+                vsix_pattern="*${ext}*.vsix"
+              fi
+
+              for registry in "${registries[@]}"; do
+                [ -z "$registry" ] && continue
+
+                case "$registry" in
+                  vsce) marketplace="VS Code Marketplace" ;;
+                  ovsx) marketplace="Open VSX Registry" ;;
+                  *) marketplace="$registry" ;;
+                esac
+
+                entry=$(jq -n \
+                  --arg reg "$registry" \
+                  --arg pattern "$vsix_pattern" \
+                  --arg market "$marketplace" \
+                  '{registry: $reg, vsix_pattern: $pattern, marketplace: $market}')
+
+                matrix_entries+=("$entry")
+              done
+            done
+
+            # Combine into matrix JSON
+            if [ ${#matrix_entries[@]} -eq 0 ]; then
+              matrix_json='{"include":[]}'
+            else
+              matrix_json=$(printf '%s\n' "${matrix_entries[@]}" | jq -s '{include: .}')
+            fi
+
+            echo "matrix=$matrix_json" >> $GITHUB_OUTPUT
           fi
 
   publish:
@@ -467,7 +563,90 @@ jobs:
           BRANCH: ${{ inputs.branch || github.ref_name }}
           VSIX_ARTIFACTS_PATH: ./vsix-artifacts
         run: |
-          node node_modules/github-workflows/packages/vscode-extension-ci/dist/cli.js ext-github-releases
+          echo "Mode: $([ "$DRY_RUN" = "true" ] && echo "DRY RUN" || echo "LIVE")"
+          echo "Creating GitHub releases..."
+
+          IFS=',' read -ra extensions <<< "$SELECTED_EXTENSIONS"
+
+          for ext in "${extensions[@]}"; do
+            [ -z "$ext" ] && continue
+
+            package_json="packages/$ext/package.json"
+            if [ ! -f "$package_json" ]; then
+              echo "⚠️  Skipping $ext: package.json not found"
+              continue
+            fi
+
+            current_version=$(jq -r '.version' "$package_json")
+            echo "Processing extension: $ext (version: $current_version)"
+
+            # Find VSIX files
+            if [ "$ext" = "apex-lsp-vscode-extension" ]; then
+              vsix_pattern="*apex-language-server-extension-*.vsix"
+            else
+              vsix_pattern="*${ext}*.vsix"
+            fi
+
+            vsix_files=("$VSIX_ARTIFACTS_PATH"/$ext/$vsix_pattern)
+            if [ ! -f "${vsix_files[0]}" ]; then
+              echo "⚠️  No VSIX files found for $ext"
+              continue
+            fi
+
+            # Filter out *-web-* builds
+            filtered_files=()
+            for file in "${vsix_files[@]}"; do
+              if [[ ! "$(basename "$file")" =~ -web- ]]; then
+                filtered_files+=("$file")
+              fi
+            done
+
+            # Create release tag
+            release_tag="v$current_version"
+            release_title="$ext v$current_version"
+
+            if [ "$IS_NIGHTLY" = "true" ]; then
+              nightly_date=$(date -u +%Y%m%d)
+              branch_suffix=""
+              [ "$BRANCH" != "main" ] && branch_suffix=".${BRANCH//\//-}"
+              release_tag="v${current_version}-nightly${branch_suffix}.${nightly_date}"
+              release_title="$ext v$current_version (Nightly $BRANCH $nightly_date)"
+            fi
+
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "✅ DRY RUN: Would create release $release_tag with ${#filtered_files[@]} VSIX files"
+            else
+              # Check if release exists
+              if gh release view "$release_tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+                echo "⏭️  Release $release_tag already exists - skipping"
+              else
+                # Generate release notes
+                notes_file=".release-notes-$(date +%s).tmp"
+                cat > "$notes_file" << EOF
+          ## $ext v$current_version
+
+          ### Installation
+          Download the VSIX file and install via VS Code.
+
+          $([ "$PRE_RELEASE" = "true" ] && echo "⚠️ **This is a pre-release version**")
+          $([ "$IS_NIGHTLY" = "true" ] && echo "🌙 **Nightly build from $(date -u +%Y%m%d)**")
+          EOF
+
+                # Create release
+                gh release create "$release_tag" \
+                  --title "$release_title" \
+                  --notes-file "$notes_file" \
+                  --prerelease="$PRE_RELEASE" \
+                  --repo "$GITHUB_REPOSITORY" \
+                  "${filtered_files[@]}"
+
+                rm -f "$notes_file"
+                echo "✅ Release created for $ext"
+              fi
+            fi
+          done
+
+          echo "$([ "$DRY_RUN" = "true" ] && echo "✅ DRY RUN complete" || echo "✅ Releases created")"
 
   publish-to-cbweb-marketplace:
     name: Publish to CBWeb Internal Marketplace
