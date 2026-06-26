@@ -14,7 +14,7 @@ name: Publish VS Code Extensions
 #       secrets: inherit
 #
 # Requirements:
-#   - Consuming repo must have @salesforce/vscode-extension-ci installed as devDependency
+#   - Requires jq for JSON manipulation (pre-installed on GitHub runners)
 #   - Requires secrets: IDEE_GH_TOKEN, VSCE_PERSONAL_ACCESS_TOKEN, IDEE_OVSX_PAT
 #
 # Features:
@@ -173,8 +173,172 @@ jobs:
           PRE_RELEASE: ${{ inputs.pre-release || github.event.inputs.pre-release || 'false' }}
           IS_NIGHTLY: 'true'
           IS_PROMOTION: 'false'
+          BRANCH: ${{ inputs.branch || github.ref_name }}
         run: |
-          node node_modules/github-workflows/packages/vscode-extension-ci/dist/cli.js ext-version-bumper
+          set -e
+
+          # Function to parse semantic version
+          parse_version() {
+            local version=$1
+            echo "$version" | awk -F. '{print $1, $2, $3}'
+          }
+
+          # Function to calculate new version based on strategy
+          calculate_new_version() {
+            local current=$1
+            local bump_type=$2
+            local is_nightly=$3
+            local is_promotion=$4
+            local is_prerelease=$5
+
+            read -r major minor patch <<< $(parse_version "$current")
+
+            if [ "$is_nightly" = "true" ]; then
+              # Nightly: enforce odd minor versions
+              case "$bump_type" in
+                major)
+                  # Breaking change: new major, start at first odd minor
+                  echo "$((major + 1)).1.0"
+                  ;;
+                minor)
+                  # New feature: skip to next odd minor
+                  if [ $((minor % 2)) -eq 0 ]; then
+                    echo "$major.$((minor + 1)).0"
+                  else
+                    echo "$major.$((minor + 2)).0"
+                  fi
+                  ;;
+                *)
+                  # Patch/auto: ensure odd minor then increment patch
+                  if [ $((minor % 2)) -eq 0 ]; then
+                    echo "$major.$((minor + 1)).0"
+                  else
+                    echo "$major.$minor.$((patch + 1))"
+                  fi
+                  ;;
+              esac
+            elif [ "$is_promotion" = "true" ]; then
+              # Promotion: bump from odd (nightly) to even (stable)
+              if [ $((minor % 2)) -eq 1 ]; then
+                echo "$major.$((minor + 1)).0"
+              else
+                echo >&2 "Warning: Current version has even minor, expected odd for promotion"
+                echo "$major.$((minor + 2)).0"
+              fi
+            else
+              # Regular build
+              case "$bump_type" in
+                patch)
+                  echo "$major.$minor.$((patch + 1))"
+                  ;;
+                minor)
+                  if [ "$is_prerelease" = "true" ]; then
+                    # Pre-release: ensure odd minor
+                    if [ $((minor % 2)) -eq 0 ]; then
+                      echo "$major.$((minor + 1)).0"
+                    else
+                      echo "$major.$((minor + 2)).0"
+                    fi
+                  else
+                    # Stable: ensure even minor
+                    if [ $((minor % 2)) -eq 1 ]; then
+                      echo "$major.$((minor + 1)).0"
+                    else
+                      echo "$major.$((minor + 2)).0"
+                    fi
+                  fi
+                  ;;
+                major)
+                  if [ "$is_prerelease" = "true" ]; then
+                    echo "$((major + 1)).1.0"
+                  else
+                    echo "$((major + 1)).0.0"
+                  fi
+                  ;;
+                auto|*)
+                  echo "$major.$minor.$((patch + 1))"
+                  ;;
+              esac
+            fi
+          }
+
+          # Function to create git tag
+          create_git_tag() {
+            local package_name=$1
+            local version=$2
+            local is_prerelease=$3
+            local is_nightly=$4
+
+            local tag_name
+            if [ "$is_nightly" = "true" ]; then
+              # Nightly format: v{version}-nightly[.branch].{date}
+              local nightly_date=$(date -u +%Y%m%d)
+              local branch_suffix=""
+              if [ "$BRANCH" != "main" ] && [ "$BRANCH" != "master" ]; then
+                branch_suffix=".$(echo "$BRANCH" | tr '/' '-')"
+              fi
+              tag_name="v${version}-nightly${branch_suffix}.${nightly_date}"
+            else
+              # Regular format: {package}-v{version}[-pre-release]
+              if [ "$is_prerelease" = "true" ]; then
+                tag_name="${package_name}-v${version}-pre-release"
+              else
+                tag_name="${package_name}-v${version}"
+              fi
+            fi
+
+            # Check if tag already exists (idempotency)
+            if git rev-parse "$tag_name" >/dev/null 2>&1 || git ls-remote --tags origin "$tag_name" 2>/dev/null | grep -q "$tag_name"; then
+              echo "⏭️ Tag $tag_name already exists — skipping (idempotent rerun)"
+              return 0
+            fi
+
+            echo "Creating tag $tag_name..."
+            git tag "$tag_name"
+            echo "✅ Tag created: $tag_name"
+          }
+
+          # Main version bump logic
+          echo "=== Version Bumping ==="
+          echo "Strategy: $VERSION_BUMP"
+          echo "Pre-release: $PRE_RELEASE"
+          echo "Is nightly: $IS_NIGHTLY"
+          echo "Is promotion: $IS_PROMOTION"
+          echo ""
+
+          IFS=',' read -ra extensions <<< "$SELECTED_EXTENSIONS"
+          for ext in "${extensions[@]}"; do
+            ext=$(echo "$ext" | xargs)  # Trim whitespace
+            [ -z "$ext" ] && continue
+
+            package_json="packages/$ext/package.json"
+            if [ ! -f "$package_json" ]; then
+              echo "⚠️ Skipping $ext: package.json not found"
+              continue
+            fi
+
+            # Read current version and package name
+            current_version=$(jq -r '.version' "$package_json")
+            package_name=$(jq -r '.name' "$package_json")
+
+            # Calculate new version
+            new_version=$(calculate_new_version "$current_version" "$VERSION_BUMP" "$IS_NIGHTLY" "$IS_PROMOTION" "$PRE_RELEASE")
+
+            echo "📦 $ext"
+            echo "  Current: $current_version"
+            echo "  New: $new_version"
+
+            # Update package.json
+            jq --arg ver "$new_version" '.version = $ver' "$package_json" > "${package_json}.tmp"
+            mv "${package_json}.tmp" "$package_json"
+
+            # Create git tag
+            create_git_tag "$package_name" "$new_version" "$PRE_RELEASE" "$IS_NIGHTLY"
+
+            echo ""
+          done
+
+          echo "✅ Version bumping complete"
 
       - name: Validate GitHub authentication
         env:
