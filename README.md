@@ -1,21 +1,31 @@
-# Salesforce VS Code Extension CI/CD Workflows
+# Github Workflows
 
-Shared GitHub Actions workflows for automating nightly releases and CI/CD for VS Code extension repositories.
+Reusable workflows and actions
 
-## Overview
+> [!IMPORTANT]
+> Many of these workflows require a Personal Access Token to function.
+>
+> - Create a new PAT with Repo access
+>   - It is recommended that this is a service account user
+>   - Note: This user/bot will need to have access to push to your repo's default branch. This can be configured in the branch protection rules.
+> - Add the PAT as an Actions [Organization secret](https://github.com/organizations/salesforcecli/settings/secrets/actions)
+>   - Set the `Name` to `SVC_CLI_BOT_GITHUB_TOKEN`
+>   - Paste in your new PAT as the `Value`
+>   - Set `Repository Access` to 'Selected Repositories'
+>   - Click the gear icon to select repos that need access to the PAT
+>     - This can be edited later
+>   - Click `Add Secret`
 
-This repository provides **reusable GitHub Actions workflows** that can be called from consumer repositories to automate:
+## Opinionated publish process for npm
 
-- Nightly pre-release builds
-- Version bumping
-- Extension packaging and publishing
-- GitHub release creation
+> github is the source of truth for code AND releases. Get the version/tag/release right on github, then publish to npm based on that.
 
-**Key Design Principle:** Consumer repositories **explicitly declare** their extension paths in workflow YAML - no auto-discovery or npm packages required!
+![](./images/plugin-release.png)
 
-## Usage
-
-### Quick Start
+1. work on a feature branch, commiting with conventional-commits
+2. merge to main
+3. A push to main produces (if your commits have `fix:` or `feat:`) a bumped package.json and a tagged github release via `githubRelease`
+4. A release cause `npmPublish` to run.
 
 Just need to publish to npm? You could use any public action to do step 4.
 Use this repo's `npmPublish` if you need either
@@ -132,12 +142,12 @@ on:
       # point at specific branches, or a naming convention via wildcard
       - prerelease/**
     tags-ignore:
-      - "*"
+      - '*'
   workflow_dispatch:
     inputs:
       prerelease:
         type: string
-        description: "Name to use for the prerelease: beta, dev, etc. NOTE: If this is already set in the package.json, it does not need to be passed in here."
+        description: 'Name to use for the prerelease: beta, dev, etc. NOTE: If this is already set in the package.json, it does not need to be passed in here.'
 
 jobs:
   release:
@@ -291,7 +301,7 @@ name: automerge
 on:
   workflow_dispatch:
   schedule:
-    - cron: "56 2,5,8,11 * * *"
+    - cron: '56 2,5,8,11 * * *'
 
 jobs:
   automerge:
@@ -353,276 +363,126 @@ jobs:
 > For more info see [.github/actions/prNotification/README.md](.github/actions/prNotification/README.md)
 
 ```yaml
+name: Slack Pull Request Notification
+
+on:
+  pull_request:
+    types: [opened, reopened]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack on PR open
+        env:
+          WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          PULL_REQUEST_AUTHOR_ICON_URL: ${{ github.event.pull_request.user.avatar_url }}
+          PULL_REQUEST_AUTHOR_NAME: ${{ github.event.pull_request.user.login }}
+          PULL_REQUEST_AUTHOR_PROFILE_URL: ${{ github.event.pull_request.user.html_url }}
+          PULL_REQUEST_BASE_BRANCH_NAME: ${{ github.event.pull_request.base.ref }}
+          PULL_REQUEST_COMPARE_BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+          PULL_REQUEST_REPO: ${{ github.event.pull_request.head.repo.name }}
+          PULL_REQUEST_TITLE: ${{ github.event.pull_request.title }}
+          PULL_REQUEST_URL: ${{ github.event.pull_request.html_url }}
+        uses: salesforcecli/github-workflows/.github/actions/prNotification@main
+```
+
+## VS Code Extension Workflows
+
+This repository includes reusable workflows for VS Code extension CI/CD.
+
+### vscode-release-explicit
+
+Builds and publishes VS Code extensions from explicitly declared extension paths.
+
+**Usage:**
+
+```yaml
 name: Nightly Release
 
 on:
   schedule:
-    - cron: "0 4 * * *" # 4 AM UTC daily
+    - cron: '0 4 * * *'
   workflow_dispatch:
-    inputs:
-      dry-run:
-        description: "Run in dry-run mode"
-        type: boolean
-        default: false
 
 jobs:
   nightly:
-    uses: salesforcecli/github-workflows/.github/workflows/vscode-nightly-release.yml@main
+    uses: salesforcecli/github-workflows/.github/workflows/vscode-release-explicit.yml@main
     with:
-      # Explicitly declare your extension paths
-      extension-paths: "packages/salesforcedx-vscode-*"
-      release-mode: changed # all | changed | specific
-      base-branch: main
-      dry-run: ${{ inputs.dry-run || false }}
-    secrets: inherit
+      extensions: '["packages/ext1", "packages/ext2"]'  # JSON array of paths
+      registries: all  # all | marketplace | openvsx
+      pre-release: true
+      version-bump: auto  # auto | major | minor | patch
+      package-command: 'npx vsce package --no-dependencies'
+      dry-run: false
+    secrets:
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      OVSX_PAT: ${{ secrets.OVSX_PAT }}
 ```
 
-## Configuration Examples
+**Inputs:**
+- `extensions` (required) - JSON array of extension directory paths
+- `registries` (optional) - Where to publish: `all`, `marketplace`, or `openvsx` (default: `all`)
+- `pre-release` (optional) - Mark as pre-release version (default: `true`)
+- `version-bump` (optional) - Version bump strategy: `auto`, `major`, `minor`, or `patch` (default: `auto`)
+- `package-command` (optional) - Command to build VSIX packages (default: `vsce package`)
+- `bundle-command` (optional) - Command to bundle extension code (default: `npm run vscode:bundle`)
+- `dry-run` (optional) - Skip actual publishing for testing (default: `false`)
 
-### 1. Monorepo - All Extensions
+**Required Secrets:**
+- `VSCE_PAT` - VS Code Marketplace Personal Access Token
+- `OVSX_PAT` - Open VSX Personal Access Token
 
-Release all extensions matching a pattern:
+### vscode-package
 
-```yaml
-with:
-  extension-paths: "packages/salesforcedx-vscode-*"
-  release-mode: all
-```
+Packages VS Code extensions into VSIX files without publishing.
 
-### 2. Monorepo - Changed Only
-
-Release only extensions that have changes:
-
-```yaml
-with:
-  extension-paths: "packages/salesforcedx-vscode-*"
-  release-mode: changed
-  base-branch: main
-```
-
-### 3. Single Extension Repository
-
-```yaml
-with:
-  extension-paths: "."
-  release-mode: all
-```
-
-### 4. Mixed/Custom Structure
-
-Explicitly list different paths:
-
-```yaml
-with:
-  extension-paths: |
-    packages/libraries/foo
-    packages/extensions/bar
-    packages/extensionPacks/baz
-  release-mode: changed
-```
-
-### 5. Specific Extensions Only
-
-```yaml
-with:
-  extensions: |
-    packages/salesforcedx-vscode-apex
-    packages/salesforcedx-vscode-core
-  release-mode: all
-```
-
-## Workflow Inputs
-
-### Required Inputs
-
-| Input             | Description                             | Example                      |
-| ----------------- | --------------------------------------- | ---------------------------- |
-| `extension-paths` | Glob pattern or list of extension paths | `packages/*`                 |
-| `release-mode`    | How to determine what to release        | `changed`, `all`, `specific` |
-
-### Optional Inputs
-
-| Input          | Description                      | Default                                |
-| -------------- | -------------------------------- | -------------------------------------- |
-| `base-branch`  | Base branch for change detection | `main`                                 |
-| `dry-run`      | Skip actual publishing           | `false`                                |
-| `pre-release`  | Mark as pre-release              | `true`                                 |
-| `version-bump` | Version bump strategy            | `auto`                                 |
-| `registries`   | Where to publish                 | `all` (VS Code Marketplace + Open VSX) |
-
-## Architecture
-
-### No npm Package Required!
-
-Unlike traditional approaches, this workflow system:
-
-- ✅ Uses **only GitHub Actions native features**
-- ✅ Requires **explicit path declaration** from consumers
-- ✅ Performs all logic via **shell/bash scripts in workflows**
-- ✅ **No cross-repo npm dependencies** to install or manage
-
-### How It Works
-
-```
-┌─────────────────────────────────────┐
-│ Consumer Repo                       │
-│                                     │
-│  .github/workflows/nightly.yml     │
-│  - Explicitly declares paths       │
-│  - Calls shared workflow           │
-└──────────────┬──────────────────────┘
-               │ uses:
-               │ salesforcecli/github-workflows/
-               │   .github/workflows/vscode-nightly-release.yml
-               ▼
-┌─────────────────────────────────────┐
-│ Shared Workflow                     │
-│                                     │
-│  1. Parse declared paths            │
-│  2. Run git diff (if changed mode)  │
-│  3. Bump versions                   │
-│  4. Create PR                       │
-│  5. Auto-merge                      │
-│  6. Publish & release               │
-└─────────────────────────────────────┘
-```
-
-## Benefits
-
-### vs Auto-Discovery Approach
-
-| Feature                     | Explicit Declaration | Auto-Discovery              |
-| --------------------------- | -------------------- | --------------------------- |
-| **Setup complexity**        | Low                  | High (npm package)          |
-| **Dependencies**            | None                 | npm git dependency          |
-| **Works for any structure** | ✅ Yes               | ❌ Assumes standard layout  |
-| **Consumer control**        | ✅ Full control      | ⚠️ Magic behavior           |
-| **Maintenance**             | ✅ Simple            | ❌ Complex TypeScript/build |
-| **Installation issues**     | ✅ None              | ❌ npm git dep bugs         |
-
-### Key Advantages
-
-1. **No npm Package Installation** - Avoids npm git dependency issues entirely
-2. **Flexible Structure** - Works with monorepos, single extensions, custom layouts
-3. **Explicit Intent** - Clear declaration of what gets released
-4. **Simple Maintenance** - Pure workflow YAML, no complex TypeScript
-5. **Fast Setup** - Consumer just declares paths in YAML
-
-## Features
-
-### Smart Version Bumping
-
-Automatically determines version bumps based on:
-
-- **Conventional commits** (`fix:`, `feat:`, `feat!:`)
-- **Even/odd versioning pattern** for stable vs pre-release
-
-### Change Detection
-
-When `release-mode: changed`:
-
-- Runs `git diff` against base branch
-- Identifies modified extensions
-- Only releases what changed
-
-### Dry-Run Mode
-
-Test the full workflow without publishing:
-
-```yaml
-dry-run: true
-```
-
-This will:
-
-- ✅ Create local branches and commits
-- ✅ Build VSIXes
-- ✅ Validate the flow
-- ❌ Skip: git push, PR creation, publishing
-
-## Workflow Structure
-
-The main workflow calls these sub-workflows in sequence:
-
-1. **`vscode-make-pr-for-nightly.yml`** - Bumps versions, creates PR
-2. **`vscode-automerge-nightly-pr.yml`** - Auto-merges after checks pass
-3. **`vscode-draft-release-on-merge.yml`** - Publishes and creates releases
-
-## Required Secrets
-
-Configure these in your repository settings:
-
-- `VSCE_PAT` - VS Code Marketplace personal access token
-- `OVSX_PAT` - Open VSX personal access token
-- `GITHUB_TOKEN` - Automatically provided by GitHub Actions
-
-## Supported Repository Types
-
-- ✅ **Monorepo** with multiple extensions
-- ✅ **Single extension** repository
-- ✅ **Mixed structure** (libraries + extensions + packs)
-- ✅ **Custom layouts** with explicit path declaration
-
-## Migration Guide
-
-### From Auto-Discovery Approach
-
-If you were using an npm package for auto-discovery:
-
-**Before:**
-
-```yaml
-- name: Install dependencies
-  run: npm install
-- name: Discover extensions
-  run: npx tsx .github/scripts/index.ts ext-package-selector
-```
-
-**After:**
-
-```yaml
-with:
-  extension-paths: "packages/*" # Explicitly declare
-  release-mode: changed
-```
-
-### From Manual Workflows
-
-Replace your custom nightly workflow with:
+**Usage:**
 
 ```yaml
 jobs:
-  nightly:
-    uses: salesforcecli/github-workflows/.github/workflows/vscode-nightly-release.yml@main
+  package:
+    uses: salesforcecli/github-workflows/.github/workflows/vscode-package.yml@main
     with:
-      extension-paths: "<your-paths>"
-      release-mode: changed
-    secrets: inherit
+      branch: main
+      artifact-name: vsix-packages
+      pre-release: true
+      dry-run: false
 ```
 
-## Examples
+### vscode-ci-template
 
-See real-world examples in:
+Reusable CI workflow template for VS Code extension repositories. Runs tests across multiple OS and Node.js versions with coverage reporting.
 
-- [forcedotcom/salesforcedx-vscode](https://github.com/forcedotcom/salesforcedx-vscode)
-- [forcedotcom/apex-language-support](https://github.com/forcedotcom/apex-language-support)
+**Usage:**
 
-## Contributing
+```yaml
+jobs:
+  ci:
+    uses: salesforcecli/github-workflows/.github/workflows/vscode-ci-template.yml@main
+    with:
+      lint-command: 'npm run lint'
+      compile-command: 'npm run compile'
+      test-command: 'npm run test'
+      test-coverage-command: 'npm run test:coverage'
+```
 
-This repository follows Salesforce open source guidelines. See [CONTRIBUTING.md](CONTRIBUTING.md).
+### vscode-publish-extensions
 
-## License
+Full-featured publish workflow with version bumping, GitHub releases, and marketplace publishing.
 
-BSD-3-Clause - See [LICENSE.txt](LICENSE.txt)
+**Usage:**
 
-## Support
-
-For questions or issues:
-
-- Open an issue in this repository
-- Contact the VS Code Extensions Team
-- See [NIGHTLY_RELEASE_DESIGN.md](docs/NIGHTLY_RELEASE_DESIGN.md) for detailed architecture
-
----
-
-**Note:** This approach eliminates the need for the npm package (`@salesforce/vscode-extension-ci`). All logic is contained in GitHub Actions workflows that can be called directly via `uses:` syntax.
+```yaml
+jobs:
+  publish:
+    uses: salesforcecli/github-workflows/.github/workflows/vscode-publish-extensions.yml@main
+    with:
+      branch: main
+      extensions: 'ext1,ext2'
+      registries: all
+      pre-release: true
+      dry-run: false
+    secrets: inherit
+```
