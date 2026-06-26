@@ -673,7 +673,7 @@ jobs:
     name: Create GitHub Releases
     needs: [package, calculate-artifact-name]
     runs-on: ubuntu-latest
-    if: needs.package.result == 'success' && inputs.extensions != '' && github.event_name != 'pull_request'
+    if: needs.package.result == 'success' && inputs.extensions != '' && github.event_name != 'pull_request' && inputs.dry-run != 'true' && inputs.dry-run != true
     steps:
       - name: Checkout
         uses: actions/checkout@v6
