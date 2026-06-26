@@ -85,7 +85,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/vscode/npm-install-with-retries@feat/add-vscode-extension-ci
+        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
 
       - name: Run linting
         run: ${{ inputs.lint-command }}
@@ -156,7 +156,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/vscode/npm-install-with-retries@feat/add-vscode-extension-ci
+        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
 
       - name: Run quality tests
         run: npm run test:quality

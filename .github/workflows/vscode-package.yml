@@ -88,7 +88,7 @@ jobs:
           node-version: ${{ inputs.node-version || '22.x' }}
 
       - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/vscode/npm-install-with-retries@feat/add-vscode-extension-ci
+        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
 
       # Universal + web-target VSIXs are defined in packages/apex-lsp-vscode-extension (Wireit: package + package-web).
       - name: Package packages
