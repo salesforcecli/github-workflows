@@ -1,47 +1,53 @@
 name: Promote Nightly to Pre-release
 
-# Reusable workflow for promoting nightly builds to pre-release on marketplace
+# Promotes a vetted nightly build to pre-release on VS Code Marketplace and Open VSX.
 #
-# Usage from consuming repository:
+# Usage:
 #   jobs:
 #     promote:
-#       uses: salesforcecli/github-workflows/.github/workflows/vscode/promote-prerelease.yml@main
+#       uses: salesforcecli/github-workflows/.github/workflows/vscode-promote-prerelease.yml@main
 #       with:
 #         min-tag-age-days: '7'
+#         dry-run: 'false'
 #       secrets: inherit
 #
-# Requirements:
-#   - Consuming repo must have @salesforce/vscode-extension-ci installed as devDependency
-#   - Requires IDEE_GH_TOKEN, VSCE_PERSONAL_ACCESS_TOKEN, IDEE_OVSX_PAT secrets
+# Requirements - calling repository must have:
+#   - Nightly tags matching *-nightly.* (e.g., v1.2.3-nightly.20260629)
+#   - GitHub releases for each nightly tag with VSIX file(s) attached
+#   - Passing CI checks on nightly commits
+#   - Secrets: IDEE_GH_TOKEN, VSCE_PERSONAL_ACCESS_TOKEN, IDEE_OVSX_PAT
+#
+# Workflow: finds oldest unpromoted nightly ≥ min-tag-age-days → verifies CI →
+#           downloads VSIX → publishes to both marketplaces → creates tracking tag
 
 on:
   workflow_call:
     inputs:
       min-tag-age-days:
-        description: 'Minimum nightly age in days before eligible for promotion'
+        description: "Minimum nightly age in days before eligible for promotion"
         required: false
-        default: '7'
+        default: "7"
         type: string
       dry-run:
-        description: 'Run in dry-run mode (no actual publishing or tagging)'
+        description: "Run in dry-run mode (no actual publishing or tagging)"
         required: false
-        default: 'false'
+        default: "false"
         type: string
   workflow_dispatch:
     inputs:
       min-tag-age-days:
-        description: 'Minimum nightly age in days before eligible for promotion (default: 7)'
+        description: "Minimum nightly age in days before eligible for promotion (default: 7)"
         required: false
-        default: '7'
+        default: "7"
         type: string
       dry-run:
-        description: 'Run in dry-run mode (no actual publishing or tagging)'
+        description: "Run in dry-run mode (no actual publishing or tagging)"
         required: false
-        default: 'false'
+        default: "false"
         type: choice
         options:
-          - 'false'
-          - 'true'
+          - "false"
+          - "true"
 
 concurrency:
   group: promote-prerelease
@@ -65,20 +71,60 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.IDEE_GH_TOKEN }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '22.x'
-
-      - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/vscode/npm-install-with-retries@feat/add-vscode-extension-ci
-
       - name: Find eligible nightly
         id: find
         env:
           MIN_TAG_AGE_DAYS: ${{ inputs.min-tag-age-days || '7' }}
         run: |
-          node node_modules/github-workflows/packages/vscode-extension-ci/dist/cli.js ext-nightly-finder
+          echo "Finding nightly tags older than $MIN_TAG_AGE_DAYS days..."
+
+          # Get all nightly tags sorted by date (newest first)
+          NIGHTLY_TAGS=$(git tag -l '*-nightly.*' --sort=-creatordate)
+
+          if [ -z "$NIGHTLY_TAGS" ]; then
+            echo "No nightly tags found"
+            echo "nightly-tag=" >> $GITHUB_OUTPUT
+            echo "commit-sha=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Calculate cutoff timestamp (MIN_TAG_AGE_DAYS ago)
+          CUTOFF_TIMESTAMP=$(date -u -d "$MIN_TAG_AGE_DAYS days ago" +%s 2>/dev/null || date -u -v-${MIN_TAG_AGE_DAYS}d +%s)
+
+          # Find first tag older than cutoff that hasn't been promoted
+          SELECTED_TAG=""
+          SELECTED_SHA=""
+
+          while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+
+            # Get tag creation timestamp
+            TAG_TIMESTAMP=$(git log -1 --format=%ct "$tag" 2>/dev/null)
+            [ -z "$TAG_TIMESTAMP" ] && continue
+
+            # Check if tag is old enough
+            if [ "$TAG_TIMESTAMP" -lt "$CUTOFF_TIMESTAMP" ]; then
+              # Check if already promoted (has corresponding marketplace-prerelease tag)
+              VERSION=$(echo "$tag" | grep -oP '\d+\.\d+\.\d+' | head -1)
+              PROMO_TAG="marketplace-prerelease-*-v${VERSION}"
+
+              if ! git tag -l "$PROMO_TAG" | grep -q .; then
+                SELECTED_TAG="$tag"
+                SELECTED_SHA=$(git rev-list -n 1 "$tag")
+                break
+              fi
+            fi
+          done <<< "$NIGHTLY_TAGS"
+
+          if [ -n "$SELECTED_TAG" ]; then
+            echo "Found eligible nightly: $SELECTED_TAG (SHA: $SELECTED_SHA)"
+            echo "nightly-tag=$SELECTED_TAG" >> $GITHUB_OUTPUT
+            echo "commit-sha=$SELECTED_SHA" >> $GITHUB_OUTPUT
+          else
+            echo "No eligible nightly found"
+            echo "nightly-tag=" >> $GITHUB_OUTPUT
+            echo "commit-sha=" >> $GITHUB_OUTPUT
+          fi
 
       - name: Fail if no candidate found
         if: steps.find.outputs.nightly-tag == ''
@@ -94,7 +140,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Check CI status for candidate commit
-        uses: salesforcecli/github-workflows/.github/actions/vscode/check-ci-status@feat/add-vscode-extension-ci
+        uses: salesforcecli/github-workflows/.github/actions/vscode/check-ci-status@main
         with:
           commit-sha: ${{ needs.find-nightly-candidate.outputs.commit-sha }}
           token: ${{ secrets.IDEE_GH_TOKEN }}
@@ -118,10 +164,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '22.x'
+          node-version: "22.x"
 
       - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/vscode/npm-install-with-retries@feat/add-vscode-extension-ci
+        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
 
       - name: Download VSIX from nightly GitHub release
         env:
@@ -144,11 +190,11 @@ jobs:
           echo "VSIX_PATH=$VSIX_FILE" >> $GITHUB_ENV
 
       - name: Publish to ${{ matrix.registry }}
-        uses: salesforcecli/github-workflows/.github/actions/vscode/publish-vsix@feat/add-vscode-extension-ci
+        uses: salesforcecli/github-workflows/.github/actions/vscode/publish-vsix@main
         with:
           vsix-path: ${{ env.VSIX_PATH }}
           publish-tool: ${{ matrix.publish-tool }}
-          pre-release: 'true'
+          pre-release: "true"
           dry-run: ${{ inputs.dry-run || 'false' }}
         env:
           VSCE_PERSONAL_ACCESS_TOKEN: ${{ secrets.VSCE_PERSONAL_ACCESS_TOKEN }}

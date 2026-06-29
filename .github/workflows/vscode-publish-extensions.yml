@@ -453,7 +453,7 @@ jobs:
 
   package:
     needs: [bump-versions, calculate-artifact-name]
-    uses: salesforcecli/github-workflows/.github/workflows/vscode-package.yml@feat/add-vscode-extension-ci
+    uses: salesforcecli/github-workflows/.github/workflows/vscode-package.yml@main
     with:
       branch: ${{ inputs.branch || github.ref_name }}
       artifact-name: ${{ needs.calculate-artifact-name.outputs.artifact-name }}
@@ -638,7 +638,7 @@ jobs:
           echo "Found VSIX file: $VSIX_FILE"
 
       - name: Publish to ${{ matrix.marketplace }}
-        uses: salesforcecli/github-workflows/.github/actions/vscode/publish-vsix@feat/add-vscode-extension-ci
+        uses: salesforcecli/github-workflows/.github/actions/vscode/publish-vsix@main
         env:
           # Pass tokens as environment variables for better security
           VSCE_PERSONAL_ACCESS_TOKEN: ${{ matrix.registry == 'vsce' && secrets.VSCE_PERSONAL_ACCESS_TOKEN || '' }}
