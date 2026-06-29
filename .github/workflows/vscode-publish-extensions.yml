@@ -693,7 +693,7 @@ jobs:
     name: Create GitHub Releases
     needs: [package, calculate-artifact-name]
     runs-on: ubuntu-latest
-    if: needs.package.result == 'success' && inputs.extensions != '' && github.event_name != 'pull_request' && inputs.dry-run != 'true' && inputs.dry-run != true
+    if: needs.package.result == 'success' && inputs.extensions != '' && github.event_name != 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -876,7 +876,7 @@ jobs:
     needs:
       [bump-versions, package, publish]
     runs-on: ubuntu-latest
-    if: always() && needs.publish.result == 'success' && (inputs.dry-run != 'true' && github.event.inputs.dry-run != 'true')
+    if: always() && needs.publish.result == 'success'
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -925,7 +925,16 @@ jobs:
           echo "version_bump=$VERSION_BUMP" >> $GITHUB_OUTPUT
           echo "pre_release=$PRE_RELEASE" >> $GITHUB_OUTPUT
 
+      - name: Dry-run Slack summary
+        if: inputs.dry-run == 'true' || github.event.inputs.dry-run == 'true'
+        run: |
+          echo "🔄 DRY RUN: Would send Slack notification"
+          echo "  Extensions: ${{ steps.extension-details.outputs.extension_display_names }}"
+          echo "  Versions: ${{ steps.extension-details.outputs.extension_versions }}"
+          echo "  Release Type: ${{ steps.extension-details.outputs.pre_release == 'true' && 'Pre-release' || 'Stable' }}"
+
       - name: Notify Slack
+        if: inputs.dry-run != 'true' && github.event.inputs.dry-run != 'true'
         uses: slackapi/slack-github-action@v3.0.3
         with:
           payload: |
@@ -985,7 +994,7 @@ jobs:
     needs:
       [bump-versions, package, publish]
     runs-on: ubuntu-latest
-    if: always() && needs.publish.result == 'failure' && (inputs.dry-run != 'true' && github.event.inputs.dry-run != 'true')
+    if: always() && needs.publish.result == 'failure'
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -1034,7 +1043,15 @@ jobs:
           echo "version_bump=$VERSION_BUMP" >> $GITHUB_OUTPUT
           echo "pre_release=$PRE_RELEASE" >> $GITHUB_OUTPUT
 
+      - name: Dry-run failure summary
+        if: inputs.dry-run == 'true' || github.event.inputs.dry-run == 'true'
+        run: |
+          echo "🔄 DRY RUN: Would send Slack failure notification"
+          echo "  Extensions: ${{ steps.extension-details.outputs.extension_display_names }}"
+          echo "  Note: Failure occurred in dry-run mode"
+
       - name: Notify Slack
+        if: inputs.dry-run != 'true' && github.event.inputs.dry-run != 'true'
         uses: slackapi/slack-github-action@v3.0.3
         with:
           payload: |
