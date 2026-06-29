@@ -38,6 +38,11 @@ on:
         required: false
         default: 'false'
         type: string
+      extensions-root:
+        description: 'Root directory for extensions (default: packages)'
+        required: false
+        default: 'packages'
+        type: string
     outputs:
       artifact-name:
         description: 'The calculated artifact name'
@@ -92,6 +97,8 @@ jobs:
 
       # Universal + web-target VSIXs are defined in packages/apex-lsp-vscode-extension (Wireit: package + package-web).
       - name: Package packages
+        env:
+          EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
         run: |
           if [ "${{ inputs.pre-release }}" = "true" ]; then
             npm run package:packages:prerelease
@@ -101,11 +108,13 @@ jobs:
 
       - name: Generate MD5 checksums
         id: md5-checksums
+        env:
+          EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
         run: |
           echo "Generating MD5 checksums for VSIX files..."
-          
+
           # Universal + web-target VSIX under packages/
-          VSIX_FILES=$(find packages -name "*.vsix" -type f)
+          VSIX_FILES=$(find "$EXTENSIONS_ROOT" -name "*.vsix" -type f)
           
           if [ -z "$VSIX_FILES" ]; then
             echo "No VSIX files found to generate checksums for"
@@ -128,7 +137,7 @@ jobs:
               MD5_HASH=$(md5sum "$vsix_file" | cut -d' ' -f1)
               
               # Get relative path for display
-              RELATIVE_PATH=$(echo "$vsix_file" | sed 's|^packages/||')
+              RELATIVE_PATH=$(echo "$vsix_file" | sed "s|^$EXTENSIONS_ROOT/||")
               
               # Get file size
               FILE_SIZE=$(stat -c%s "$vsix_file" 2>/dev/null || stat -f%z "$vsix_file" 2>/dev/null || echo "0")
@@ -155,13 +164,13 @@ jobs:
           done <<< "$VSIX_FILES"
           
           echo "]" >> "$CHECKSUMS_JSON_FILE"
-          
+
           # Move combined checksums files to packages root for artifact upload
-          mv "$CHECKSUMS_FILE" "packages/checksums.md5"
-          mv "$CHECKSUMS_JSON_FILE" "packages/checksums.json"
-          
+          mv "$CHECKSUMS_FILE" "$EXTENSIONS_ROOT/checksums.md5"
+          mv "$CHECKSUMS_JSON_FILE" "$EXTENSIONS_ROOT/checksums.json"
+
           echo "checksums_generated=true" >> $GITHUB_OUTPUT
-          echo "checksums_file=packages/checksums.json" >> $GITHUB_OUTPUT
+          echo "checksums_file=$EXTENSIONS_ROOT/checksums.json" >> $GITHUB_OUTPUT
 
       - name: Calculate artifact name
         id: calc-artifact-name
@@ -187,19 +196,23 @@ jobs:
       - name: Upload VSIX artifacts
         id: upload
         uses: actions/upload-artifact@v7
+        env:
+          EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
         with:
           name: ${{ steps.calc-artifact-name.outputs.artifact-name }}
           path: |
-            packages/**/*.vsix
-            packages/**/*.vsix.md5
-            packages/checksums.md5
-            packages/checksums.json
+            ${{ inputs.extensions-root || 'packages' }}/**/*.vsix
+            ${{ inputs.extensions-root || 'packages' }}/**/*.vsix.md5
+            ${{ inputs.extensions-root || 'packages' }}/checksums.md5
+            ${{ inputs.extensions-root || 'packages' }}/checksums.json
           retention-days: 5
 
       - name: List VSIX files
+        env:
+          EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
         run: |
           echo "VSIX files created:"
-          find packages -name "*.vsix" -exec ls -la {} \;
+          find "$EXTENSIONS_ROOT" -name "*.vsix" -exec ls -la {} \;
 
       - name: Add MD5 checksums to workflow summary
         if: steps.md5-checksums.outputs.checksums_generated == 'true'

@@ -62,6 +62,11 @@ on:
         required: false
         default: 'auto'
         type: string
+      extensions-root:
+        description: 'Root directory for extensions (default: packages)'
+        required: false
+        default: 'packages'
+        type: string
 
 # Add explicit permissions for security
 permissions:
@@ -96,6 +101,7 @@ jobs:
           REGISTRIES: ${{ inputs.registries }}
           PRE_RELEASE: 'true'
           SELECTED_EXTENSIONS: ${{ inputs.extensions }}
+          EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
         run: |
           echo "=== EXTENSION RELEASE PLAN ==="
           echo "Branch: $BRANCH"
@@ -113,7 +119,7 @@ jobs:
           for ext in "${extensions[@]}"; do
             [ -z "$ext" ] && continue
 
-            package_json="packages/$ext/package.json"
+            package_json="$EXTENSIONS_ROOT/$ext/package.json"
             if [ ! -f "$package_json" ]; then
               echo "Extension: $ext (package.json not found)"
               continue
@@ -174,6 +180,7 @@ jobs:
           IS_NIGHTLY: 'true'
           IS_PROMOTION: 'false'
           BRANCH: ${{ inputs.branch || github.ref_name }}
+          EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
         run: |
           set -e
 
@@ -311,7 +318,7 @@ jobs:
             ext=$(echo "$ext" | xargs)  # Trim whitespace
             [ -z "$ext" ] && continue
 
-            package_json="packages/$ext/package.json"
+            package_json="$EXTENSIONS_ROOT/$ext/package.json"
             if [ ! -f "$package_json" ]; then
               echo "⚠️ Skipping $ext: package.json not found"
               continue
@@ -459,6 +466,7 @@ jobs:
       artifact-name: ${{ needs.calculate-artifact-name.outputs.artifact-name }}
       dry-run: ${{ inputs.dry-run || github.event.inputs.dry-run || 'false' }}
       pre-release: ${{ inputs.pre-release || github.event.inputs.pre-release || 'false' }}
+      extensions-root: ${{ inputs.extensions-root || 'packages' }}
 
   determine-publish-matrix:
     needs: [calculate-artifact-name]
@@ -706,6 +714,7 @@ jobs:
           DRY_RUN: ${{ inputs.dry-run || github.event.inputs.dry-run || 'false' }}
           BRANCH: ${{ inputs.branch || github.ref_name }}
           VSIX_ARTIFACTS_PATH: ./vsix-artifacts
+          EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
         run: |
           echo "Mode: $([ "$DRY_RUN" = "true" ] && echo "DRY RUN" || echo "LIVE")"
           echo "Creating GitHub releases..."
@@ -715,7 +724,7 @@ jobs:
           for ext in "${extensions[@]}"; do
             [ -z "$ext" ] && continue
 
-            package_json="packages/$ext/package.json"
+            package_json="$EXTENSIONS_ROOT/$ext/package.json"
             if [ ! -f "$package_json" ]; then
               echo "⚠️  Skipping $ext: package.json not found"
               continue
@@ -862,6 +871,8 @@ jobs:
 
       - name: Get Extension Details
         id: extension-details
+        env:
+          EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
         run: |
           # Get selected extensions and their details
           SELECTED_EXTENSIONS="${{ inputs.extensions }}"
@@ -875,11 +886,11 @@ jobs:
 
           IFS=',' read -ra EXTENSIONS <<< "$SELECTED_EXTENSIONS"
           for ext in "${EXTENSIONS[@]}"; do
-            if [ -n "$ext" ] && [ -f "packages/$ext/package.json" ]; then
+            if [ -n "$ext" ] && [ -f "$EXTENSIONS_ROOT/$ext/package.json" ]; then
               # Get package details
-              PACKAGE_NAME=$(node -p "require('./packages/$ext/package.json').name")
-              PACKAGE_VERSION=$(node -p "require('./packages/$ext/package.json').version")
-              DISPLAY_NAME=$(node -p "require('./packages/$ext/package.json').displayName || require('./packages/$ext/package.json').name")
+              PACKAGE_NAME=$(node -p "require('./$EXTENSIONS_ROOT/$ext/package.json').name")
+              PACKAGE_VERSION=$(node -p "require('./$EXTENSIONS_ROOT/$ext/package.json').version")
+              DISPLAY_NAME=$(node -p "require('./$EXTENSIONS_ROOT/$ext/package.json').displayName || require('./$EXTENSIONS_ROOT/$ext/package.json').name")
               
               # Add to arrays
               if [ -z "$EXTENSION_NAMES" ]; then
@@ -969,6 +980,8 @@ jobs:
 
       - name: Get Extension Details
         id: extension-details
+        env:
+          EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
         run: |
           # Get selected extensions and their details
           SELECTED_EXTENSIONS="${{ inputs.extensions }}"
@@ -982,11 +995,11 @@ jobs:
 
           IFS=',' read -ra EXTENSIONS <<< "$SELECTED_EXTENSIONS"
           for ext in "${EXTENSIONS[@]}"; do
-            if [ -n "$ext" ] && [ -f "packages/$ext/package.json" ]; then
+            if [ -n "$ext" ] && [ -f "$EXTENSIONS_ROOT/$ext/package.json" ]; then
               # Get package details
-              PACKAGE_NAME=$(node -p "require('./packages/$ext/package.json').name")
-              PACKAGE_VERSION=$(node -p "require('./packages/$ext/package.json').version")
-              DISPLAY_NAME=$(node -p "require('./packages/$ext/package.json').displayName || require('./packages/$ext/package.json').name")
+              PACKAGE_NAME=$(node -p "require('./$EXTENSIONS_ROOT/$ext/package.json').name")
+              PACKAGE_VERSION=$(node -p "require('./$EXTENSIONS_ROOT/$ext/package.json').version")
+              DISPLAY_NAME=$(node -p "require('./$EXTENSIONS_ROOT/$ext/package.json').displayName || require('./$EXTENSIONS_ROOT/$ext/package.json').name")
               
               # Add to arrays
               if [ -z "$EXTENSION_NAMES" ]; then
