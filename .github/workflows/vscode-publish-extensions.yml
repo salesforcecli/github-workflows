@@ -557,6 +557,25 @@ jobs:
             echo "matrix=$matrix_json" >> $GITHUB_OUTPUT
           fi
 
+  publish-skipped-notice:
+    name: Publish Skipped Notice
+    needs:
+      [
+        bump-versions,
+        package,
+        calculate-artifact-name,
+        determine-publish-matrix,
+      ]
+    runs-on: ubuntu-latest
+    if: needs.determine-publish-matrix.outputs.matrix == '[]' || needs.determine-publish-matrix.outputs.matrix == ''
+    steps:
+      - name: Log skipped publish
+        run: |
+          echo "ℹ️ Marketplace publishing skipped for this build type"
+          echo "  Reason: Nightly builds only create GitHub releases, not marketplace publishes"
+          echo "  Extensions would be published: ${{ inputs.extensions }}"
+          echo "  Registries configured: ${{ inputs.registries }}"
+
   publish:
     needs:
       [
@@ -566,7 +585,7 @@ jobs:
         determine-publish-matrix,
       ]
     runs-on: ubuntu-latest
-    if: needs.determine-publish-matrix.outputs.matrix != '[]'
+    if: needs.determine-publish-matrix.outputs.matrix != '[]' && needs.determine-publish-matrix.outputs.matrix != ''
     strategy:
       matrix:
         include: ${{ fromJson(needs.determine-publish-matrix.outputs.matrix) }}
@@ -874,9 +893,9 @@ jobs:
   slack-notify:
     name: Slack Notification
     needs:
-      [bump-versions, package, publish]
+      [bump-versions, package, publish, publish-skipped-notice]
     runs-on: ubuntu-latest
-    if: always() && needs.publish.result == 'success'
+    if: always() && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -925,8 +944,16 @@ jobs:
           echo "version_bump=$VERSION_BUMP" >> $GITHUB_OUTPUT
           echo "pre_release=$PRE_RELEASE" >> $GITHUB_OUTPUT
 
+      - name: Publish skipped summary
+        if: needs.publish.result == 'skipped'
+        run: |
+          echo "ℹ️ Slack notification skipped - marketplace publishing was skipped"
+          echo "  Reason: Nightly builds only create GitHub releases"
+          echo "  Extensions: ${{ steps.extension-details.outputs.extension_display_names }}"
+          echo "  Versions: ${{ steps.extension-details.outputs.extension_versions }}"
+
       - name: Dry-run Slack summary
-        if: inputs.dry-run == 'true' || github.event.inputs.dry-run == 'true'
+        if: (inputs.dry-run == 'true' || github.event.inputs.dry-run == 'true') && needs.publish.result != 'skipped'
         run: |
           echo "🔄 DRY RUN: Would send Slack notification"
           echo "  Extensions: ${{ steps.extension-details.outputs.extension_display_names }}"
@@ -934,7 +961,7 @@ jobs:
           echo "  Release Type: ${{ steps.extension-details.outputs.pre_release == 'true' && 'Pre-release' || 'Stable' }}"
 
       - name: Notify Slack
-        if: inputs.dry-run != 'true' && github.event.inputs.dry-run != 'true'
+        if: inputs.dry-run != 'true' && github.event.inputs.dry-run != 'true' && needs.publish.result == 'success'
         uses: slackapi/slack-github-action@v3.0.3
         with:
           payload: |
@@ -992,9 +1019,9 @@ jobs:
   slack-notify-failure:
     name: Slack Failure Notification
     needs:
-      [bump-versions, package, publish]
+      [bump-versions, package, publish, publish-skipped-notice]
     runs-on: ubuntu-latest
-    if: always() && needs.publish.result == 'failure'
+    if: always() && (needs.publish.result == 'failure' || needs.bump-versions.result == 'failure' || needs.package.result == 'failure')
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -1043,15 +1070,23 @@ jobs:
           echo "version_bump=$VERSION_BUMP" >> $GITHUB_OUTPUT
           echo "pre_release=$PRE_RELEASE" >> $GITHUB_OUTPUT
 
+      - name: No failure to report
+        if: needs.publish.result == 'skipped' && needs.bump-versions.result != 'failure' && needs.package.result != 'failure'
+        run: |
+          echo "ℹ️ No failures to report"
+          echo "  Publish was skipped (nightly builds don't publish to marketplace)"
+          echo "  All other jobs succeeded"
+
       - name: Dry-run failure summary
-        if: inputs.dry-run == 'true' || github.event.inputs.dry-run == 'true'
+        if: (inputs.dry-run == 'true' || github.event.inputs.dry-run == 'true') && (needs.publish.result == 'failure' || needs.bump-versions.result == 'failure' || needs.package.result == 'failure')
         run: |
           echo "🔄 DRY RUN: Would send Slack failure notification"
           echo "  Extensions: ${{ steps.extension-details.outputs.extension_display_names }}"
+          echo "  Failed jobs: publish=${{ needs.publish.result }}, bump-versions=${{ needs.bump-versions.result }}, package=${{ needs.package.result }}"
           echo "  Note: Failure occurred in dry-run mode"
 
       - name: Notify Slack
-        if: inputs.dry-run != 'true' && github.event.inputs.dry-run != 'true'
+        if: inputs.dry-run != 'true' && github.event.inputs.dry-run != 'true' && (needs.publish.result == 'failure' || needs.bump-versions.result == 'failure' || needs.package.result == 'failure')
         uses: slackapi/slack-github-action@v3.0.3
         with:
           payload: |
