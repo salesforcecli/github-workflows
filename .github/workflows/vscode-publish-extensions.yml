@@ -67,6 +67,11 @@ on:
         required: false
         default: 'packages'
         type: string
+      exclude-web-vsix:
+        description: 'Exclude *-web-* VSIX files from publishing and releases'
+        required: false
+        default: 'false'
+        type: string
 
 # Add explicit permissions for security
 permissions:
@@ -491,6 +496,7 @@ jobs:
           REGISTRIES: ${{ inputs.registries }}
           SELECTED_EXTENSIONS: ${{ inputs.extensions }}
           IS_NIGHTLY: 'true'
+          EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
         run: |
           # Skip marketplace publishing for nightly builds
           if [ "$IS_NIGHTLY" = "true" ]; then
@@ -512,10 +518,13 @@ jobs:
             for ext in "${extensions[@]}"; do
               [ -z "$ext" ] && continue
 
-              # Map extension names to VSIX patterns
-              if [ "$ext" = "apex-lsp-vscode-extension" ]; then
-                vsix_pattern="*apex-language-server-extension*-[0-9]*.vsix"
+              # Read package name from package.json to build VSIX pattern
+              package_json="$EXTENSIONS_ROOT/$ext/package.json"
+              if [ -f "$package_json" ]; then
+                package_name=$(jq -r '.name' "$package_json")
+                vsix_pattern="*${package_name}*-[0-9]*.vsix"
               else
+                # Fallback to extension directory name
                 vsix_pattern="*${ext}*.vsix"
               fi
 
@@ -624,12 +633,15 @@ jobs:
 
       - name: Find VSIX file for publishing
         id: find_vsix
+        env:
+          EXCLUDE_WEB: ${{ inputs.exclude-web-vsix || 'false' }}
         run: |
           ARTIFACTS_DIR="./vsix-artifacts"
           VSIX_PATTERN="${{ matrix.vsix_pattern }}"
-          # Apex: universal VSIX only (exclude legacy *-web-* platform VSIX if present)
-          if [[ "$VSIX_PATTERN" == *apex-language-server-extension* ]]; then
-            VSIX_FILE=$(find "$ARTIFACTS_DIR" -type f -name 'apex-language-server-extension-*.vsix' ! -name '*-web-*' | head -1)
+
+          # Find VSIX, optionally excluding *-web-* files
+          if [ "$EXCLUDE_WEB" = "true" ]; then
+            VSIX_FILE=$(find "$ARTIFACTS_DIR" -type f -name "$VSIX_PATTERN" ! -name '*-web-*' | head -1)
           else
             VSIX_FILE=$(find "$ARTIFACTS_DIR" -name "$VSIX_PATTERN" | head -1)
           fi
@@ -715,6 +727,7 @@ jobs:
           BRANCH: ${{ inputs.branch || github.ref_name }}
           VSIX_ARTIFACTS_PATH: ./vsix-artifacts
           EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
+          EXCLUDE_WEB: ${{ inputs.exclude-web-vsix || 'false' }}
         run: |
           echo "Mode: $([ "$DRY_RUN" = "true" ] && echo "DRY RUN" || echo "LIVE")"
           echo "Creating GitHub releases..."
@@ -731,14 +744,11 @@ jobs:
             fi
 
             current_version=$(jq -r '.version' "$package_json")
-            echo "Processing extension: $ext (version: $current_version)"
+            package_name=$(jq -r '.name' "$package_json")
+            echo "Processing extension: $ext (package: $package_name, version: $current_version)"
 
-            # Find VSIX files
-            if [ "$ext" = "apex-lsp-vscode-extension" ]; then
-              vsix_pattern="*apex-language-server-extension-*.vsix"
-            else
-              vsix_pattern="*${ext}*.vsix"
-            fi
+            # Find VSIX files using the package name from package.json
+            vsix_pattern="*${package_name}*.vsix"
 
             vsix_files=("$VSIX_ARTIFACTS_PATH"/$ext/$vsix_pattern)
             if [ ! -f "${vsix_files[0]}" ]; then
@@ -746,13 +756,17 @@ jobs:
               continue
             fi
 
-            # Filter out *-web-* builds
-            filtered_files=()
-            for file in "${vsix_files[@]}"; do
-              if [[ ! "$(basename "$file")" =~ -web- ]]; then
-                filtered_files+=("$file")
-              fi
-            done
+            # Optionally filter out *-web-* builds
+            if [ "${EXCLUDE_WEB:-false}" = "true" ]; then
+              filtered_files=()
+              for file in "${vsix_files[@]}"; do
+                if [[ ! "$(basename "$file")" =~ -web- ]]; then
+                  filtered_files+=("$file")
+                fi
+              done
+            else
+              filtered_files=("${vsix_files[@]}")
+            fi
 
             # Create release tag
             release_tag="v$current_version"

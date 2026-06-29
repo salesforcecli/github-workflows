@@ -7,7 +7,10 @@ name: Promote Nightly to Pre-release
 #     promote:
 #       uses: salesforcecli/github-workflows/.github/workflows/vscode-promote-prerelease.yml@feat/add-vscode-extension-ci
 #       with:
+#         extension-name: 'apex-lsp-vscode-extension'
 #         min-tag-age-days: '7'
+#         vsix-name-pattern: 'apex-language-server-extension-*.vsix'  # optional, default: *.vsix
+#         exclude-web-vsix: 'true'  # optional, default: false
 #         dry-run: 'false'
 #       secrets: inherit
 #
@@ -28,6 +31,20 @@ on:
         required: false
         default: "7"
         type: string
+      extension-name:
+        description: "Extension name for tracking tag (e.g., 'apex-lsp-vscode-extension')"
+        required: true
+        type: string
+      vsix-name-pattern:
+        description: "Pattern to match VSIX files in release (e.g., 'apex-language-server-extension-*.vsix')"
+        required: false
+        default: "*.vsix"
+        type: string
+      exclude-web-vsix:
+        description: "Exclude *-web-* VSIX files from promotion"
+        required: false
+        default: "false"
+        type: string
       dry-run:
         description: "Run in dry-run mode (no actual publishing or tagging)"
         required: false
@@ -40,6 +57,23 @@ on:
         required: false
         default: "7"
         type: string
+      extension-name:
+        description: "Extension name for tracking tag (e.g., 'apex-lsp-vscode-extension')"
+        required: true
+        type: string
+      vsix-name-pattern:
+        description: "Pattern to match VSIX files in release (e.g., 'apex-language-server-extension-*.vsix')"
+        required: false
+        default: "*.vsix"
+        type: string
+      exclude-web-vsix:
+        description: "Exclude *-web-* VSIX files from promotion"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
       dry-run:
         description: "Run in dry-run mode (no actual publishing or tagging)"
         required: false
@@ -173,6 +207,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
           NIGHTLY_TAG: ${{ needs.find-nightly-candidate.outputs.nightly-tag }}
+          VSIX_PATTERN: ${{ inputs.vsix-name-pattern || '*.vsix' }}
+          EXCLUDE_WEB: ${{ inputs.exclude-web-vsix || 'false' }}
         run: |
           mkdir -p ./vsix-artifacts
           echo "Downloading VSIX from release: $NIGHTLY_TAG"
@@ -181,9 +217,15 @@ jobs:
             --dir ./vsix-artifacts \
             --repo "${{ github.repository }}"
 
-          VSIX_FILE=$(find ./vsix-artifacts -type f -name 'apex-language-server-extension-*.vsix' ! -name '*-web-*' | head -1)
+          # Find VSIX matching the pattern
+          if [ "$EXCLUDE_WEB" = "true" ]; then
+            VSIX_FILE=$(find ./vsix-artifacts -type f -name "$VSIX_PATTERN" ! -name '*-web-*' | head -1)
+          else
+            VSIX_FILE=$(find ./vsix-artifacts -type f -name "$VSIX_PATTERN" | head -1)
+          fi
+
           if [ -z "$VSIX_FILE" ]; then
-            echo "No VSIX found in release $NIGHTLY_TAG"
+            echo "No VSIX found matching pattern '$VSIX_PATTERN' in release $NIGHTLY_TAG"
             exit 1
           fi
           echo "Found VSIX: $VSIX_FILE"
@@ -213,6 +255,7 @@ jobs:
       - name: Create marketplace-prerelease tracking tag
         env:
           NIGHTLY_TAG: ${{ needs.find-nightly-candidate.outputs.nightly-tag }}
+          EXTENSION_NAME: ${{ inputs.extension-name }}
           DRY_RUN: ${{ inputs.dry-run || 'false' }}
           GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
         run: |
@@ -223,7 +266,7 @@ jobs:
             exit 1
           fi
 
-          TRACKING_TAG="marketplace-prerelease-apex-lsp-vscode-extension-v${VERSION}"
+          TRACKING_TAG="marketplace-prerelease-${EXTENSION_NAME}-v${VERSION}"
           COMMIT_SHA="${{ needs.find-nightly-candidate.outputs.commit-sha }}"
 
           echo "Creating tracking tag: $TRACKING_TAG → $COMMIT_SHA"
