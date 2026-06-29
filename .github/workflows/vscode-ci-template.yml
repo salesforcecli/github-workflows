@@ -5,7 +5,7 @@ name: CI
 # Usage from consuming repository:
 #   jobs:
 #     ci:
-#       uses: salesforcecli/github-workflows/.github/workflows/vscode/ci-template.yml@main
+#       uses: salesforcecli/github-workflows/.github/workflows/vscode/ci-template.yml@feat/add-vscode-extension-ci
 #       with:
 #         lint-command: 'npm run lint'
 #         compile-command: 'npm run compile'
@@ -85,7 +85,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
+        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@feat/add-vscode-extension-ci
 
       - name: Run linting
         run: ${{ inputs.lint-command }}
@@ -156,7 +156,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
+        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@feat/add-vscode-extension-ci
 
       - name: Run quality tests
         run: npm run test:quality
@@ -165,7 +165,7 @@ jobs:
     name: Package
     needs: test
     if: ${{ needs.test.result == 'success' }}
-    uses: salesforcecli/github-workflows/.github/workflows/vscode-package.yml@main
+    uses: salesforcecli/github-workflows/.github/workflows/vscode-package.yml@feat/add-vscode-extension-ci
     with:
       branch: ${{ github.head_ref || github.ref_name }}
       artifact-name: vsix-packages

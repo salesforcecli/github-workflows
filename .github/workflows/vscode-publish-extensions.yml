@@ -5,7 +5,7 @@ name: Publish VS Code Extensions
 # Usage from consuming repository:
 #   jobs:
 #     publish:
-#       uses: salesforcecli/github-workflows/.github/workflows/vscode/publish-extensions.yml@main
+#       uses: salesforcecli/github-workflows/.github/workflows/vscode/publish-extensions.yml@feat/add-vscode-extension-ci
 #       with:
 #         extensions: changed      # or 'all' or specific extension names
 #         registries: all          # or 'vsce' or 'ovsx'
@@ -85,7 +85,7 @@ jobs:
           node-version: '22.x'
 
       - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
+        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@feat/add-vscode-extension-ci
 
       - name: Display Extension Release Plan
         env:
@@ -164,7 +164,7 @@ jobs:
           node-version: '22.x'
 
       - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
+        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@feat/add-vscode-extension-ci
 
       - name: Bump versions and tag for selected extensions
         env:
@@ -453,7 +453,7 @@ jobs:
 
   package:
     needs: [bump-versions, calculate-artifact-name]
-    uses: salesforcecli/github-workflows/.github/workflows/vscode-package.yml@main
+    uses: salesforcecli/github-workflows/.github/workflows/vscode-package.yml@feat/add-vscode-extension-ci
     with:
       branch: ${{ inputs.branch || github.ref_name }}
       artifact-name: ${{ needs.calculate-artifact-name.outputs.artifact-name }}
@@ -475,7 +475,7 @@ jobs:
           node-version: '22.x'
 
       - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
+        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@feat/add-vscode-extension-ci
 
       - name: Determine publish matrix
         id: matrix
@@ -638,7 +638,7 @@ jobs:
           echo "Found VSIX file: $VSIX_FILE"
 
       - name: Publish to ${{ matrix.marketplace }}
-        uses: salesforcecli/github-workflows/.github/actions/vscode/publish-vsix@main
+        uses: salesforcecli/github-workflows/.github/actions/vscode/publish-vsix@feat/add-vscode-extension-ci
         env:
           # Pass tokens as environment variables for better security
           VSCE_PERSONAL_ACCESS_TOKEN: ${{ matrix.registry == 'vsce' && secrets.VSCE_PERSONAL_ACCESS_TOKEN || '' }}
@@ -687,7 +687,7 @@ jobs:
           node-version: '22.x'
 
       - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
+        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@feat/add-vscode-extension-ci
 
       - name: Download VSIX artifacts
         uses: actions/download-artifact@v8
