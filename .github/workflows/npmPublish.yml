@@ -121,6 +121,7 @@ jobs:
     uses: salesforcecli/github-workflows/.github/workflows/ctcOpen.yml@main
     with:
       githubTag: ${{ inputs.githubTag }}
+      nodeVersion: ${{ inputs.nodeVersion }}
     secrets: inherit
 
   npm-publish:
@@ -299,6 +300,7 @@ jobs:
     secrets: inherit
     with:
       changeCaseId: ${{needs.ctc-open.outputs.changeCaseId}}
+      nodeVersion: ${{ inputs.nodeVersion }}
 
   ctcCloseFail:
     needs: [ctc-open, npm-publish]
@@ -307,4 +309,5 @@ jobs:
     secrets: inherit
     with:
       changeCaseId: ${{ needs.ctc-open.outputs.changeCaseId }}
+      nodeVersion: ${{ inputs.nodeVersion }}
       status: Not Implemented
