@@ -95,6 +95,11 @@ on:
         options:
           - 'false'
           - 'true'
+      node-version:
+        description: 'Node.js version to use'
+        required: false
+        default: '22.x'
+        type: string
 
 concurrency:
   group: promote-stable
