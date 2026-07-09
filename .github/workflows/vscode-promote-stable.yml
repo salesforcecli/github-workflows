@@ -20,9 +20,12 @@ name: Promote Pre-release to Stable
 #   - GitHub releases for each nightly tag with VSIX file(s) attached
 #   - Passing CI checks (gate, tag-published)
 #   - Secrets: IDEE_GH_TOKEN, VSCE_PERSONAL_ACCESS_TOKEN, IDEE_OVSX_PAT
-#   - Action: ./.github/actions/repackage-vsix-stable
-#   - Action: ./.github/actions/publish-vsix
-#   - Action: ./.github/actions/npm-install-with-retries
+#   - Action: ./.github/actions/repackage-vsix-stable (repackages pre-release VSIX as stable)
+#   - Action: ./.github/actions/publish-vsix (publishes to VS Code Marketplace and/or Open VSX)
+#   - Action: ./.github/actions/npm-install-with-retries (custom npm install with retry logic)
+#
+# Note: This workflow uses local actions from the calling repository. For a fully self-contained
+# workflow that doesn't require local actions, use vscode-promote-prerelease.yml instead.
 #
 # Workflow: finds latest pre-release → verifies quality gate → repackages VSIX
 #           → publishes to both marketplaces → creates GitHub release → tags stable
@@ -54,6 +57,11 @@ on:
         description: 'Run in dry-run mode (no actual publishing or tagging)'
         required: false
         default: 'false'
+        type: string
+      node-version:
+        description: 'Node.js version to use'
+        required: false
+        default: '22.x'
         type: string
   workflow_dispatch:
     inputs:
@@ -115,7 +123,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '22.x'
+          node-version: ${{ inputs.node-version || '22.x' }}
 
       - name: Install dependencies
         uses: ./.github/actions/npm-install-with-retries
@@ -217,7 +225,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '22.x'
+          node-version: ${{ inputs.node-version || '22.x' }}
 
       - name: Download VSIX from nightly GitHub release
         env:
@@ -277,7 +285,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '22.x'
+          node-version: ${{ inputs.node-version || '22.x' }}
 
       - name: Install dependencies
         uses: ./.github/actions/npm-install-with-retries
@@ -444,7 +452,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '22.x'
+          node-version: ${{ inputs.node-version || '22.x' }}
 
       - name: Commit stable version bump to main
         env:

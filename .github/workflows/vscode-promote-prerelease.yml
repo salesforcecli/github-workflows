@@ -5,7 +5,7 @@ name: Promote Nightly to Pre-release
 # Usage:
 #   jobs:
 #     promote:
-#       uses: salesforcecli/github-workflows/.github/workflows/vscode-promote-prerelease.yml@feat/add-vscode-extension-ci
+#       uses: salesforcecli/github-workflows/.github/workflows/vscode-promote-prerelease.yml@main
 #       with:
 #         extension-name: 'apex-lsp-vscode-extension'
 #         min-tag-age-days: '7'
@@ -49,6 +49,11 @@ on:
         description: "Run in dry-run mode (no actual publishing or tagging)"
         required: false
         default: "false"
+        type: string
+      node-version:
+        description: 'Node.js version to use'
+        required: false
+        default: '22.x'
         type: string
   workflow_dispatch:
     inputs:
@@ -174,7 +179,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Check CI status for candidate commit
-        uses: salesforcecli/github-workflows/.github/actions/vscode/check-ci-status@feat/add-vscode-extension-ci
+        uses: salesforcecli/github-workflows/.github/actions/vscode/check-ci-status@main
         with:
           commit-sha: ${{ needs.find-nightly-candidate.outputs.commit-sha }}
           token: ${{ secrets.IDEE_GH_TOKEN }}
@@ -198,10 +203,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: "22.x"
+          node-version: ${{ inputs.node-version || '22.x' }}
 
       - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@feat/add-vscode-extension-ci
+        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
 
       - name: Download VSIX from nightly GitHub release
         env:
@@ -232,7 +237,7 @@ jobs:
           echo "VSIX_PATH=$VSIX_FILE" >> $GITHUB_ENV
 
       - name: Publish to ${{ matrix.registry }}
-        uses: salesforcecli/github-workflows/.github/actions/vscode/publish-vsix@feat/add-vscode-extension-ci
+        uses: salesforcecli/github-workflows/.github/actions/vscode/publish-vsix@main
         with:
           vsix-path: ${{ env.VSIX_PATH }}
           publish-tool: ${{ matrix.publish-tool }}

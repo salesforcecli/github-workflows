@@ -5,7 +5,7 @@ name: Package
 # Usage from consuming repository:
 #   jobs:
 #     package:
-#       uses: salesforcecli/github-workflows/.github/workflows/vscode/package.yml@feat/add-vscode-extension-ci
+#       uses: salesforcecli/github-workflows/.github/workflows/vscode/package.yml@main
 #       with:
 #         branch: main
 #         pre-release: true
@@ -93,7 +93,7 @@ jobs:
           node-version: ${{ inputs.node-version || '22.x' }}
 
       - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@feat/add-vscode-extension-ci
+        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
 
       # Universal + web-target VSIXs are defined in packages/apex-lsp-vscode-extension (Wireit: package + package-web).
       - name: Package packages

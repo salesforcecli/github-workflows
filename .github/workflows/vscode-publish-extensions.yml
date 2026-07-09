@@ -5,7 +5,7 @@ name: Publish VS Code Extensions
 # Usage from consuming repository:
 #   jobs:
 #     publish:
-#       uses: salesforcecli/github-workflows/.github/workflows/vscode/publish-extensions.yml@feat/add-vscode-extension-ci
+#       uses: salesforcecli/github-workflows/.github/workflows/vscode/publish-extensions.yml@main
 #       with:
 #         extensions: changed      # or 'all' or specific extension names
 #         registries: all          # or 'vsce' or 'ovsx'
@@ -23,6 +23,27 @@ name: Publish VS Code Extensions
 #   - Conventional commit analysis
 #   - GitHub release creation with VSIX artifacts
 #   - Marketplace publishing (can be skipped for nightly by setting registries appropriately)
+#
+# Versioning Strategy:
+#   This workflow uses an odd/even minor version convention to distinguish release types:
+#   - Nightly builds:    odd minor versions (e.g., 0.5.x-nightly.20260709)
+#   - Pre-release:       odd minor versions (e.g., 0.5.3)
+#   - Stable releases:   even minor versions (e.g., 0.6.0)
+#
+#   Benefits:
+#   - Clear visual distinction between release channels
+#   - Prevents accidental stable overwrites of pre-release versions
+#   - Predictable version progression: nightly 0.5.x → pre-release 0.5.y → stable 0.6.0
+#
+#   Version bump logic:
+#   - major: Breaking change, bumps to next major with first odd minor (e.g., 0.5.3 → 1.1.0)
+#   - minor: New feature, bumps to next odd minor (e.g., 0.5.3 → 0.7.0)
+#   - patch: Bug fix, increments patch while maintaining odd minor (e.g., 0.5.3 → 0.5.4)
+#   - auto:  Analyzes conventional commits to determine bump type
+#
+#   Note: This convention is specific to VS Code extension release workflows. If your
+#   project uses a different versioning strategy, you may need to customize the version
+#   bumping logic in the bump-versions job.
 
 on:
   workflow_call:
@@ -72,6 +93,16 @@ on:
         required: false
         default: 'false'
         type: string
+      slack-notification-title:
+        description: 'Title for Slack success notifications'
+        required: false
+        default: '🎉 Extensions Released Successfully!'
+        type: string
+      node-version:
+        description: 'Node.js version to use'
+        required: false
+        default: '22.x'
+        type: string
 
 # Add explicit permissions for security
 permissions:
@@ -92,10 +123,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '22.x'
+          node-version: ${{ inputs.node-version || '22.x' }}
 
       - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@feat/add-vscode-extension-ci
+        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
 
       - name: Display Extension Release Plan
         env:
@@ -172,10 +203,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '22.x'
+          node-version: ${{ inputs.node-version || '22.x' }}
 
       - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@feat/add-vscode-extension-ci
+        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
 
       - name: Bump versions and tag for selected extensions
         env:
@@ -465,7 +496,7 @@ jobs:
 
   package:
     needs: [bump-versions, calculate-artifact-name]
-    uses: salesforcecli/github-workflows/.github/workflows/vscode-package.yml@feat/add-vscode-extension-ci
+    uses: salesforcecli/github-workflows/.github/workflows/vscode-package.yml@main
     with:
       branch: ${{ inputs.branch || github.ref_name }}
       artifact-name: ${{ needs.calculate-artifact-name.outputs.artifact-name }}
@@ -485,10 +516,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '22.x'
+          node-version: ${{ inputs.node-version || '22.x' }}
 
       - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@feat/add-vscode-extension-ci
+        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
 
       - name: Determine publish matrix
         id: matrix
@@ -677,7 +708,7 @@ jobs:
           echo "Found VSIX file: $VSIX_FILE"
 
       - name: Publish to ${{ matrix.marketplace }}
-        uses: salesforcecli/github-workflows/.github/actions/vscode/publish-vsix@feat/add-vscode-extension-ci
+        uses: salesforcecli/github-workflows/.github/actions/vscode/publish-vsix@main
         env:
           # Pass tokens as environment variables for better security
           VSCE_PERSONAL_ACCESS_TOKEN: ${{ matrix.registry == 'vsce' && secrets.VSCE_PERSONAL_ACCESS_TOKEN || '' }}
@@ -723,10 +754,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '22.x'
+          node-version: ${{ inputs.node-version || '22.x' }}
 
       - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@feat/add-vscode-extension-ci
+        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
 
       - name: Download VSIX artifacts
         uses: actions/download-artifact@v8
@@ -970,13 +1001,13 @@ jobs:
         with:
           payload: |
             {
-              "text": "🎉 Apex Language Support Extensions Released Successfully!",
+              "text": "${{ inputs.slack-notification-title }}",
               "blocks": [
                 {
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "🎉 Apex Language Support Extensions Released Successfully!"
+                    "text": "${{ inputs.slack-notification-title }}"
                   }
                 },
                 {

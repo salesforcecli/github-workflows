@@ -390,7 +390,69 @@ jobs:
 
 ## VS Code Extension Workflows
 
-This repository includes reusable workflows for VS Code extension CI/CD.
+This repository includes reusable workflows for VS Code extension CI/CD, supporting both monorepo and single-extension repositories.
+
+### Prerequisites
+
+Before using these workflows, ensure your repository has:
+
+1. **Required Secrets** (configured as GitHub Actions secrets):
+   - `IDEE_GH_TOKEN` - Personal Access Token with repo permissions for creating releases and pushing tags
+   - `VSCE_PERSONAL_ACCESS_TOKEN` - VS Code Marketplace Personal Access Token ([create one](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#get-a-personal-access-token))
+   - `IDEE_OVSX_PAT` - Open VSX Personal Access Token ([create one](https://open-vsx.org/user-settings/tokens))
+
+2. **Repository Structure**:
+   - For monorepos: Extensions under a common directory (default: `packages/`)
+   - For single repos: Extension at repository root
+   - Each extension must have a valid `package.json` with VS Code extension metadata
+
+3. **Optional Local Actions** (only for `vscode-manual-publish.yml` and `vscode-promote-stable.yml`):
+   - `.github/actions/npm-install-with-retries` - Custom npm install with retry logic
+   - `.github/actions/check-ci-status` - Validates CI checks passed before publish
+   - `.github/actions/repackage-vsix-stable` - Repackages pre-release VSIX as stable
+   - `.github/actions/publish-vsix` - Publishes to VS Code Marketplace and/or Open VSX
+
+   Note: Most workflows (like `vscode-publish-extensions.yml` and `vscode-promote-prerelease.yml`) are fully self-contained and don't require these local actions.
+
+### Architecture Overview
+
+The VS Code workflows follow a modular design:
+
+1. **CI/Testing** (`vscode-ci-template.yml`) - Lints, compiles, and tests across multiple OS/Node versions
+2. **Packaging** (`vscode-package.yml`) - Creates VSIX files without publishing
+3. **Publishing** (`vscode-publish-extensions.yml`) - Complete release pipeline with version bumping and marketplace publishing
+4. **Promotion** (`vscode-promote-prerelease.yml`, `vscode-promote-stable.yml`) - Promotes vetted builds between release channels
+
+### Versioning Strategy
+
+These workflows use an **odd/even minor version convention** to distinguish release types:
+
+- **Nightly builds**: Odd minor versions (e.g., `0.5.x-nightly.20260709`)
+- **Pre-release**: Odd minor versions (e.g., `0.5.3`)
+- **Stable releases**: Even minor versions (e.g., `0.6.0`)
+
+**Benefits:**
+- Clear visual distinction between release channels
+- Prevents accidental overwrites
+- Predictable version progression: nightly `0.5.x` → pre-release `0.5.y` → stable `0.6.0`
+
+**Version bump types:**
+- `major`: Breaking change → next major with first odd minor (e.g., `0.5.3` → `1.1.0`)
+- `minor`: New feature → next odd minor (e.g., `0.5.3` → `0.7.0`)
+- `patch`: Bug fix → increment patch, maintain odd minor (e.g., `0.5.3` → `0.5.4`)
+- `auto`: Analyzes conventional commits to determine bump type
+
+### Common Inputs
+
+Most workflows share these common inputs:
+
+- `node-version` (optional) - Node.js version to use (default: `22.x`)
+- `extensions-root` (optional) - Root directory for extensions (default: `packages`)
+- `dry-run` (optional) - Run without publishing/tagging (default: `false`)
+- `pre-release` (optional) - Mark as pre-release version (default: `true`)
+- `registries` (optional) - Where to publish: `all`, `vsce`, or `ovsx` (default: `all`)
+
+---
 
 ### vscode-release-explicit
 
@@ -470,7 +532,7 @@ jobs:
 
 ### vscode-publish-extensions
 
-Full-featured publish workflow with version bumping, GitHub releases, and marketplace publishing.
+Full-featured publish workflow with automatic version bumping, GitHub releases, and marketplace publishing. Supports auto-detecting changed extensions or publishing specific extensions.
 
 **Usage:**
 
@@ -480,9 +542,113 @@ jobs:
     uses: salesforcecli/github-workflows/.github/workflows/vscode-publish-extensions.yml@main
     with:
       branch: main
-      extensions: 'ext1,ext2'
-      registries: all
+      extensions: changed  # or 'all' or 'ext1,ext2'
+      registries: all  # all | vsce | ovsx
       pre-release: true
+      version-bump: auto  # auto | major | minor | patch
+      extensions-root: packages  # for monorepos
+      exclude-web-vsix: 'false'
+      slack-notification-title: '🎉 Extensions Released Successfully!'
+      node-version: '22.x'
       dry-run: false
     secrets: inherit
 ```
+
+**Key Features:**
+- Auto-detects changed extensions in monorepos
+- Smart version bumping using odd/even convention
+- Conventional commit analysis
+- Creates GitHub releases with VSIX artifacts
+- Publishes to VS Code Marketplace and/or Open VSX
+- Slack notifications on success
+
+**Inputs:**
+- `extensions` (optional) - Extensions to release: `changed`, `all`, or comma-separated names (default: `changed`)
+- `version-bump` (optional) - Version bump type: `auto`, `patch`, `minor`, `major` (default: `auto`)
+- `slack-notification-title` (optional) - Slack notification title (default: `🎉 Extensions Released Successfully!`)
+
+### vscode-promote-prerelease
+
+Promotes a vetted nightly build to pre-release on VS Code Marketplace and Open VSX. This workflow finds the oldest unpromoted nightly that meets the minimum age requirement, verifies CI checks passed, and publishes it as a pre-release.
+
+**Usage:**
+
+```yaml
+jobs:
+  promote:
+    uses: salesforcecli/github-workflows/.github/workflows/vscode-promote-prerelease.yml@main
+    with:
+      extension-name: 'my-extension'  # Used for tracking tags
+      min-tag-age-days: '7'  # Nightly must be at least 7 days old
+      vsix-name-pattern: 'my-extension-*.vsix'  # Pattern to match VSIX files
+      exclude-web-vsix: 'true'  # Exclude *-web-* VSIX files
+      dry-run: 'false'
+    secrets: inherit
+```
+
+**Requirements:**
+- Nightly tags matching `v{version}-nightly.*` pattern (e.g., `v1.2.3-nightly.20260709`)
+- GitHub releases for each nightly tag with VSIX files attached
+- Passing CI checks on nightly commits
+
+**How it works:**
+1. Finds oldest nightly tag ≥ min-tag-age-days that hasn't been promoted
+2. Verifies CI checks passed for that commit
+3. Downloads VSIX from nightly GitHub release
+4. Publishes to marketplace(s) as pre-release
+5. Creates `marketplace-prerelease-{extension-name}-v{version}` tracking tag
+
+### vscode-promote-stable
+
+Promotes a vetted pre-release to stable. This workflow finds the latest pre-release, verifies quality gates, repackages the VSIX for stable, and publishes it.
+
+**Usage:**
+
+```yaml
+jobs:
+  promote:
+    uses: salesforcecli/github-workflows/.github/workflows/vscode-promote-stable.yml@main
+    with:
+      extension-name: 'my-extension'
+      vsix-name-pattern: 'my-extension-*.vsix'
+      exclude-web-vsix: 'true'
+      extensions-root: 'packages'
+      dry-run: 'false'
+    secrets: inherit
+```
+
+**Requirements:**
+- `marketplace-prerelease-*` tracking tags from previous promotions
+- Local actions in calling repository (see Prerequisites section above)
+
+**Note:** This workflow requires local actions. For a fully self-contained alternative, use `vscode-promote-prerelease.yml`.
+
+### vscode-manual-publish
+
+Manually publish a specific nightly or CI build to the marketplace. Supports two source paths:
+1. **Tag path**: Publish from a nightly GitHub Release
+2. **Run path**: Publish from a CI build artifact (with quality check bypass)
+
+**Usage:**
+
+```yaml
+jobs:
+  manual-publish:
+    uses: salesforcecli/github-workflows/.github/workflows/vscode-manual-publish.yml@main
+    with:
+      extension-name: 'my-extension'
+      vsix-name-pattern: 'my-extension-*.vsix'
+      version-tag: 'v0.5.3-nightly.20260301'  # OR use source-run-id
+      slot: 'pre-release'  # or 'stable'
+      registries: 'all'
+      exclude-web-vsix: 'true'
+      extensions-root: 'packages'
+      dry-run: 'false'
+    secrets: inherit
+```
+
+**Requirements:**
+- Local actions in calling repository (see Prerequisites section above)
+- Environment: `manual-publish-gate` (with required reviewers for approval)
+
+**Note:** This workflow requires local actions. Use for special cases where you need to manually control which build gets published.
