@@ -34,7 +34,7 @@ jobs:
         id: pr-body-work-item-subportion-regex
         with:
           text: ${{ github.event.pull_request.body }}
-          regex: '@(${{ steps.pr-title-work-item-subportion-regex }})@'
+          regex: '@(${{ steps.pr-title-work-item-subportion-regex.outputs.match }})@'
           flags: gmi
 
       - name: echo match parts to double-check expectations
