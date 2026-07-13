@@ -6,7 +6,7 @@ jobs:
     runs-on: "ubuntu-latest"
     steps:
       - name: Validate Pull Request Title
-        uses: kaisugi/action-regex-match@45cc5bacf016a4c0d2c3c9d0f8b7c2f1b79687b8
+        uses: kaisugi/action-regex-match@main
         id: regex-match-pr-title
         with:
           text: ${{ github.event.pull_request.title }}
@@ -14,12 +14,20 @@ jobs:
           flags: gmi
 
       - name: Validate Pull Request Body
-        uses: kaisugi/action-regex-match@45cc5bacf016a4c0d2c3c9d0f8b7c2f1b79687b8
+        uses: kaisugi/action-regex-match@main
         id: regex-match-pr-body
         with:
           text: ${{ github.event.pull_request.body }}
           regex: '@W-\d{7,}@'
           flags: gmi
+
+      - name: echo match parts to double-check expectations
+        run: |
+          echo "title match: '${{ steps.regex-match-pr-title.outputs.match }}'"
+          echo "title group1: '${{ steps.regex-match-pr-title.outputs.group1 }}'"
+          echo "title group2: '${{ steps.regex-match-pr-title.outputs.group2 }}'"
+          echo "title group3: '${{ steps.regex-match-pr-title.outputs.group3 }}'"
+          echo "body match: '${{ steps.regex-match-pr-body.outputs.match }}'"
 
       # Disabling GHA Run and Github Issue (for now) due to E360 lookup
 
@@ -45,9 +53,11 @@ jobs:
           (github.event.pull_request.user.login != 'SF-CLI-BOT' || github.event.pull_request.user.login != 'svc-cli-bot') &&
           (steps.regex-match-pr-title.outputs.match == '' || steps.regex-match-pr-body.outputs.match == '')
         run: |
-          [[ '${{ steps.regex-match-pr-title.outputs.match }}' == '' ]] && TITLE_STATE=$'\u2714' || TITLE_STATE=$'\u2715'
-          [[ '${{ steps.regex-match-pr-body.outputs.match }}' == '' ]] && BODY_STATE=$'\u2714' || BODY_STATE=$'\u2715'
+          [[ '${{ steps.regex-match-pr-title.outputs.match }}' != '' ]] && TITLE_STATE=$'\u2714' || TITLE_STATE=$'\u2715'
+          [[ '${{ steps.regex-match-pr-body.outputs.match }}' != '' ]] && BODY_STATE=$'\u2714' || BODY_STATE=$'\u2715'
           echo "::warning::PR titles and bodies must meet the specified criteria.
+          - PR should be of the format '<type>(<optional-scope>): <description> (W-XXXXXXX)'
+            where 
           - [$TITLE_STATE] PR title should be of format '<type>(<optional-scope>): <description> (W-XXXXXXX)'
             where <type> is one of: feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert
             e.g., feat: add Angular template support (W-12345678); fix(auth): resolve token refresh issue (W-12345679)
