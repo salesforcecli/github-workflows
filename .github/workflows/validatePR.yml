@@ -44,8 +44,6 @@ jobs:
           github.event.pull_request.user.login != 'dependabot[bot]' &&
           (github.event.pull_request.user.login != 'SF-CLI-BOT' || github.event.pull_request.user.login != 'svc-cli-bot') &&
           (steps.regex-match-pr-title.outputs.match == '' || steps.regex-match-pr-body.outputs.match == '')
-        env:
-          TITLE_MATCH: ${{
         run: |
           [[ '${{ steps.regex-match-pr-title.outputs.match }}' == '' ]] && TITLE_STATE=$'\u2714' || TITLE_STATE=$'\u2715'
           [[ '${{ steps.regex-match-pr-body.outputs.match }}' == '' ]] && BODY_STATE=$'\u2714' || BODY_STATE=$'\u2715'
