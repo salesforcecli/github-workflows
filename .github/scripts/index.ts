@@ -15,12 +15,14 @@ import { main as extChangeDetector } from './ext-change-detector.js';
 
 const command = process.argv[2];
 
-switch (command) {
-  case 'ext-change-detector':
-    await extChangeDetector();
-    break;
-  default:
-    console.error(`Unknown command: ${command}`);
-    console.error('Available commands: ext-change-detector');
-    process.exit(1);
-}
+(async () => {
+  switch (command) {
+    case 'ext-change-detector':
+      await extChangeDetector();
+      break;
+    default:
+      console.error(`Unknown command: ${command}`);
+      console.error('Available commands: ext-change-detector');
+      process.exit(1);
+  }
+})();
