@@ -5,29 +5,44 @@ jobs:
     if: ${{ !contains(github.event.pull_request.body, '[skip-validate-pr]') && !contains(github.event.pull_request.title, '[skip-validate-pr]') }}
     runs-on: "ubuntu-latest"
     steps:
-      - name: Validate Pull Request Title
+      - name: Validate Overall PR Shape
         uses: kaisugi/action-regex-match@main
-        id: regex-match-pr-title
+        id: pr-title-shape-regex
         with:
           text: ${{ github.event.pull_request.title }}
-          regex: '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)\s?(\(.+\))?: .+ (\(W-\d{7,}\))$'
+          regex: '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)\s?(\(.+\))?: .+ \((W-\d{7,})\)$'
+          flags: gmi
+
+      - name: Check Title for type
+        uses: kaisugi/action-regex-match@main
+        id: pr-title-type-subportion-regex
+        with:
+          text: ${{ github.event.pull_request.title }}
+          regex: '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)'
+          flags: gmi
+
+      - name: Check Title for Work Item
+        uses: kaisugi/action-regex-match@main
+        id: pr-title-work-item-subportion-regex
+        with:
+          text: ${{ github.event.pull_request.title }}
+          regex: ' \((W-\d{7,})\)$'
           flags: gmi
 
       - name: Validate Pull Request Body
         uses: kaisugi/action-regex-match@main
-        id: regex-match-pr-body
+        id: pr-body-work-item-subportion-regex
         with:
           text: ${{ github.event.pull_request.body }}
-          regex: '@W-\d{7,}@'
+          regex: '@(${{ steps.pr-title-work-item-subportion-regex }})@'
           flags: gmi
 
       - name: echo match parts to double-check expectations
         run: |
-          echo "title match: '${{ steps.regex-match-pr-title.outputs.match }}'"
-          echo "title group1: '${{ steps.regex-match-pr-title.outputs.group1 }}'"
-          echo "title group2: '${{ steps.regex-match-pr-title.outputs.group2 }}'"
-          echo "title group3: '${{ steps.regex-match-pr-title.outputs.group3 }}'"
-          echo "body match: '${{ steps.regex-match-pr-body.outputs.match }}'"
+          echo "title shape match: '${{ steps. pr-title-shape-regex.match }}'"
+          echo "title type match: '${{ steps.pr-title-type-subportion-regex.outputs.match }}'"
+          echo "title work item match: '${{ steps.pr-title-work-item-subportion-regex.outputs.match }}'"
+          echo "body work itme match: '${{ steps.pr-body-work-item-subportion-regex.outputs.match }}'"
 
       # Disabling GHA Run and Github Issue (for now) due to E360 lookup
 
@@ -51,15 +66,24 @@ jobs:
         if: |
           github.event.pull_request.user.login != 'dependabot[bot]' &&
           (github.event.pull_request.user.login != 'SF-CLI-BOT' || github.event.pull_request.user.login != 'svc-cli-bot') &&
-          (steps.regex-match-pr-title.outputs.match == '' || steps.regex-match-pr-body.outputs.match == '')
+          (steps.pr-title-shape-regex.outputs.match == '' || steps.pr-body-work-item-subportion-regex.outputs.match == '')
         run: |
-          [[ '${{ steps.regex-match-pr-title.outputs.match }}' != '' ]] && TITLE_STATE=$'\u2714' || TITLE_STATE=$'\u2715'
-          [[ '${{ steps.regex-match-pr-body.outputs.match }}' != '' ]] && BODY_STATE=$'\u2714' || BODY_STATE=$'\u2715'
+          # Define a checkmark and an x-mark as variables.
+          PASS=$'\u2714'
+          FAIL=$'\u2715'
+          
+          # Determine which criteria were and were not met based on the outputs we captured
+          [[ '${{ steps.pr-title-shape-regex.outputs.match }}' == '' ]] && TITLE_SHAPE=$FAIL || TITLE_SHAPE=$PASS
+          [[ '${{ steps.pr-title-type-subportion-regex.outputs.match }}' == '' ]] && TITLE_TYPE=$FAIL || TITLE_TYPE=$PASS
+          [[ '${{ steps.pr-title-work-item-subportion-regex.outputs.match }}' == '' ]] && TITLE_WORK_ITEM=$FAIL || TITLE_WORK_ITEM=$PASS
+          [[ '${{ steps.pr-body-work-item-subportion-regex.outputs.match }}' == '' ]] && BODY_WORK_ITEM=$FAIL || BODY_WORK_ITEM=$PASS
+          
+          # Output the criteria summary
           echo "::warning::PR titles and bodies must meet the specified criteria.
-          - PR should be of the format '<type>(<optional-scope>): <description> (W-XXXXXXX)'
-            where 
-          - [$TITLE_STATE] PR title should be of format '<type>(<optional-scope>): <description> (W-XXXXXXX)'
-            where <type> is one of: feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert
-            e.g., feat: add Angular template support (W-12345678); fix(auth): resolve token refresh issue (W-12345679)
-          - [$BODY_STATE] PR body must include a Work Item wrapped in @'s, ex: @W-12345678@ or [@W-12345678@](https://some-url)"
+          - [$TITLE_SHAPE] PR title must be well-formed (i.e., match '<type>(<optional-scope>): <description> (W-XXXXXXX)')
+            (example: feat: add Angular template support (W-12345678); fix(auth): resolve token refresh issue (W-12345678)
+            - [$TITLE_TYPE] <type> subportion must be one of: feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert
+            - [$TITLE_WORK_ITEM] Must end with work item number wrapped in parentheses
+          - [$BODY_WORK_ITEM] PR body must include work item from title, wrapped in '@'s, ex: @W-1234567@ or [@W-1234567](https://some-url)
+          If you ABSOLUTELY MUST bypass these validations, include '[skip-validate-pr]' in the PR title or body"
           exit 1
