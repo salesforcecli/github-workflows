@@ -236,10 +236,11 @@ jobs:
             fi
           fi
 
-          # Bypass requires confirmation
+          # Bypass requires confirmation (case-insensitive)
           if [ "$SKIP_QC" = "true" ]; then
-            if [ "$BYPASS" != "BYPASS" ]; then
-              echo "ERROR: skip-quality-checks is true but confirm-bypass is not 'BYPASS'."
+            BYPASS_LOWER=$(echo "$BYPASS" | tr '[:upper:]' '[:lower:]')
+            if [ "$BYPASS_LOWER" != "bypass" ]; then
+              echo "ERROR: skip-quality-checks is true but confirm-bypass is not 'BYPASS' (case-insensitive)."
               exit 1
             fi
             echo "WARNING: CI quality gate bypassed by ${{ github.actor }} for run ${{ github.run_id }}"

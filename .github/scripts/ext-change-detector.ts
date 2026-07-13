@@ -105,16 +105,18 @@ async function findLastReleaseTagForExtension(
 ): Promise<string | null> {
   try {
     const tags = await git.tags();
-    const extensionTags: TagWithVersion[] = tags.all
+    const extensionTags = tags.all
       .filter((tag: string) => tag.startsWith(`${extensionName}-v`))
       .map((tag: string) => {
         const version = extractVersionFromTag(tag);
         return { tag, version };
       })
-      .filter((item) => item.version !== null) // Filter out tags we couldn't parse
+      .filter((item): item is { tag: string; version: SemanticVersion } =>
+        item.version !== null
+      ) // Type guard: ensures version is non-null after this filter
       .sort((a, b) =>
         // Use proper semver comparison (descending order - newest first)
-        compareSemver(b.version!, a.version!),
+        compareSemver(b.version, a.version),
       );
 
     return extensionTags.length > 0 ? extensionTags[0].tag : null;
@@ -238,12 +240,15 @@ async function detectBumpTypeFromCommits(
     for (const msg of messages) {
       const firstLine = msg.split('\n')[0];
       const body = msg;
+      // Check for breaking changes (supports both singular and plural forms)
+      // Patterns: BREAKING CHANGE:, BREAKING CHANGES:, feat!:, feat(scope)!:
       if (
-        /BREAKING CHANGE/i.test(body) ||
+        /BREAKING CHANGES?:/i.test(body) ||
         /^[a-z]+(\([^)]*\))?!:/i.test(firstLine)
       ) {
         return 'major';
       }
+      // Check for new features (minor version bump)
       if (/^feat(\([^)]*\))?:/i.test(firstLine) && bump !== 'major') {
         bump = 'minor';
       }
