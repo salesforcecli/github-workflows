@@ -10,7 +10,7 @@ jobs:
         id: regex-match-pr-title
         with:
           text: ${{ github.event.pull_request.title }}
-          regex: '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)\s?(\(.+\))?: .+ \(W-\d{7,}\)$'
+          regex: '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)\s?(\(.+\))?: .+ (\(W-\d{7,}\))$'
           flags: gmi
 
       - name: Validate Pull Request Body
