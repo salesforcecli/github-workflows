@@ -39,7 +39,7 @@ jobs:
 
       - name: echo match parts to double-check expectations
         run: |
-          echo "title shape match: '${{ steps.pr-title-shape-regex.match }}'"
+          echo "title shape match: '${{ steps.pr-title-shape-regex.outputs.match }}'"
           echo "title type match: '${{ steps.pr-title-type-subportion-regex.outputs.match }}'"
           echo "title work item match: '${{ steps.pr-title-work-item-subportion-regex.outputs.match }}'"
           echo "body work itme match: '${{ steps.pr-body-work-item-subportion-regex.outputs.match }}'"
