@@ -5,20 +5,20 @@ jobs:
     if: ${{ !contains(github.event.pull_request.body, '[skip-validate-pr]') && !contains(github.event.pull_request.title, '[skip-validate-pr]') }}
     runs-on: "ubuntu-latest"
     steps:
-      - name: Find GUS Work Item in Title
+      - name: Validate Pull Request Title
         uses: kaisugi/action-regex-match@45cc5bacf016a4c0d2c3c9d0f8b7c2f1b79687b8
-        id: regex-match-gus-wi-title
+        id: regex-match-pr-title
         with:
           text: ${{ github.event.pull_request.title }}
-          regex: 'W-\d{7,8}'
+          regex: '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)\s?(\(.+\))?: .+ \(W-\d{7,}\)$'
           flags: gmi
 
-      - name: Find GUS Work Item in Body
+      - name: Validate Pull Request Body
         uses: kaisugi/action-regex-match@45cc5bacf016a4c0d2c3c9d0f8b7c2f1b79687b8
         id: regex-match-gus-wi-body
         with:
           text: ${{ github.event.pull_request.body }}
-          regex: '@W-\d{7,8}@'
+          regex: '@W-\d{7,}@'
           flags: gmi
 
       # Disabling GHA Run and Github Issue (for now) due to E360 lookup
@@ -43,10 +43,12 @@ jobs:
         if: |
           github.event.pull_request.user.login != 'dependabot[bot]' &&
           (github.event.pull_request.user.login != 'SF-CLI-BOT' || github.event.pull_request.user.login != 'svc-cli-bot') &&
-          (steps.regex-match-gus-wi-title.outputs.match == '' || steps.regex-match-gus-wi-body.outputs.match == '')
+          (steps.regex-match-pr-title.outputs.match == '' || steps.regex-match-gus-wi-body.outputs.match == '')
         run: |
-          echo "::warning::PRs need to reference a GUS Work Item in both the PR title AND body. More details in the logs above.
-          - PR titles should start with a Work Item followed by a description, ex: W-12345678: My PR title
+          echo "::warning::PR titles and bodies must meet the specified criteria. More details in the logs above.
+          - PR titles should be of the format \'<type>(<optional-scope>): <description> (W-XXXXXXXX)\',
+            where <type> is one of: feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert
+            ex: feat: add Angular template support (W-12345678); fix(auth): resolve token refresh issue (W-12345679)
           - PR bodies must include a Work Item wrapped in @s, ex: @W-12345678@ or [@W-12345678@](https://some-url)
           - If you absolutely must skip this validation, add [skip-validate-pr] to the PR title or body"
           exit 1
