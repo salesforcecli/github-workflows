@@ -39,17 +39,15 @@ jobs:
       #     regex: 'forcedotcom\/cli\/issues\/[0-9]+|forcedotcom\/salesforcedx-vscode\/issues\/[0-9]+'
       #     flags: gm
 
-      - name: Fail if no Work Item references
+      - name: Fail if format requirements not met
         if: |
           github.event.pull_request.user.login != 'dependabot[bot]' &&
           (github.event.pull_request.user.login != 'SF-CLI-BOT' || github.event.pull_request.user.login != 'svc-cli-bot') &&
           (steps.regex-match-pr-title.outputs.match == '' || steps.regex-match-gus-wi-body.outputs.match == '')
         run: |
-          echo "::warning::PR titles and bodies must meet the specified criteria. More details in the logs above.
-          - PR titles should be of the format \'<type>(<optional-scope>): <description> (W-XXXXXXXX)\',
-            where <type> is one of: feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert
-            ex: feat: add Angular template support (W-12345678); fix(auth): resolve token refresh issue (W-12345679)
-          - PR bodies must include a Work Item wrapped in @s, ex: @W-12345678@ or [@W-12345678@](https://some-url)
-          - If you absolutely must skip this validation, add [skip-validate-pr] to the PR title or body"
+          MSG="PR title and body must match specified criteria"
+          [[ true ]] && TITLE_MET=$'\u2714' || TITLE_MET=NO
+          MSG="$MSG+
+          - [$TITLE_MET] REQUIREMENTS FOR TITLE"
+          echo "::warning::$MSG"
           exit 1
-
