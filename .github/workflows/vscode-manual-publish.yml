@@ -43,68 +43,68 @@ on:
         required: true
         type: string
       version-tag:
-        description: '[Tag path] Nightly git tag to publish from (e.g., apex-language-server-extension-v0.5.3-nightly.20260301). Mutually exclusive with source-run-id.'
+        description: "[Tag path] Nightly git tag to publish from (e.g., apex-language-server-extension-v0.5.3-nightly.20260301). Mutually exclusive with source-run-id."
         required: false
-        default: ''
+        default: ""
         type: string
       source-run-id:
-        description: '[Run path] GitHub Actions run ID whose VSIX artifact to publish. Mutually exclusive with version-tag. REQUIRES skip-quality-checks=true and confirm-bypass=BYPASS.'
+        description: "[Run path] GitHub Actions run ID whose VSIX artifact to publish. Mutually exclusive with version-tag. REQUIRES skip-quality-checks=true and confirm-bypass=BYPASS."
         required: false
-        default: ''
+        default: ""
         type: string
       slot:
-        description: 'Marketplace slot to publish to (pre-release or stable)'
+        description: "Marketplace slot to publish to (pre-release or stable)"
         required: true
         type: string
       registries:
-        description: 'Registries to publish to (all, vsce, ovsx)'
+        description: "Registries to publish to (all, vsce, ovsx)"
         required: false
-        default: 'all'
+        default: "all"
         type: string
       target-stable-version:
-        description: 'Optional stable version override (e.g., 0.6.1). Must be valid semver with EVEN minor. Only applies when slot is stable. Required when using source-run-id with slot stable.'
+        description: "Optional stable version override (e.g., 0.6.1). Must be valid semver with EVEN minor. Only applies when slot is stable. Required when using source-run-id with slot stable."
         required: false
-        default: ''
+        default: ""
         type: string
       skip-quality-checks:
-        description: 'Skip CI quality gate. REQUIRED when using source-run-id.'
+        description: "Skip CI quality gate. REQUIRED when using source-run-id."
         required: false
-        default: 'false'
+        default: "false"
         type: string
       confirm-bypass:
-        description: 'Type BYPASS to confirm skipping CI quality gate (required when skip-quality-checks is true)'
+        description: "Type BYPASS to confirm skipping CI quality gate (required when skip-quality-checks is true)"
         required: false
-        default: ''
+        default: ""
         type: string
       exclude-web-vsix:
-        description: 'Exclude *-web-* VSIX files'
+        description: "Exclude *-web-* VSIX files"
         required: false
-        default: 'false'
+        default: "false"
         type: string
       extensions-root:
-        description: 'Root directory for extensions (default: packages)'
+        description: "Root directory for extensions (default: packages)"
         required: false
-        default: 'packages'
+        default: "packages"
         type: string
       vsix-artifact-name:
-        description: 'Name of the VSIX artifact in run artifacts (default: vsix-packages)'
+        description: "Name of the VSIX artifact in run artifacts (default: vsix-packages)"
         required: false
-        default: 'vsix-packages'
+        default: "vsix-packages"
         type: string
       required-ci-checks:
         description: 'Comma-separated list of required CI check names (default: "CI Complete, Package / Package, Test Quality (ubuntu-latest, lts/*)")'
         required: false
-        default: 'CI Complete, Package / Package, Test Quality (ubuntu-latest, lts/*)'
+        default: "CI Complete, Package / Package, Test Quality (ubuntu-latest, lts/*)"
         type: string
       dry-run:
-        description: 'Run in dry-run mode (no actual publishing or tagging)'
+        description: "Run in dry-run mode (no actual publishing or tagging)"
         required: false
-        default: 'false'
+        default: "false"
         type: string
       node-version:
-        description: 'Node.js version to use'
+        description: "Node.js version to use"
         required: false
-        default: '22.x'
+        default: "22.x"
         type: string
   workflow_dispatch:
     inputs:
@@ -117,75 +117,75 @@ on:
         required: true
         type: string
       version-tag:
-        description: '[Tag path] Nightly git tag to publish from'
+        description: "[Tag path] Nightly git tag to publish from"
         required: false
-        default: ''
+        default: ""
         type: string
       source-run-id:
-        description: '[Run path] GitHub Actions run ID'
+        description: "[Run path] GitHub Actions run ID"
         required: false
-        default: ''
+        default: ""
         type: string
       slot:
-        description: 'Marketplace slot (pre-release or stable)'
+        description: "Marketplace slot (pre-release or stable)"
         required: true
-        default: 'pre-release'
+        default: "pre-release"
         type: choice
         options:
           - pre-release
           - stable
       registries:
-        description: 'Registries to publish to'
+        description: "Registries to publish to"
         required: false
-        default: 'all'
+        default: "all"
         type: choice
         options:
           - all
           - vsce
           - ovsx
       target-stable-version:
-        description: 'Optional stable version override'
+        description: "Optional stable version override"
         required: false
-        default: ''
+        default: ""
         type: string
       skip-quality-checks:
-        description: 'Skip CI quality gate'
+        description: "Skip CI quality gate"
         required: false
-        default: 'false'
+        default: "false"
         type: choice
         options:
-          - 'false'
-          - 'true'
+          - "false"
+          - "true"
       confirm-bypass:
-        description: 'Type BYPASS to confirm bypass'
+        description: "Type BYPASS to confirm bypass"
         required: false
-        default: ''
+        default: ""
         type: string
       exclude-web-vsix:
-        description: 'Exclude *-web-* VSIX files'
+        description: "Exclude *-web-* VSIX files"
         required: false
-        default: 'false'
+        default: "false"
         type: choice
         options:
-          - 'false'
-          - 'true'
+          - "false"
+          - "true"
       extensions-root:
-        description: 'Root directory for extensions'
+        description: "Root directory for extensions"
         required: false
-        default: 'packages'
+        default: "packages"
         type: string
       dry-run:
-        description: 'Dry-run mode'
+        description: "Dry-run mode"
         required: false
-        default: 'false'
+        default: "false"
         type: choice
         options:
-          - 'false'
-          - 'true'
+          - "false"
+          - "true"
       node-version:
-        description: 'Node.js version to use'
+        description: "Node.js version to use"
         required: false
-        default: '22.x'
+        default: "22.x"
         type: string
 
 concurrency:
@@ -240,7 +240,8 @@ jobs:
           if [ "$SKIP_QC" = "true" ]; then
             BYPASS_LOWER=$(echo "$BYPASS" | tr '[:upper:]' '[:lower:]')
             if [ "$BYPASS_LOWER" != "bypass" ]; then
-              echo "ERROR: skip-quality-checks is true but confirm-bypass is not 'BYPASS' (case-insensitive)."
+              echo "ERROR: skip-quality-checks=true requires confirm-bypass to be set to 'BYPASS' (any case)."
+              echo "You provided: '$BYPASS'"
               exit 1
             fi
             echo "WARNING: CI quality gate bypassed by ${{ github.actor }} for run ${{ github.run_id }}"

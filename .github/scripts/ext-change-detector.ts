@@ -137,6 +137,12 @@ function parseUserSelectedExtensions(
     return [];
   }
 
+  // Check for malformed comma-separated lists
+  if (/^,|,$|,,/.test(selectedExtensionsInput)) {
+    log.warning('Malformed extension list detected (extra commas) - cleaning up');
+    log.warning(`Raw input: "${selectedExtensionsInput}"`);
+  }
+
   const selected = selectedExtensionsInput
     .split(',')
     .map((s) => s.trim())
@@ -249,7 +255,7 @@ async function detectBumpTypeFromCommits(
         return 'major';
       }
       // Check for new features (minor version bump)
-      if (/^feat(\([^)]*\))?:/i.test(firstLine) && bump !== 'major') {
+      if (/^feat(\([^)]*\))?:/i.test(firstLine)) {
         bump = 'minor';
       }
     }
