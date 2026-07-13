@@ -112,8 +112,9 @@ permissions:
 
 jobs:
   display-release-plan:
+    needs: [determine-changes]
     runs-on: ubuntu-latest
-    if: inputs.extensions != ''
+    if: needs.determine-changes.outputs.selected-extensions != ''
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -133,10 +134,10 @@ jobs:
           BRANCH: ${{ inputs.branch || github.ref_name }}
           BUILD_TYPE: ${{ github.event_name }}
           IS_NIGHTLY: 'true'
-          VERSION_BUMP: ${{ inputs.version-bump }}
+          VERSION_BUMP: ${{ needs.determine-changes.outputs.version-bumps }}
           REGISTRIES: ${{ inputs.registries }}
           PRE_RELEASE: 'true'
-          SELECTED_EXTENSIONS: ${{ inputs.extensions }}
+          SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
           EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
         run: |
           echo "=== EXTENSION RELEASE PLAN ==="
@@ -189,10 +190,52 @@ jobs:
 
           echo "=== END OF RELEASE PLAN ==="
 
-  bump-versions:
-    needs: []
+  determine-changes:
     runs-on: ubuntu-latest
-    if: inputs.extensions != ''
+    outputs:
+      selected-extensions: ${{ steps.changes.outputs.selected-extensions }}
+      version-bumps: ${{ steps.changes.outputs.version-bumps }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # Need full history for git diff against tags
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ inputs.node-version || '22.x' }}
+
+      - name: Detect changes and version bumps
+        id: changes
+        env:
+          IS_NIGHTLY: 'true'
+          VERSION_BUMP: ${{ inputs.version-bump }}
+          PRE_RELEASE: ${{ inputs.pre-release || 'true' }}
+          IS_PROMOTION: 'false'
+          SELECTED_EXTENSIONS: ${{ inputs.extensions }}
+          EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
+        run: |
+          # Download the change detection scripts from salesforcecli/github-workflows
+          SCRIPTS_URL="https://raw.githubusercontent.com/salesforcecli/github-workflows/main/.github/scripts"
+          mkdir -p .github/scripts
+
+          echo "Downloading change detection scripts..."
+          curl -sS "$SCRIPTS_URL/ext-change-detector.ts" -o .github/scripts/ext-change-detector.ts
+          curl -sS "$SCRIPTS_URL/types.ts" -o .github/scripts/types.ts
+          curl -sS "$SCRIPTS_URL/utils.ts" -o .github/scripts/utils.ts
+          curl -sS "$SCRIPTS_URL/index.ts" -o .github/scripts/index.ts
+
+          echo "Installing dependencies..."
+          npm install --no-save simple-git@3.27.0 chalk@5.3.0 semver@7.6.3 zod@3.24.1 tsx@4.19.2
+
+          echo "Running change detection..."
+          npx tsx .github/scripts/index.ts ext-change-detector
+
+  bump-versions:
+    needs: [determine-changes]
+    runs-on: ubuntu-latest
+    if: needs.determine-changes.outputs.selected-extensions != ''
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -210,8 +253,8 @@ jobs:
 
       - name: Bump versions and tag for selected extensions
         env:
-          VERSION_BUMP: ${{ inputs.version-bump }}
-          SELECTED_EXTENSIONS: ${{ inputs.extensions }}
+          VERSION_BUMP: ${{ needs.determine-changes.outputs.version-bumps }}
+          SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
           PRE_RELEASE: ${{ inputs.pre-release || github.event.inputs.pre-release || 'false' }}
           IS_NIGHTLY: 'true'
           IS_PROMOTION: 'false'
