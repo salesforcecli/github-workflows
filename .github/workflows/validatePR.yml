@@ -42,7 +42,7 @@ jobs:
           echo "title shape match: '${{ steps.pr-title-shape-regex.outputs.match }}'"
           echo "title type match: '${{ steps.pr-title-type-subportion-regex.outputs.match }}'"
           echo "title work item match: '${{ steps.pr-title-work-item-subportion-regex.outputs.match }}'"
-          echo "body work itme match: '${{ steps.pr-body-work-item-subportion-regex.outputs.match }}'"
+          echo "body work item match: '${{ steps.pr-body-work-item-subportion-regex.outputs.match }}'"
 
       # Disabling GHA Run and Github Issue (for now) due to E360 lookup
 
