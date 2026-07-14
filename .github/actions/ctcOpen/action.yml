@@ -15,8 +15,12 @@ inputs:
     description: Github token
     required: true
   githubTag:
-    description: 'The semver tag of the GitHub Release'
+    description: "The semver tag of the GitHub Release"
     required: false
+  nodeVersion:
+    description: version of node to use.  It's better to specify latest, lts/* or lts/-1 than to hardcode numbers
+    required: false
+    default: lts/*
 
 outputs:
   changeCaseId:
@@ -30,7 +34,7 @@ runs:
 
     - uses: actions/setup-node@v4
       with:
-        node-version: lts/*
+        node-version: ${{ inputs.nodeVersion }}
         cache: npm
 
     - run: npm install -g @salesforce/change-case-management --omit=dev

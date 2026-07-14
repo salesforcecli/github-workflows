@@ -2,8 +2,13 @@ on:
   workflow_call:
     inputs:
       githubTag:
-        description: 'The semver tag of the GitHub Release'
+        description: "The semver tag of the GitHub Release"
         type: string
+      nodeVersion:
+        description: version of node to use.  It's better to specify latest, lts/* or lts/-1 than to hardode numbers
+        type: string
+        default: lts/*
+        required: false
     outputs:
       changeCaseId:
         description: Id for the change case created
@@ -19,7 +24,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version: ${{ inputs.nodeVersion }}
           # No `cache: npm`: it requires an npm lockfile and so hard-fails on
           # pnpm/yarn consumer repos; the CTC CLI below is a one-off global install.
 
@@ -29,28 +34,28 @@ jobs:
         id: ctc
         shell: bash
         run: |
-            # Temp disable exit on error
-            set +e
-            if [ -n "$GITHUB_TAG" ]; then
-              RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/tag/$GITHUB_TAG"
-            else
-              RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases"
-            fi
-            CTC_RESULT=$(sfchangecase create --location ${{github.repositoryUrl}} --test-environment $RELEASE_URL --service platform-cli --release ${{github.repository}}.$(date +%F) --json)
-            # Re-enable exit on error
-            set -e
+          # Temp disable exit on error
+          set +e
+          if [ -n "$GITHUB_TAG" ]; then
+            RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/tag/$GITHUB_TAG"
+          else
+            RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases"
+          fi
+          CTC_RESULT=$(sfchangecase create --location ${{github.repositoryUrl}} --test-environment $RELEASE_URL --service platform-cli --release ${{github.repository}}.$(date +%F) --json)
+          # Re-enable exit on error
+          set -e
 
-            STATUS=$(printf '%s' "$CTC_RESULT" | jq -r '.status')
-            CTC_ID=$(printf '%s' "$CTC_RESULT" | jq -r '.result.id')
+          STATUS=$(printf '%s' "$CTC_RESULT" | jq -r '.status')
+          CTC_ID=$(printf '%s' "$CTC_RESULT" | jq -r '.result.id')
 
-            if [[ "$STATUS" == "0" && "$CTC_ID" != "null" ]]; then
-                echo "Successfully created case with ID: $CTC_ID"
-                echo "ctcId=$CTC_ID" >> "$GITHUB_OUTPUT"
-            else
-                echo "CTC failed to open a case. Result:"
-                echo "$CTC_RESULT"
-                exit 1
-            fi
+          if [[ "$STATUS" == "0" && "$CTC_ID" != "null" ]]; then
+              echo "Successfully created case with ID: $CTC_ID"
+              echo "ctcId=$CTC_ID" >> "$GITHUB_OUTPUT"
+          else
+              echo "CTC failed to open a case. Result:"
+              echo "$CTC_RESULT"
+              exit 1
+          fi
         env:
           GITHUB_TAG: ${{ inputs.githubTag }}
           SF_CHANGE_CASE_SFDX_AUTH_URL: ${{ secrets.SF_CHANGE_CASE_SFDX_AUTH_URL}}
