@@ -1,5 +1,7 @@
 name: 'Calculate Artifact Name'
-description: 'Calculate artifact name with run number and mode suffix'
+description: >
+  Generates a unique artifact name by appending run number and mode suffix (dry-run/release).
+  Used to ensure artifact names are unique per workflow run and distinguishable by mode.
 
 inputs:
   artifact-name:
@@ -31,4 +33,4 @@ runs:
           echo "artifact-name=${{ inputs.artifact-name }}" >> $GITHUB_OUTPUT
         else
           echo "artifact-name=${{ format('{0}-{1}-{2}', inputs.artifact-name, inputs.run-number, inputs.dry-run == 'true' && 'dry-run' || 'release') }}" >> $GITHUB_OUTPUT
-        fi 
+        fi
