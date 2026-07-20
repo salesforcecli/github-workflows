@@ -427,12 +427,13 @@ jobs:
           echo "✅ Version bumping complete"
 
       - name: Validate GitHub authentication
+        if: inputs.dry-run != 'true' && github.event.inputs.dry-run != 'true'
         env:
-          GITHUB_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
         run: |
           # Validate that required tokens are present
-          if [ -z "$GITHUB_TOKEN" ]; then
-            echo "❌ Error: GITHUB_TOKEN is not set"
+          if [ -z "$GH_TOKEN" ]; then
+            echo "❌ Error: GH_TOKEN is not set"
             exit 1
           fi
 

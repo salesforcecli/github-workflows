@@ -75,6 +75,7 @@ runs:
         echo "  Dry-run: ${{ inputs.dry-run }}"
 
     - name: Publish VSIX
+      id: publish
       shell: bash
       run: |
         echo "Publishing ${{ inputs.vsix-path }}"
@@ -101,35 +102,45 @@ runs:
           echo "🔍 DRY RUN MODE - Would publish to $MARKETPLACE_NAME:"
           echo "  VSIX: ${{ inputs.vsix-path }}"
           echo "  Pre-release: ${{ inputs.pre-release }}"
-          
+
           if [ "${{ inputs.publish-tool }}" = "ovsx" ]; then
-            echo "  Command: npx ovsx publish \"${{ inputs.vsix-path }}\" -p $TOKEN_MASK --skip-duplicate $PRE_RELEASE_FLAG"
+            echo "  Command: npx ovsx publish \"${{ inputs.vsix-path }}\" -p $TOKEN_MASK $PRE_RELEASE_FLAG"
           else
             echo "  Command: npx @vscode/vsce publish --packagePath \"${{ inputs.vsix-path }}\" --skip-duplicate $PRE_RELEASE_FLAG"
           fi
           echo "✅ Dry run completed - no actual publish performed"
+          echo "result=success" >> $GITHUB_OUTPUT
         else
           echo "Publishing VSIX: ${{ inputs.vsix-path }}"
-          
+
           # Verify token is available
           if [ -z "${!TOKEN_ENV}" ]; then
             echo "❌ Error: $TOKEN_ENV environment variable is not set"
+            echo "result=failure" >> $GITHUB_OUTPUT
             exit 1
           fi
-          
+
           if [ "${{ inputs.publish-tool }}" = "vsce" ]; then
             export VSCE_PAT="${!TOKEN_ENV}"  # ensure the expected env var is set
             npx @vscode/vsce publish --packagePath "${{ inputs.vsix-path }}" --skip-duplicate $PRE_RELEASE_FLAG
           else
             npx ovsx publish "${{ inputs.vsix-path }}" -p "${!TOKEN_ENV}" --skip-duplicate $PRE_RELEASE_FLAG
           fi
-          
-          echo "✅ Successfully published to $MARKETPLACE_NAME"
+
+          PUBLISH_EXIT_CODE=$?
+          if [ $PUBLISH_EXIT_CODE -eq 0 ]; then
+            echo "✅ Successfully published to $MARKETPLACE_NAME"
+            echo "result=success" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Failed to publish to $MARKETPLACE_NAME"
+            echo "result=failure" >> $GITHUB_OUTPUT
+            exit $PUBLISH_EXIT_CODE
+          fi
         fi
 
     - name: Audit publish result
       shell: bash
-      if: inputs.dry-run != 'true'
+      if: always() && inputs.dry-run != 'true'
       run: |
         # Log the result of the publish attempt
         AUDIT_LOG="/tmp/publish_audit.log"
@@ -137,8 +148,9 @@ runs:
         ACTOR="${{ github.actor }}"
         REPO="${{ github.repository }}"
         RUN_ID="${{ github.run_id }}"
+        PUBLISH_RESULT="${{ steps.publish.outputs.result }}"
 
-        if [ $? -eq 0 ]; then
+        if [ "$PUBLISH_RESULT" = "success" ]; then
           echo "[$TIMESTAMP] PUBLISH_SUCCESS: actor=$ACTOR, repo=$REPO, run_id=$RUN_ID, tool=${{ inputs.publish-tool }}, file=${{ inputs.vsix-path }}" >> "$AUDIT_LOG"
           echo "✅ AUDIT: Publish successful - $TIMESTAMP"
         else
