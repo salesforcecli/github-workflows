@@ -172,6 +172,53 @@ jobs:
           echo "checksums_generated=true" >> $GITHUB_OUTPUT
           echo "checksums_file=$EXTENSIONS_ROOT/checksums.json" >> $GITHUB_OUTPUT
 
+      - name: Validate prerelease VSIXs
+        if: inputs.pre-release == 'true'
+        env:
+          EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
+        run: |
+          echo "Validating that VSIXs are marked as prerelease..."
+
+          VSIX_FILES=$(find "$EXTENSIONS_ROOT" -name "*.vsix" -type f)
+
+          if [ -z "$VSIX_FILES" ]; then
+            echo "⚠️ No VSIX files found to validate"
+            exit 0
+          fi
+
+          VALIDATION_FAILED=false
+
+          while IFS= read -r vsix_file; do
+            # Extract package.json from VSIX (it's a zip file)
+            TEMP_DIR=$(mktemp -d)
+            unzip -q "$vsix_file" "extension/package.json" -d "$TEMP_DIR" 2>/dev/null || {
+              echo "⚠️ Could not extract package.json from $(basename "$vsix_file")"
+              rm -rf "$TEMP_DIR"
+              continue
+            }
+
+            # Check if preRelease flag is true in the manifest
+            IS_PRERELEASE=$(jq -r '.version as $v | if $v | test("-pre") then true else false end' "$TEMP_DIR/extension/package.json")
+
+            if [ "$IS_PRERELEASE" = "true" ]; then
+              echo "✅ $(basename "$vsix_file") - correctly marked as prerelease"
+            else
+              echo "❌ $(basename "$vsix_file") - NOT marked as prerelease (missing -pre suffix or flag)"
+              VALIDATION_FAILED=true
+            fi
+
+            rm -rf "$TEMP_DIR"
+          done <<< "$VSIX_FILES"
+
+          if [ "$VALIDATION_FAILED" = "true" ]; then
+            echo ""
+            echo "❌ Validation failed: Some VSIXs are not properly marked as prerelease"
+            echo "   Ensure --pre-release flag is passed to vsce package command"
+            exit 1
+          fi
+
+          echo "✅ All VSIXs validated as prerelease"
+
       - name: Calculate artifact name
         id: calc-artifact-name
         run: |
