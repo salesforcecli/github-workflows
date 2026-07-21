@@ -171,6 +171,44 @@ jobs:
 
           echo "checksums_generated=true" >> $GITHUB_OUTPUT
           echo "checksums_file=$EXTENSIONS_ROOT/checksums.json" >> $GITHUB_OUTPUT
+          # Cache VSIX file list for reuse in validation step
+          echo "vsix_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$VSIX_FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Validate prerelease VSIXs
+        if: inputs.pre-release == 'true'
+        env:
+          VSIX_FILES: ${{ steps.md5-checksums.outputs.vsix_files }}
+        run: |
+          echo "Validating that VSIXs are marked as prerelease..."
+
+          if [ -z "$VSIX_FILES" ]; then
+            echo "No VSIX files found to validate"
+            exit 0
+          fi
+
+          VALIDATION_FAILED=false
+
+          while IFS= read -r vsix_file; do
+            # Check if preRelease flag is set in the VSIX manifest
+            # Using unzip -p to pipe directly to grep (no temp directory needed)
+            if unzip -p "$vsix_file" extension.vsixmanifest 2>/dev/null | grep -q 'Microsoft.VisualStudio.Code.PreRelease" Value="true"'; then
+              echo "PASS: $(basename "$vsix_file") - correctly marked as prerelease"
+            else
+              echo "FAIL: $(basename "$vsix_file") - NOT marked as prerelease (missing PreRelease flag in manifest)"
+              VALIDATION_FAILED=true
+            fi
+          done <<< "$VSIX_FILES"
+
+          if [ "$VALIDATION_FAILED" = "true" ]; then
+            echo ""
+            echo "Validation failed: Some VSIXs are not properly marked as prerelease"
+            echo "Ensure --pre-release flag is passed to vsce package command"
+            exit 1
+          fi
+
+          echo "All VSIXs validated as prerelease"
 
       - name: Calculate artifact name
         id: calc-artifact-name
