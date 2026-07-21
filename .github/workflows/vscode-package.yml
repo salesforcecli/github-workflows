@@ -184,7 +184,7 @@ jobs:
           echo "Validating that VSIXs are marked as prerelease..."
 
           if [ -z "$VSIX_FILES" ]; then
-            echo "⚠️ No VSIX files found to validate"
+            echo "No VSIX files found to validate"
             exit 0
           fi
 
@@ -193,25 +193,22 @@ jobs:
           while IFS= read -r vsix_file; do
             # Check if preRelease flag is set in the VSIX manifest
             # Using unzip -p to pipe directly to grep (no temp directory needed)
-            IS_PRERELEASE=$(unzip -p "$vsix_file" extension.vsixmanifest 2>/dev/null | \
-              { grep -q 'Microsoft.VisualStudio.Code.PreRelease" Value="true"' && echo true || echo false; })
-
-            if [ "$IS_PRERELEASE" = "true" ]; then
-              echo "✅ $(basename "$vsix_file") - correctly marked as prerelease"
+            if unzip -p "$vsix_file" extension.vsixmanifest 2>/dev/null | grep -q 'Microsoft.VisualStudio.Code.PreRelease" Value="true"'; then
+              echo "PASS: $(basename "$vsix_file") - correctly marked as prerelease"
             else
-              echo "❌ $(basename "$vsix_file") - NOT marked as prerelease (missing PreRelease flag in manifest)"
+              echo "FAIL: $(basename "$vsix_file") - NOT marked as prerelease (missing PreRelease flag in manifest)"
               VALIDATION_FAILED=true
             fi
           done <<< "$VSIX_FILES"
 
           if [ "$VALIDATION_FAILED" = "true" ]; then
             echo ""
-            echo "❌ Validation failed: Some VSIXs are not properly marked as prerelease"
-            echo "   Ensure --pre-release flag is passed to vsce package command"
+            echo "Validation failed: Some VSIXs are not properly marked as prerelease"
+            echo "Ensure --pre-release flag is passed to vsce package command"
             exit 1
           fi
 
-          echo "✅ All VSIXs validated as prerelease"
+          echo "All VSIXs validated as prerelease"
 
       - name: Calculate artifact name
         id: calc-artifact-name
