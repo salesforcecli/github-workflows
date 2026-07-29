@@ -549,7 +549,7 @@ jobs:
       extensions-root: ${{ inputs.extensions-root || 'packages' }}
 
   determine-publish-matrix:
-    needs: [calculate-artifact-name]
+    needs: [determine-changes, calculate-artifact-name]
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
@@ -569,7 +569,7 @@ jobs:
         id: matrix
         env:
           REGISTRIES: ${{ inputs.registries }}
-          SELECTED_EXTENSIONS: ${{ inputs.extensions }}
+          SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
           IS_NIGHTLY: 'true'
           EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
         run: |
@@ -636,6 +636,7 @@ jobs:
     name: Publish Skipped Notice
     needs:
       [
+        determine-changes,
         bump-versions,
         package,
         calculate-artifact-name,
@@ -648,7 +649,7 @@ jobs:
         run: |
           echo "ℹ️ Marketplace publishing skipped for this build type"
           echo "  Reason: Nightly builds only create GitHub releases, not marketplace publishes"
-          echo "  Extensions would be published: ${{ inputs.extensions }}"
+          echo "  Extensions would be published: ${{ needs.determine-changes.outputs.selected-extensions }}"
           echo "  Registries configured: ${{ inputs.registries }}"
 
   publish:
@@ -785,9 +786,9 @@ jobs:
 
   create-github-releases:
     name: Create GitHub Releases
-    needs: [package, calculate-artifact-name]
+    needs: [determine-changes, package, calculate-artifact-name]
     runs-on: ubuntu-latest
-    if: needs.package.result == 'success' && inputs.extensions != '' && github.event_name != 'pull_request'
+    if: needs.package.result == 'success' && needs.determine-changes.outputs.selected-extensions != '' && github.event_name != 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -813,7 +814,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          SELECTED_EXTENSIONS: ${{ inputs.extensions }}
+          SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
           IS_NIGHTLY: 'true'
           PRE_RELEASE: 'true'
           VERSION_BUMP: ${{ inputs.version-bump }}
@@ -972,7 +973,7 @@ jobs:
   slack-notify:
     name: Slack Notification
     needs:
-      [bump-versions, package, publish, publish-skipped-notice]
+      [determine-changes, bump-versions, package, publish, publish-skipped-notice]
     runs-on: ubuntu-latest
     if: always() && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
     steps:
@@ -987,7 +988,7 @@ jobs:
           EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
         run: |
           # Get selected extensions and their details
-          SELECTED_EXTENSIONS="${{ inputs.extensions }}"
+          SELECTED_EXTENSIONS="${{ needs.determine-changes.outputs.selected-extensions }}"
           VERSION_BUMP="${{ inputs.version-bump }}"
           PRE_RELEASE="true"
 
@@ -1003,7 +1004,7 @@ jobs:
               PACKAGE_NAME=$(node -p "require('./$EXTENSIONS_ROOT/$ext/package.json').name")
               PACKAGE_VERSION=$(node -p "require('./$EXTENSIONS_ROOT/$ext/package.json').version")
               DISPLAY_NAME=$(node -p "require('./$EXTENSIONS_ROOT/$ext/package.json').displayName || require('./$EXTENSIONS_ROOT/$ext/package.json').name")
-              
+
               # Add to arrays
               if [ -z "$EXTENSION_NAMES" ]; then
                 EXTENSION_NAMES="$PACKAGE_NAME"
@@ -1098,7 +1099,7 @@ jobs:
   slack-notify-failure:
     name: Slack Failure Notification
     needs:
-      [bump-versions, package, publish, publish-skipped-notice]
+      [determine-changes, bump-versions, package, publish, publish-skipped-notice]
     runs-on: ubuntu-latest
     if: always() && (needs.publish.result == 'failure' || needs.bump-versions.result == 'failure' || needs.package.result == 'failure')
     steps:
@@ -1113,7 +1114,7 @@ jobs:
           EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
         run: |
           # Get selected extensions and their details
-          SELECTED_EXTENSIONS="${{ inputs.extensions }}"
+          SELECTED_EXTENSIONS="${{ needs.determine-changes.outputs.selected-extensions }}"
           VERSION_BUMP="${{ inputs.version-bump }}"
           PRE_RELEASE="true"
 
@@ -1129,7 +1130,7 @@ jobs:
               PACKAGE_NAME=$(node -p "require('./$EXTENSIONS_ROOT/$ext/package.json').name")
               PACKAGE_VERSION=$(node -p "require('./$EXTENSIONS_ROOT/$ext/package.json').version")
               DISPLAY_NAME=$(node -p "require('./$EXTENSIONS_ROOT/$ext/package.json').displayName || require('./$EXTENSIONS_ROOT/$ext/package.json').name")
-              
+
               # Add to arrays
               if [ -z "$EXTENSION_NAMES" ]; then
                 EXTENSION_NAMES="$PACKAGE_NAME"
