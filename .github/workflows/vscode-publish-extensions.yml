@@ -636,6 +636,7 @@ jobs:
     name: Publish Skipped Notice
     needs:
       [
+        determine-changes,
         bump-versions,
         package,
         calculate-artifact-name,
@@ -648,7 +649,7 @@ jobs:
         run: |
           echo "ℹ️ Marketplace publishing skipped for this build type"
           echo "  Reason: Nightly builds only create GitHub releases, not marketplace publishes"
-          echo "  Extensions would be published: ${{ inputs.extensions }}"
+          echo "  Extensions would be published: ${{ needs.determine-changes.outputs.selected-extensions }}"
           echo "  Registries configured: ${{ inputs.registries }}"
 
   publish:
