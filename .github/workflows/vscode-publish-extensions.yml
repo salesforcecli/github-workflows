@@ -103,6 +103,16 @@ on:
         required: false
         default: '22.x'
         type: string
+      git-user-name:
+        description: 'Git user name for version bump commits'
+        required: false
+        default: 'GitHub Action'
+        type: string
+      git-user-email:
+        description: 'Git user email for version bump commits'
+        required: false
+        default: 'action@github.com'
+        type: string
 
 # Add explicit permissions for security
 permissions:
@@ -464,8 +474,8 @@ jobs:
             echo "🔄 Committing version bumps..."
 
             # Configure git for the action
-            git config --local user.email "action@github.com"
-            git config --local user.name "GitHub Action"
+            git config --local user.email "${{ inputs.git-user-email }}"
+            git config --local user.name "${{ inputs.git-user-name }}"
 
             # Configure git to use the PAT for authentication
             git remote set-url origin https://x-access-token:${{ secrets.IDEE_GH_TOKEN }}@github.com/${{ github.repository }}.git
