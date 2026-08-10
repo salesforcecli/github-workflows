@@ -806,8 +806,7 @@ jobs:
     runs-on: ubuntu-latest
     if: needs.determine-publish-matrix.outputs.matrix != '[]' && needs.determine-publish-matrix.outputs.matrix != ''
     strategy:
-      matrix:
-        include: ${{ fromJson(needs.determine-publish-matrix.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.determine-publish-matrix.outputs.matrix) }}
     steps:
       - name: Audit release attempt
         shell: bash
