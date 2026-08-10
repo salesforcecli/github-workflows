@@ -46,16 +46,31 @@ runs:
         cache: ${{ inputs.package-manager }}
         cache-dependency-path: ${{ inputs.cache-dependency-path }}
 
+    - name: Resolve install command
+      id: install-command
+      shell: bash
+      env:
+        INSTALL_COMMAND: ${{ inputs.install-command }}
+        PACKAGE_MANAGER: ${{ inputs.package-manager }}
+      run: |
+        if [ "$INSTALL_COMMAND" = "npm ci" ]; then
+          case "$PACKAGE_MANAGER" in
+            pnpm) INSTALL_COMMAND="pnpm install --frozen-lockfile" ;;
+            yarn) INSTALL_COMMAND="yarn install --network-timeout 600000" ;;
+          esac
+        fi
+        echo "value=$INSTALL_COMMAND" >> "$GITHUB_OUTPUT"
+
     - name: Install npm dependencies
-      if: inputs.package-manager == 'npm' && inputs.install-command == 'npm ci'
+      if: inputs.package-manager == 'npm' && steps.install-command.outputs.value == 'npm ci'
       uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
 
     - name: Install Yarn dependencies
-      if: inputs.package-manager == 'yarn' && inputs.install-command == 'yarn install --network-timeout 600000'
+      if: inputs.package-manager == 'yarn' && steps.install-command.outputs.value == 'yarn install --network-timeout 600000'
       uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
 
     - name: Install custom or pnpm dependencies
-      if: (inputs.package-manager != 'npm' || inputs.install-command != 'npm ci') && (inputs.package-manager != 'yarn' || inputs.install-command != 'yarn install --network-timeout 600000')
+      if: (inputs.package-manager != 'npm' || steps.install-command.outputs.value != 'npm ci') && (inputs.package-manager != 'yarn' || steps.install-command.outputs.value != 'yarn install --network-timeout 600000')
       uses: salesforcecli/github-workflows/.github/actions/retry@main
       with:
-        command: ${{ inputs.install-command }}
+        command: ${{ steps.install-command.outputs.value }}
