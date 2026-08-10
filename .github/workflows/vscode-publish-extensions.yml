@@ -49,105 +49,125 @@ on:
   workflow_call:
     inputs:
       branch:
-        description: 'Branch to release from'
+        description: "Branch to release from"
         required: false
-        default: 'main'
+        default: "main"
         type: string
       extensions:
-        description: 'Extensions to release (all, changed, or comma-separated extension names)'
+        description: "Extensions to release (all, changed, or comma-separated extension names)"
         required: false
-        default: 'changed'
+        default: "changed"
         type: string
       registries:
-        description: 'Registries to publish to (all, vsce, ovsx)'
+        description: "Registries to publish to (all, vsce, ovsx)"
         required: false
-        default: 'all'
+        default: "all"
         type: string
       available-extensions:
-        description: 'Available VS Code extensions'
+        description: "Available VS Code extensions"
         required: false
         type: string
       dry-run:
-        description: 'Run in dry-run mode (no actual publishing)'
+        description: "Run in dry-run mode (no actual publishing)"
         required: false
-        default: 'false'
+        default: "false"
         type: string
       pre-release:
-        description: 'Publish as pre-release version'
+        description: "Publish as pre-release version"
         required: false
-        default: 'true'
+        default: "true"
         type: string
+      nightly:
+        description: "Use nightly-release versioning and skip public marketplace publishing"
+        required: false
+        default: true
+        type: boolean
 
       version-bump:
-        description: 'Version bump type (auto, patch, minor, major)'
+        description: "Version bump type (auto, patch, minor, major)"
         required: false
-        default: 'auto'
+        default: "auto"
         type: string
       extensions-root:
-        description: 'Root directory for extensions (default: packages)'
+        description: "Root directory for extensions (default: packages)"
         required: false
-        default: 'packages'
+        default: "packages"
         type: string
       exclude-web-vsix:
-        description: 'Exclude *-web-* VSIX files from publishing and releases'
+        description: "Exclude *-web-* VSIX files from publishing and releases"
         required: false
-        default: 'false'
+        default: "false"
         type: string
       slack-notification-title:
-        description: 'Title for Slack success notifications'
+        description: "Title for Slack success notifications"
         required: false
-        default: '🎉 Extensions Released Successfully!'
+        default: "🎉 Extensions Released Successfully!"
         type: string
       node-version:
-        description: 'Node.js version to use'
+        description: "Node.js version to use"
         required: false
-        default: '22.x'
+        default: "22.x"
         type: string
       git-user-name:
-        description: 'Git user name for version bump commits'
+        description: "Git user name for version bump commits"
         required: false
-        default: 'GitHub Action'
+        default: "GitHub Action"
         type: string
       git-user-email:
-        description: 'Git user email for version bump commits'
+        description: "Git user email for version bump commits"
         required: false
-        default: 'action@github.com'
+        default: "action@github.com"
         type: string
       package-manager:
-        description: 'Package manager to use: npm, pnpm, or yarn'
+        description: "Package manager to use: npm, pnpm, or yarn"
         required: false
-        default: 'npm'
+        default: "npm"
         type: string
       package-manager-version:
-        description: 'pnpm version to use when package-manager is pnpm'
+        description: "pnpm version to use when package-manager is pnpm"
         required: false
-        default: '10'
+        default: "10"
         type: string
       cache-dependency-path:
-        description: 'Path to the package manager lockfile'
+        description: "Path to the package manager lockfile"
         required: false
-        default: 'package-lock.json'
+        default: "package-lock.json"
         type: string
       install-command:
-        description: 'Command used to install dependencies'
+        description: "Command used to install dependencies"
         required: false
-        default: 'npm ci'
+        default: "npm ci"
         type: string
       package-command:
-        description: 'Command used to create VSIX artifacts'
+        description: "Command used to create VSIX artifacts"
         required: false
-        default: 'npm run package:packages'
+        default: "npm run package:packages"
         type: string
       prerelease-package-command:
-        description: 'Command used to create prerelease VSIX artifacts'
+        description: "Command used to create prerelease VSIX artifacts"
         required: false
-        default: 'npm run package:packages:prerelease'
+        default: "npm run package:packages:prerelease"
+        type: string
+      web-package-command:
+        description: "Optional command used to create a web-target VSIX artifact"
+        required: false
+        default: ""
+        type: string
+      web-prerelease-package-command:
+        description: "Optional command used to create a prerelease web-target VSIX artifact"
+        required: false
+        default: ""
         type: string
       artifact-glob:
-        description: 'Glob for VSIX artifacts relative to the repository root'
+        description: "Glob for VSIX artifacts relative to the repository root"
         required: false
-        default: 'packages/**/*.vsix'
+        default: "packages/**/*.vsix"
         type: string
+      publish-web-vsix:
+        description: "Require and publish a web-target VSIX to the CBWeb internal marketplace"
+        required: false
+        default: false
+        type: boolean
 
 # Add explicit permissions for security
 permissions:
@@ -167,7 +187,7 @@ jobs:
           ref: ${{ inputs.branch || github.ref }}
 
       - name: Setup Node.js and install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
+        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@ph/W-23773464-enable-pnpm-workflows
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
           package-manager: ${{ inputs.package-manager }}
@@ -179,10 +199,10 @@ jobs:
         env:
           BRANCH: ${{ inputs.branch || github.ref_name }}
           BUILD_TYPE: ${{ github.event_name }}
-          IS_NIGHTLY: 'true'
+          IS_NIGHTLY: ${{ inputs.nightly && 'true' || 'false' }}
           VERSION_BUMP: ${{ needs.determine-changes.outputs.version-bumps }}
           REGISTRIES: ${{ inputs.registries }}
-          PRE_RELEASE: 'true'
+          PRE_RELEASE: "true"
           SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
           EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
         run: |
@@ -255,10 +275,10 @@ jobs:
       - name: Detect changes and version bumps
         id: changes
         env:
-          IS_NIGHTLY: 'true'
+          IS_NIGHTLY: ${{ inputs.nightly && 'true' || 'false' }}
           VERSION_BUMP: ${{ inputs.version-bump }}
           PRE_RELEASE: ${{ inputs.pre-release || 'true' }}
-          IS_PROMOTION: 'false'
+          IS_PROMOTION: "false"
           SELECTED_EXTENSIONS: ${{ inputs.extensions }}
           EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
         run: |
@@ -290,7 +310,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node.js and install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
+        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@ph/W-23773464-enable-pnpm-workflows
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
           package-manager: ${{ inputs.package-manager }}
@@ -305,8 +325,8 @@ jobs:
           DRY_RUN: ${{ inputs.dry-run || github.event.inputs.dry-run || 'false' }}
           SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
           PRE_RELEASE: ${{ inputs.pre-release || github.event.inputs.pre-release || 'false' }}
-          IS_NIGHTLY: 'true'
-          IS_PROMOTION: 'false'
+          IS_NIGHTLY: ${{ inputs.nightly && 'true' || 'false' }}
+          IS_PROMOTION: "false"
           BRANCH: ${{ inputs.branch || github.ref_name }}
           EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
         run: |
@@ -634,7 +654,7 @@ jobs:
 
   package:
     needs: [bump-versions, calculate-artifact-name]
-    uses: salesforcecli/github-workflows/.github/workflows/vscode-package.yml@main
+    uses: salesforcecli/github-workflows/.github/workflows/vscode-package.yml@ph/W-23773464-enable-pnpm-workflows
     with:
       branch: ${{ inputs.branch || github.ref_name }}
       artifact-name: ${{ needs.calculate-artifact-name.outputs.artifact-name }}
@@ -647,6 +667,8 @@ jobs:
       install-command: ${{ inputs.install-command }}
       package-command: ${{ inputs.package-command }}
       prerelease-package-command: ${{ inputs.prerelease-package-command }}
+      web-package-command: ${{ inputs.web-package-command }}
+      web-prerelease-package-command: ${{ inputs.web-prerelease-package-command }}
       artifact-glob: ${{ inputs.artifact-glob }}
 
   determine-publish-matrix:
@@ -659,7 +681,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup Node.js and install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
+        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@ph/W-23773464-enable-pnpm-workflows
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
           package-manager: ${{ inputs.package-manager }}
@@ -672,7 +694,7 @@ jobs:
         env:
           REGISTRIES: ${{ inputs.registries }}
           SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
-          IS_NIGHTLY: 'true'
+          IS_NIGHTLY: ${{ inputs.nightly && 'true' || 'false' }}
           EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
         run: |
           # Skip marketplace publishing for nightly builds
@@ -899,7 +921,7 @@ jobs:
           token: ${{ secrets.IDEE_GH_TOKEN }}
 
       - name: Setup Node.js and install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
+        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@ph/W-23773464-enable-pnpm-workflows
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
           package-manager: ${{ inputs.package-manager }}
@@ -918,8 +940,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
-          IS_NIGHTLY: 'true'
-          PRE_RELEASE: 'true'
+          IS_NIGHTLY: ${{ inputs.nightly && 'true' || 'false' }}
+          PRE_RELEASE: "true"
           VERSION_BUMP: ${{ inputs.version-bump }}
           DRY_RUN: ${{ inputs.dry-run || github.event.inputs.dry-run || 'false' }}
           BRANCH: ${{ inputs.branch || github.ref_name }}
@@ -1017,8 +1039,7 @@ jobs:
     name: Publish to CBWeb Internal Marketplace
     needs: [package, create-github-releases, calculate-artifact-name]
     runs-on: ubuntu-latest
-    continue-on-error: true
-    if: needs.package.result == 'success'
+    if: needs.package.result == 'success' && inputs.publish-web-vsix
     steps:
       - name: Download VSIX artifacts
         uses: actions/download-artifact@v8
@@ -1031,11 +1052,8 @@ jobs:
         run: |
           VSIX_FILE=$(find ./vsix-artifacts -type f -name "*-web-*.vsix" | head -1)
           if [ -z "$VSIX_FILE" ]; then
-            echo "ℹ️ No web-target VSIX found in artifacts"
-            echo "  This is expected for repos without web extensions"
-            echo "  Skipping CBWeb marketplace publish"
-            echo "has_web_vsix=false" >> $GITHUB_OUTPUT
-            exit 0
+            echo "Required web-target VSIX was not found in artifacts"
+            exit 1
           fi
 
           FILE_SIZE=$(stat -c%s "$VSIX_FILE" 2>/dev/null || stat -f%z "$VSIX_FILE" 2>/dev/null || echo "unknown")
@@ -1046,6 +1064,11 @@ jobs:
       - name: Publish web VSIX to CBWeb internal marketplace
         if: steps.find-web-vsix.outputs.has_web_vsix == 'true' && inputs.dry-run != 'true' && github.event.inputs.dry-run != 'true'
         run: |
+          if [ -z "$MARKETPLACE_URL" ] || [ -z "$MARKETPLACE_DEPLOY_TOKEN" ]; then
+            echo "CBWeb marketplace credentials are required for live publishing"
+            exit 1
+          fi
+
           echo "Publishing $VSIX_FILE to CBWeb marketplace..."
 
           HTTP_CODE=$(curl -s -o response.json -w '%{http_code}' \
@@ -1060,7 +1083,7 @@ jobs:
           if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
             echo "Successfully published to CBWeb marketplace"
           else
-            echo "::warning::Failed to publish to CBWeb marketplace (HTTP $HTTP_CODE)"
+            echo "Failed to publish to CBWeb marketplace (HTTP $HTTP_CODE)"
             exit 1
           fi
         env:

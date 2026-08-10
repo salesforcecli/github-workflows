@@ -14,135 +14,155 @@ on:
   workflow_call:
     inputs:
       node-version:
-        description: 'Node.js version to use'
+        description: "Node.js version to use"
         required: false
-        default: '22.x'
+        default: "22.x"
         type: string
       branch:
-        description: 'Branch to package from'
+        description: "Branch to package from"
         required: false
-        default: 'main'
+        default: "main"
         type: string
       artifact-name:
-        description: 'Name for the VSIX artifacts (base name or pre-calculated: vsix-packages-{run_number}-{mode})'
+        description: "Name for the VSIX artifacts (base name or pre-calculated: vsix-packages-{run_number}-{mode})"
         required: false
-        default: 'vsix-packages'
+        default: "vsix-packages"
         type: string
       dry-run:
-        description: 'Run in dry-run mode'
+        description: "Run in dry-run mode"
         required: false
-        default: 'false'
+        default: "false"
         type: string
       pre-release:
-        description: 'Indicates if this is a pre-release version'
+        description: "Indicates if this is a pre-release version"
         required: false
-        default: 'false'
+        default: "false"
         type: string
       extensions-root:
-        description: 'Root directory for extensions (default: packages)'
+        description: "Root directory for extensions (default: packages)"
         required: false
-        default: 'packages'
+        default: "packages"
         type: string
       package-manager:
-        description: 'Package manager to use: npm, pnpm, or yarn'
+        description: "Package manager to use: npm, pnpm, or yarn"
         required: false
-        default: 'npm'
+        default: "npm"
         type: string
       package-manager-version:
-        description: 'pnpm version to use when package-manager is pnpm'
+        description: "pnpm version to use when package-manager is pnpm"
         required: false
-        default: '10'
+        default: "10"
         type: string
       cache-dependency-path:
-        description: 'Path to the package manager lockfile'
+        description: "Path to the package manager lockfile"
         required: false
-        default: 'package-lock.json'
+        default: "package-lock.json"
         type: string
       install-command:
-        description: 'Command used to install dependencies'
+        description: "Command used to install dependencies"
         required: false
-        default: 'npm ci'
+        default: "npm ci"
         type: string
       package-command:
-        description: 'Command used to create VSIX artifacts'
+        description: "Command used to create VSIX artifacts"
         required: false
-        default: 'npm run package:packages'
+        default: "npm run package:packages"
         type: string
       prerelease-package-command:
-        description: 'Command used to create prerelease VSIX artifacts'
+        description: "Command used to create prerelease VSIX artifacts"
         required: false
-        default: 'npm run package:packages:prerelease'
+        default: "npm run package:packages:prerelease"
+        type: string
+      web-package-command:
+        description: "Optional command used to create a web-target VSIX artifact"
+        required: false
+        default: ""
+        type: string
+      web-prerelease-package-command:
+        description: "Optional command used to create a prerelease web-target VSIX artifact"
+        required: false
+        default: ""
         type: string
       artifact-glob:
-        description: 'Glob for VSIX artifacts relative to the repository root'
+        description: "Glob for VSIX artifacts relative to the repository root"
         required: false
-        default: 'packages/**/*.vsix'
+        default: "packages/**/*.vsix"
         type: string
     outputs:
       artifact-name:
-        description: 'The calculated artifact name'
+        description: "The calculated artifact name"
         value: ${{ jobs.package.outputs.artifact-name }}
   workflow_dispatch:
     inputs:
       node-version:
-        description: 'Node.js version to use'
+        description: "Node.js version to use"
         required: false
-        default: '22.x'
+        default: "22.x"
         type: string
       branch:
-        description: 'Branch to package from'
+        description: "Branch to package from"
         required: false
-        default: 'main'
+        default: "main"
         type: string
       dry-run:
-        description: 'Run in dry-run mode'
+        description: "Run in dry-run mode"
         required: false
-        default: 'false'
+        default: "false"
         type: string
       pre-release:
-        description: 'Indicates if this is a pre-release version'
+        description: "Indicates if this is a pre-release version"
         required: false
-        default: 'false'
+        default: "false"
         type: string
       extensions-root:
-        description: 'Root directory for extensions (default: packages)'
+        description: "Root directory for extensions (default: packages)"
         required: false
-        default: 'packages'
+        default: "packages"
         type: string
       package-manager:
-        description: 'Package manager to use: npm, pnpm, or yarn'
+        description: "Package manager to use: npm, pnpm, or yarn"
         required: false
-        default: 'npm'
+        default: "npm"
         type: string
       package-manager-version:
-        description: 'pnpm version to use when package-manager is pnpm'
+        description: "pnpm version to use when package-manager is pnpm"
         required: false
-        default: '10'
+        default: "10"
         type: string
       cache-dependency-path:
-        description: 'Path to the package manager lockfile'
+        description: "Path to the package manager lockfile"
         required: false
-        default: 'package-lock.json'
+        default: "package-lock.json"
         type: string
       install-command:
-        description: 'Command used to install dependencies'
+        description: "Command used to install dependencies"
         required: false
-        default: 'npm ci'
+        default: "npm ci"
         type: string
       package-command:
-        description: 'Command used to create VSIX artifacts'
+        description: "Command used to create VSIX artifacts"
         required: false
-        default: 'npm run package:packages'
+        default: "npm run package:packages"
         type: string
       prerelease-package-command:
-        description: 'Command used to create prerelease VSIX artifacts'
+        description: "Command used to create prerelease VSIX artifacts"
         required: false
-        default: 'npm run package:packages:prerelease'
+        default: "npm run package:packages:prerelease"
+        type: string
+      web-package-command:
+        description: "Optional command used to create a web-target VSIX artifact"
+        required: false
+        default: ""
+        type: string
+      web-prerelease-package-command:
+        description: "Optional command used to create a prerelease web-target VSIX artifact"
+        required: false
+        default: ""
         type: string
       artifact-glob:
-        description: 'Glob for VSIX artifacts relative to the repository root'
+        description: "Glob for VSIX artifacts relative to the repository root"
         required: false
-        default: 'packages/**/*.vsix'
+        default: "packages/**/*.vsix"
         type: string
 
 # Add explicit permissions for security
@@ -163,7 +183,7 @@ jobs:
           ref: ${{ inputs.branch || github.head_ref || github.ref }}
 
       - name: Setup Node.js and install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
+        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@ph/W-23773464-enable-pnpm-workflows
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
           package-manager: ${{ inputs.package-manager }}
@@ -178,8 +198,14 @@ jobs:
         run: |
           if [ "${{ inputs.pre-release }}" = "true" ]; then
             ${{ inputs.prerelease-package-command }}
+            if [ -n "${{ inputs.web-prerelease-package-command }}" ]; then
+              ${{ inputs.web-prerelease-package-command }}
+            fi
           else
             ${{ inputs.package-command }}
+            if [ -n "${{ inputs.web-package-command }}" ]; then
+              ${{ inputs.web-package-command }}
+            fi
           fi
 
       - name: Generate MD5 checksums
