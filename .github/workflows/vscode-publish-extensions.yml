@@ -203,7 +203,7 @@ jobs:
           ref: ${{ inputs.branch || github.ref }}
 
       - name: Setup Node.js and install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
+        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@ph/W-23773464-enable-pnpm-workflows
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
           package-manager: ${{ inputs.package-manager }}
@@ -326,7 +326,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node.js and install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
+        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@ph/W-23773464-enable-pnpm-workflows
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
           package-manager: ${{ inputs.package-manager }}
@@ -700,7 +700,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup Node.js and install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
+        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@ph/W-23773464-enable-pnpm-workflows
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
           package-manager: ${{ inputs.package-manager }}
@@ -940,7 +940,7 @@ jobs:
           token: ${{ secrets.IDEE_GH_TOKEN || github.token }}
 
       - name: Setup Node.js and install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
+        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@ph/W-23773464-enable-pnpm-workflows
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
           package-manager: ${{ inputs.package-manager }}
