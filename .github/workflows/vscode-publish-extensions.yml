@@ -218,7 +218,7 @@ jobs:
           IS_NIGHTLY: ${{ inputs.nightly && 'true' || 'false' }}
           VERSION_BUMP: ${{ needs.determine-changes.outputs.version-bumps }}
           REGISTRIES: ${{ inputs.registries }}
-          PRE_RELEASE: "true"
+          PRE_RELEASE: ${{ inputs.pre-release || github.event.inputs.pre-release || 'false' }}
           SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
           EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
         run: |
@@ -959,7 +959,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
           IS_NIGHTLY: ${{ inputs.nightly && 'true' || 'false' }}
-          PRE_RELEASE: "true"
+          PRE_RELEASE: ${{ inputs.pre-release || github.event.inputs.pre-release || 'false' }}
           VERSION_BUMP: ${{ inputs.version-bump }}
           DRY_RUN: ${{ inputs.dry-run || github.event.inputs.dry-run || 'false' }}
           BRANCH: ${{ inputs.branch || github.ref_name }}
@@ -1140,7 +1140,7 @@ jobs:
           # Get selected extensions and their details
           SELECTED_EXTENSIONS="${{ needs.determine-changes.outputs.selected-extensions }}"
           VERSION_BUMP="${{ inputs.version-bump }}"
-          PRE_RELEASE="true"
+          PRE_RELEASE="${{ inputs.pre-release || github.event.inputs.pre-release || 'false' }}"
 
           # Initialize arrays for extension details
           EXTENSION_NAMES=""
@@ -1272,7 +1272,7 @@ jobs:
           # Get selected extensions and their details
           SELECTED_EXTENSIONS="${{ needs.determine-changes.outputs.selected-extensions }}"
           VERSION_BUMP="${{ inputs.version-bump }}"
-          PRE_RELEASE="true"
+          PRE_RELEASE="${{ inputs.pre-release || github.event.inputs.pre-release || 'false' }}"
 
           # Initialize arrays for extension details
           EXTENSION_NAMES=""
