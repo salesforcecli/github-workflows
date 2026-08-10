@@ -267,9 +267,11 @@ jobs:
 
           echo "]" >> "$CHECKSUMS_JSON_FILE"
 
-          # Move combined checksums files to packages root for artifact upload
-          mv "$CHECKSUMS_FILE" "$EXTENSIONS_ROOT/checksums.md5"
-          mv "$CHECKSUMS_JSON_FILE" "$EXTENSIONS_ROOT/checksums.json"
+          # The repository root already contains the generated checksum files.
+          if [ "$EXTENSIONS_ROOT" != "." ]; then
+            mv "$CHECKSUMS_FILE" "$EXTENSIONS_ROOT/checksums.md5"
+            mv "$CHECKSUMS_JSON_FILE" "$EXTENSIONS_ROOT/checksums.json"
+          fi
 
           echo "checksums_generated=true" >> $GITHUB_OUTPUT
           echo "checksums_file=$EXTENSIONS_ROOT/checksums.json" >> $GITHUB_OUTPUT
