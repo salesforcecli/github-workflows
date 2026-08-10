@@ -96,9 +96,15 @@ jobs:
 
       - name: Bundle extension
         if: inputs.bundle-command != ''
+        env:
+          BUNDLE_COMMAND: ${{ inputs.bundle-command }}
         run: |
           cd ${{ matrix.extension }}
-          ${{ inputs.bundle-command }}
+          if jq -e '.scripts["vscode:bundle"]' package.json > /dev/null; then
+            $BUNDLE_COMMAND
+          else
+            echo "Skipping bundle step: vscode:bundle script not found"
+          fi
 
       - name: Build extension
         run: |

@@ -225,7 +225,12 @@ jobs:
       - name: Build project
         env:
           BUILD_COMMAND: ${{ inputs.build-command || inputs.compile-command }}
-        run: $BUILD_COMMAND
+        run: |
+          if [ -z "$BUILD_COMMAND" ]; then
+            echo "Error: build-command and compile-command cannot both be empty"
+            exit 1
+          fi
+          $BUILD_COMMAND
 
       - name: Run tests with coverage (lts/current)
         if: ${{ matrix.node-version != 'lts/-1' && (inputs.coverage-command || inputs.test-coverage-command) != '' }}
@@ -269,6 +274,7 @@ jobs:
   test-quality:
     name: Test Quality
     needs: test
+    if: inputs.quality-command != ''
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -284,7 +290,6 @@ jobs:
           submodules: false
 
       - name: Setup Node.js and install dependencies
-        if: inputs.quality-command != ''
         uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@ph/W-23773464-enable-pnpm-workflows
         with:
           node-version: ${{ matrix.node-version }}
@@ -294,7 +299,6 @@ jobs:
           install-command: ${{ inputs.install-command }}
 
       - name: Run quality tests
-        if: inputs.quality-command != ''
         run: ${{ inputs.quality-command }}
 
   package:

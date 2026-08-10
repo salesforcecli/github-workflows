@@ -348,6 +348,16 @@ jobs:
         run: |
           set -e
 
+          case "$PACKAGE_MANAGER" in
+            pnpm) unexpected_lockfiles=(package-lock.json yarn.lock) ;;
+            yarn) unexpected_lockfiles=(package-lock.json pnpm-lock.yaml) ;;
+            npm) unexpected_lockfiles=(pnpm-lock.yaml yarn.lock) ;;
+          esac
+          declare -A unexpected_lockfile_hashes
+          for lockfile in "${unexpected_lockfiles[@]}"; do
+            unexpected_lockfile_hashes["$lockfile"]=$(git hash-object "$lockfile" 2>/dev/null || echo missing)
+          done
+
           # Function to parse semantic version
           parse_version() {
             local version=$1
@@ -522,18 +532,10 @@ jobs:
             npm install --package-lock-only --ignore-scripts
           fi
 
-          case "$PACKAGE_MANAGER" in
-            pnpm) unexpected_lockfiles=(package-lock.json yarn.lock) ;;
-            yarn) unexpected_lockfiles=(package-lock.json pnpm-lock.yaml) ;;
-            npm) unexpected_lockfiles=(pnpm-lock.yaml yarn.lock) ;;
-          esac
           for lockfile in "${unexpected_lockfiles[@]}"; do
-            if [ -e "$lockfile" ] && ! git ls-files --error-unmatch "$lockfile" >/dev/null 2>&1; then
-              echo "$PACKAGE_MANAGER version bumps must not create $lockfile"
-              exit 1
-            fi
-            if ! git diff --quiet -- "$lockfile"; then
-              echo "$PACKAGE_MANAGER version bumps must not modify $lockfile"
+            current_hash=$(git hash-object "$lockfile" 2>/dev/null || echo missing)
+            if [ "${unexpected_lockfile_hashes[$lockfile]}" != "$current_hash" ]; then
+              echo "$PACKAGE_MANAGER version bumps must not create or modify $lockfile"
               exit 1
             fi
           done

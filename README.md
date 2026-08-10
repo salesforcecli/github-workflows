@@ -459,6 +459,7 @@ Most workflows share these common inputs:
 - `install-command` (optional) - Dependency installation command (default: `npm ci`)
 - `package-command` / `prerelease-package-command` (optional) - Commands that create stable and prerelease VSIX artifacts
 - `artifact-glob` (optional) - Glob for the produced VSIX artifacts (default: `packages/**/*.vsix`)
+- `publish-web-vsix` (optional) - Publish a web-target VSIX to the CBWeb internal marketplace (default: `false`)
 
 ### Node Lifecycle Contract
 
@@ -583,6 +584,7 @@ jobs:
       version-bump: auto # auto | major | minor | patch
       extensions-root: packages # for monorepos
       exclude-web-vsix: 'false'
+      publish-web-vsix: false # set true only for repos with a CBWeb web VSIX
       slack-notification-title: '🎉 Extensions Released Successfully!'
       node-version: '22.x'
       dry-run: false

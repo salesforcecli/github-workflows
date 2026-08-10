@@ -25,9 +25,11 @@ runs:
   steps:
     - name: Validate package manager
       shell: bash
+      env:
+        PACKAGE_MANAGER: ${{ inputs.package-manager }}
       run: |
-        if [ "${{ inputs.package-manager }}" != "npm" ] && [ "${{ inputs.package-manager }}" != "pnpm" ] && [ "${{ inputs.package-manager }}" != "yarn" ]; then
-          echo "Unsupported package manager: ${{ inputs.package-manager }}. Expected npm, pnpm, or yarn."
+        if [ "$PACKAGE_MANAGER" != "npm" ] && [ "$PACKAGE_MANAGER" != "pnpm" ] && [ "$PACKAGE_MANAGER" != "yarn" ]; then
+          echo "Unsupported package manager: $PACKAGE_MANAGER. Expected npm, pnpm, or yarn."
           exit 1
         fi
 

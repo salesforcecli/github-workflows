@@ -335,6 +335,18 @@ jobs:
           echo "artifact-name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
           echo "Artifact name: $ARTIFACT_NAME"
 
+      - name: Validate VSIX artifact glob
+        env:
+          ARTIFACT_GLOB: ${{ inputs.artifact-glob }}
+        run: |
+          shopt -s globstar nullglob
+          artifacts=( $ARTIFACT_GLOB )
+          if [ ${#artifacts[@]} -eq 0 ]; then
+            echo "No VSIX artifacts matched artifact-glob: $ARTIFACT_GLOB"
+            echo "Set artifact-glob to match extensions-root when using a non-default extension directory."
+            exit 1
+          fi
+
       - name: Upload VSIX artifacts
         id: upload
         uses: actions/upload-artifact@v7
