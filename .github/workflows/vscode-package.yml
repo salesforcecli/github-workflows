@@ -195,16 +195,20 @@ jobs:
       - name: Package VSIX artifacts
         env:
           EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
+          PACKAGE_COMMAND: ${{ inputs.package-command }}
+          PRERELEASE_PACKAGE_COMMAND: ${{ inputs.prerelease-package-command }}
+          WEB_PACKAGE_COMMAND: ${{ inputs.web-package-command }}
+          WEB_PRERELEASE_PACKAGE_COMMAND: ${{ inputs.web-prerelease-package-command }}
         run: |
           if [ "${{ inputs.pre-release }}" = "true" ]; then
-            ${{ inputs.prerelease-package-command }}
-            if [ -n "${{ inputs.web-prerelease-package-command }}" ]; then
-              ${{ inputs.web-prerelease-package-command }}
+            bash -c "$PRERELEASE_PACKAGE_COMMAND"
+            if [ -n "$WEB_PRERELEASE_PACKAGE_COMMAND" ]; then
+              bash -c "$WEB_PRERELEASE_PACKAGE_COMMAND"
             fi
           else
-            ${{ inputs.package-command }}
-            if [ -n "${{ inputs.web-package-command }}" ]; then
-              ${{ inputs.web-package-command }}
+            bash -c "$PACKAGE_COMMAND"
+            if [ -n "$WEB_PACKAGE_COMMAND" ]; then
+              bash -c "$WEB_PACKAGE_COMMAND"
             fi
           fi
 
