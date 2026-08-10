@@ -750,7 +750,7 @@ jobs:
             if [ ${#matrix_entries[@]} -eq 0 ]; then
               matrix_json='{"include":[]}'
             else
-              matrix_json=$(printf '%s\n' "${matrix_entries[@]}" | jq -s '{include: .}')
+            matrix_json=$(printf '%s\n' "${matrix_entries[@]}" | jq -sc '{include: .}')
             fi
 
             echo "matrix=$matrix_json" >> $GITHUB_OUTPUT
