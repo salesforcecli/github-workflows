@@ -168,6 +168,22 @@ on:
         required: false
         default: false
         type: boolean
+    secrets:
+      IDEE_GH_TOKEN:
+        description: "GitHub token used for release commits and tags"
+        required: false
+      VSCE_PERSONAL_ACCESS_TOKEN:
+        description: "VS Code Marketplace publishing token"
+        required: false
+      IDEE_OVSX_PAT:
+        description: "Open VSX publishing token"
+        required: false
+      MARKETPLACE_DEPLOY_TOKEN:
+        description: "CBWeb internal marketplace publishing token"
+        required: false
+      IDEE_MAIN_SLACK_WEBHOOK:
+        description: "Slack notification webhook"
+        required: false
 
 # Add explicit permissions for security
 permissions:
@@ -306,7 +322,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          token: ${{ secrets.IDEE_GH_TOKEN }}
+          token: ${{ secrets.IDEE_GH_TOKEN || github.token }}
           fetch-depth: 0
 
       - name: Setup Node.js and install dependencies
@@ -819,7 +835,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          token: ${{ secrets.IDEE_GH_TOKEN }}
+          token: ${{ secrets.IDEE_GH_TOKEN || github.token }}
           ref: ${{ inputs.branch || github.ref }}
 
       - name: Download VSIX artifacts
@@ -918,7 +934,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch || github.ref }}
-          token: ${{ secrets.IDEE_GH_TOKEN }}
+          token: ${{ secrets.IDEE_GH_TOKEN || github.token }}
 
       - name: Setup Node.js and install dependencies
         uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@ph/W-23773464-enable-pnpm-workflows
