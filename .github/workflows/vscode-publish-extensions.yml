@@ -568,6 +568,9 @@ jobs:
           # Ensure GitHub CLI has proper authentication
           GITHUB_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
           DRY_RUN: ${{ inputs.dry-run || github.event.inputs.dry-run || 'false' }}
+          GIT_USER_NAME: ${{ inputs.git-user-name }}
+          GIT_USER_EMAIL: ${{ inputs.git-user-email }}
+          BRANCH: ${{ inputs.branch || github.ref_name }}
         run: |
           if [ "$DRY_RUN" = "true" ]; then
             echo "🔄 DRY RUN: Would commit and push version bumps..."
@@ -580,9 +583,6 @@ jobs:
             echo "🔄 Committing version bumps..."
 
             # Validate git identity inputs (prevent empty strings from overriding defaults)
-            GIT_USER_NAME="${{ inputs.git-user-name }}"
-            GIT_USER_EMAIL="${{ inputs.git-user-email }}"
-
             if [ -z "$GIT_USER_NAME" ]; then
               echo "⚠️  git-user-name is empty, using default: GitHub Action"
               GIT_USER_NAME="GitHub Action"
@@ -610,8 +610,8 @@ jobs:
             if git diff --staged --quiet; then
               # Nothing to stage — check whether the bump was already committed to remote
               # (idempotent rerun: version bumper ran, committed, pushed, then a later step failed)
-              git fetch origin ${{ inputs.branch || github.ref_name }}
-              REMOTE_MSG=$(git log -1 --format='%s' origin/${{ inputs.branch || github.ref_name }})
+              git fetch origin "$BRANCH"
+              REMOTE_MSG=$(git log -1 --format='%s' "origin/$BRANCH")
               if echo "$REMOTE_MSG" | grep -q "chore: bump versions for release"; then
                 echo "⏭️ Version bump already committed to remote — skipping commit (idempotent rerun)"
               else
@@ -623,12 +623,12 @@ jobs:
               git commit -m "chore: bump versions for release [skip ci]"
 
               # Push version bumps — retry once with rebase on non-fast-forward
-              echo "Pushing version bumps to ${{ inputs.branch || github.ref_name }}..."
-              if ! git push origin HEAD:${{ inputs.branch || github.ref_name }}; then
+              echo "Pushing version bumps to $BRANCH..."
+              if ! git push origin "HEAD:$BRANCH"; then
                 echo "⚠️ Push failed, attempting fetch+rebase and retry..."
                 git fetch origin
-                git rebase origin/${{ inputs.branch || github.ref_name }}
-                if ! git push origin HEAD:${{ inputs.branch || github.ref_name }}; then
+                git rebase "origin/$BRANCH"
+                if ! git push origin "HEAD:$BRANCH"; then
                   echo "❌ Error: Push failed after rebase. Check branch protection rules."
                   exit 1
                 fi
@@ -651,10 +651,11 @@ jobs:
     steps:
       - name: Calculate artifact name
         id: calc
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+          IS_DRY_RUN: ${{ inputs.dry-run || github.event.inputs.dry-run || 'false' }}
         run: |
           BASE_NAME="vsix-packages"
-          RUN_NUMBER="${{ github.run_number }}"
-          IS_DRY_RUN="${{ inputs.dry-run || github.event.inputs.dry-run || 'false' }}"
 
           # Check if already suffixed
           if [[ "$BASE_NAME" =~ -dry-run$ ]] || [[ "$BASE_NAME" =~ -release$ ]]; then
@@ -789,11 +790,14 @@ jobs:
     if: needs.determine-publish-matrix.outputs.matrix == '[]' || needs.determine-publish-matrix.outputs.matrix == ''
     steps:
       - name: Log skipped publish
+        env:
+          SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
+          REGISTRIES: ${{ inputs.registries }}
         run: |
           echo "ℹ️ Marketplace publishing skipped for this build type"
           echo "  Reason: Nightly builds only create GitHub releases, not marketplace publishes"
-          echo "  Extensions would be published: ${{ needs.determine-changes.outputs.selected-extensions }}"
-          echo "  Registries configured: ${{ inputs.registries }}"
+          echo "  Extensions would be published: $SELECTED_EXTENSIONS"
+          echo "  Registries configured: $REGISTRIES"
 
   publish:
     needs:
@@ -810,18 +814,21 @@ jobs:
     steps:
       - name: Audit release attempt
         shell: bash
+        env:
+          ACTOR: ${{ github.actor }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          WORKFLOW: ${{ github.workflow }}
+          BRANCH: ${{ inputs.branch || github.ref_name }}
+          REGISTRY: ${{ matrix.registry }}
+          MARKETPLACE: ${{ matrix.marketplace }}
+          DRY_RUN: ${{ inputs.dry-run || github.event.inputs.dry-run || 'false' }}
         run: |
           # Create audit log entry for release attempt
           AUDIT_LOG="/tmp/release_audit.log"
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          ACTOR="${{ github.actor }}"
-          REPO="${{ github.repository }}"
-          RUN_ID="${{ github.run_id }}"
-          WORKFLOW="${{ github.workflow }}"
-          BRANCH="${{ inputs.branch || github.ref_name }}"
-
           # Log audit information
-          echo "[$TIMESTAMP] RELEASE_ATTEMPT: actor=$ACTOR, repo=$REPO, run_id=$RUN_ID, workflow=$WORKFLOW, branch=$BRANCH, registry=${{ matrix.registry }}, marketplace=${{ matrix.marketplace }}, dry_run=${{ inputs.dry-run || github.event.inputs.dry-run || 'false' }}" >> "$AUDIT_LOG"
+          echo "[$TIMESTAMP] RELEASE_ATTEMPT: actor=$ACTOR, repo=$REPO, run_id=$RUN_ID, workflow=$WORKFLOW, branch=$BRANCH, registry=$REGISTRY, marketplace=$MARKETPLACE, dry_run=$DRY_RUN" >> "$AUDIT_LOG"
 
           # Also log to GitHub Actions output for visibility
           echo "🔍 AUDIT: Release attempt logged - $TIMESTAMP"
@@ -830,9 +837,9 @@ jobs:
           echo "  Run ID: $RUN_ID"
           echo "  Workflow: $WORKFLOW"
           echo "  Branch: $BRANCH"
-          echo "  Registry: ${{ matrix.registry }}"
-          echo "  Marketplace: ${{ matrix.marketplace }}"
-          echo "  Dry-run: ${{ inputs.dry-run || github.event.inputs.dry-run || 'false' }}"
+          echo "  Registry: $REGISTRY"
+          echo "  Marketplace: $MARKETPLACE"
+          echo "  Dry-run: $DRY_RUN"
 
       - name: Checkout
         uses: actions/checkout@v6
@@ -872,9 +879,9 @@ jobs:
         id: find_vsix
         env:
           EXCLUDE_WEB: ${{ inputs.exclude-web-vsix || 'false' }}
+          VSIX_PATTERN: ${{ matrix.vsix_pattern }}
         run: |
           ARTIFACTS_DIR="./vsix-artifacts"
-          VSIX_PATTERN="${{ matrix.vsix_pattern }}"
 
           # Find VSIX, optionally excluding *-web-* files
           if [ "$EXCLUDE_WEB" = "true" ]; then
@@ -909,20 +916,22 @@ jobs:
       - name: Audit release result
         shell: bash
         if: inputs.dry-run != 'true' && github.event.inputs.dry-run != 'true'
+        env:
+          ACTOR: ${{ github.actor }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          BRANCH: ${{ inputs.branch || github.ref_name }}
+          REGISTRY: ${{ matrix.registry }}
+          MARKETPLACE: ${{ matrix.marketplace }}
         run: |
           # Log the result of the release attempt
           AUDIT_LOG="/tmp/release_audit.log"
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          ACTOR="${{ github.actor }}"
-          REPO="${{ github.repository }}"
-          RUN_ID="${{ github.run_id }}"
-          BRANCH="${{ inputs.branch || github.ref_name }}"
-
           if [ $? -eq 0 ]; then
-            echo "[$TIMESTAMP] RELEASE_SUCCESS: actor=$ACTOR, repo=$REPO, run_id=$RUN_ID, branch=$BRANCH, registry=${{ matrix.registry }}, marketplace=${{ matrix.marketplace }}" >> "$AUDIT_LOG"
+            echo "[$TIMESTAMP] RELEASE_SUCCESS: actor=$ACTOR, repo=$REPO, run_id=$RUN_ID, branch=$BRANCH, registry=$REGISTRY, marketplace=$MARKETPLACE" >> "$AUDIT_LOG"
             echo "✅ AUDIT: Release successful - $TIMESTAMP"
           else
-            echo "[$TIMESTAMP] RELEASE_FAILURE: actor=$ACTOR, repo=$REPO, run_id=$RUN_ID, branch=$BRANCH, registry=${{ matrix.registry }}, marketplace=${{ matrix.marketplace }}" >> "$AUDIT_LOG"
+            echo "[$TIMESTAMP] RELEASE_FAILURE: actor=$ACTOR, repo=$REPO, run_id=$RUN_ID, branch=$BRANCH, registry=$REGISTRY, marketplace=$MARKETPLACE" >> "$AUDIT_LOG"
             echo "❌ AUDIT: Release failed - $TIMESTAMP"
           fi
 
@@ -1136,11 +1145,13 @@ jobs:
         id: extension-details
         env:
           EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
+          SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
+          VERSION_BUMP_INPUT: ${{ inputs.version-bump }}
+          PRE_RELEASE_INPUT: ${{ inputs.pre-release || github.event.inputs.pre-release || 'false' }}
         run: |
           # Get selected extensions and their details
-          SELECTED_EXTENSIONS="${{ needs.determine-changes.outputs.selected-extensions }}"
-          VERSION_BUMP="${{ inputs.version-bump }}"
-          PRE_RELEASE="${{ inputs.pre-release || github.event.inputs.pre-release || 'false' }}"
+          VERSION_BUMP="$VERSION_BUMP_INPUT"
+          PRE_RELEASE="$PRE_RELEASE_INPUT"
 
           # Initialize arrays for extension details
           EXTENSION_NAMES=""
@@ -1268,11 +1279,13 @@ jobs:
         id: extension-details
         env:
           EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
+          SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
+          VERSION_BUMP_INPUT: ${{ inputs.version-bump }}
+          PRE_RELEASE_INPUT: ${{ inputs.pre-release || github.event.inputs.pre-release || 'false' }}
         run: |
           # Get selected extensions and their details
-          SELECTED_EXTENSIONS="${{ needs.determine-changes.outputs.selected-extensions }}"
-          VERSION_BUMP="${{ inputs.version-bump }}"
-          PRE_RELEASE="${{ inputs.pre-release || github.event.inputs.pre-release || 'false' }}"
+          VERSION_BUMP="$VERSION_BUMP_INPUT"
+          PRE_RELEASE="$PRE_RELEASE_INPUT"
 
           # Initialize arrays for extension details
           EXTENSION_NAMES=""

@@ -320,11 +320,11 @@ jobs:
 
       - name: Calculate artifact name
         id: calc-artifact-name
+        env:
+          BASE_NAME: ${{ inputs.artifact-name }}
+          RUN_NUMBER: ${{ github.run_number }}
+          IS_DRY_RUN: ${{ inputs.dry-run }}
         run: |
-          BASE_NAME="${{ inputs.artifact-name }}"
-          RUN_NUMBER="${{ github.run_number }}"
-          IS_DRY_RUN="${{ inputs.dry-run }}"
-
           # Check if already suffixed
           if [[ "$BASE_NAME" =~ -dry-run$ ]] || [[ "$BASE_NAME" =~ -release$ ]]; then
             ARTIFACT_NAME="$BASE_NAME"

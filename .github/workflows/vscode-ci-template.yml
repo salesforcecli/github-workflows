@@ -220,7 +220,9 @@ jobs:
           install-command: ${{ inputs.install-command }}
 
       - name: Run linting
-        run: ${{ inputs.lint-command }}
+        env:
+          LINT_COMMAND: ${{ inputs.lint-command }}
+        run: bash -c "$LINT_COMMAND"
 
       - name: Build project
         env:
@@ -230,11 +232,13 @@ jobs:
             echo "Error: build-command and compile-command cannot both be empty"
             exit 1
           fi
-          $BUILD_COMMAND
+          bash -c "$BUILD_COMMAND"
 
       - name: Run tests with coverage (lts/current)
         if: ${{ matrix.node-version != 'lts/-1' && (inputs.coverage-command || inputs.test-coverage-command) != '' }}
-        run: ${{ inputs.coverage-command || inputs.test-coverage-command }}
+        env:
+          COVERAGE_COMMAND: ${{ inputs.coverage-command || inputs.test-coverage-command }}
+        run: bash -c "$COVERAGE_COMMAND"
 
       - name: Run tests (lts/-1, no coverage)
         if: ${{ matrix.node-version == 'lts/-1' }}
@@ -242,11 +246,14 @@ jobs:
           # Old-LTS defaults to ~4 GB old-space, which is too low for heavy stdlib suites.
           # Keep this scoped to lts/-1 and non-coverage runs only.
           NODE_OPTIONS: --max-old-space-size=6144
-        run: ${{ inputs.test-command }}
+          TEST_COMMAND: ${{ inputs.test-command }}
+        run: bash -c "$TEST_COMMAND"
 
       - name: Merge coverage reports
         if: ${{ matrix.node-version != 'lts/-1' && inputs.coverage-report-command != '' }}
-        run: ${{ inputs.coverage-report-command }}
+        env:
+          COVERAGE_REPORT_COMMAND: ${{ inputs.coverage-report-command }}
+        run: bash -c "$COVERAGE_REPORT_COMMAND"
 
       - name: Determine Node Label
         id: node-label
@@ -299,7 +306,9 @@ jobs:
           install-command: ${{ inputs.install-command }}
 
       - name: Run quality tests
-        run: ${{ inputs.quality-command }}
+        env:
+          QUALITY_COMMAND: ${{ inputs.quality-command }}
+        run: bash -c "$QUALITY_COMMAND"
 
   package:
     name: Package

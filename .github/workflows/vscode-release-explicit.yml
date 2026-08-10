@@ -98,25 +98,33 @@ jobs:
         if: inputs.bundle-command != ''
         env:
           BUNDLE_COMMAND: ${{ inputs.bundle-command }}
+          EXTENSION: ${{ matrix.extension }}
         run: |
-          cd ${{ matrix.extension }}
+          cd "$EXTENSION"
           if jq -e '.scripts["vscode:bundle"]' package.json > /dev/null; then
-            $BUNDLE_COMMAND
+            bash -c "$BUNDLE_COMMAND"
           else
             echo "Skipping bundle step: vscode:bundle script not found"
           fi
 
       - name: Build extension
+        env:
+          EXTENSION: ${{ matrix.extension }}
+          PACKAGE_COMMAND: ${{ inputs.package-command }}
         run: |
-          cd ${{ matrix.extension }}
-          ${{ inputs.package-command }}
+          cd "$EXTENSION"
+          bash -c "$PACKAGE_COMMAND"
 
       - name: Publish (dry-run)
         if: inputs.dry-run
+        env:
+          EXTENSION: ${{ matrix.extension }}
+          REGISTRIES: ${{ inputs.registries }}
+          PRE_RELEASE: ${{ inputs.pre-release }}
         run: |
-          echo "🔍 DRY RUN: Would publish ${{ matrix.extension }}"
-          echo "  Registry: ${{ inputs.registries }}"
-          echo "  Pre-release: ${{ inputs.pre-release }}"
+          echo "🔍 DRY RUN: Would publish $EXTENSION"
+          echo "  Registry: $REGISTRIES"
+          echo "  Pre-release: $PRE_RELEASE"
 
       - name: Publish to VS Code Marketplace
         if: |
@@ -124,9 +132,11 @@ jobs:
           (inputs.registries == 'marketplace' || inputs.registries == 'all')
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          EXTENSION: ${{ matrix.extension }}
+          PRE_RELEASE_FLAG: ${{ inputs.pre-release && '--pre-release' || '' }}
         run: |
-          cd ${{ matrix.extension }}
-          npx vsce publish ${{ inputs.pre-release && '--pre-release' || '' }}
+          cd "$EXTENSION"
+          npx vsce publish $PRE_RELEASE_FLAG
 
       - name: Publish to Open VSX
         if: |
@@ -134,9 +144,11 @@ jobs:
           (inputs.registries == 'openvsx' || inputs.registries == 'all')
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
+          EXTENSION: ${{ matrix.extension }}
+          PRE_RELEASE_FLAG: ${{ inputs.pre-release && '--pre-release' || '' }}
         run: |
-          cd ${{ matrix.extension }}
-          npx ovsx publish ${{ inputs.pre-release && '--pre-release' || '' }} -p $OVSX_PAT
+          cd "$EXTENSION"
+          npx ovsx publish $PRE_RELEASE_FLAG -p "$OVSX_PAT"
 
       - name: Prepare artifact name
         id: artifact
