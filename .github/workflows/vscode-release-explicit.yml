@@ -42,6 +42,26 @@ on:
         required: false
         default: '22.x'
         type: string
+      package-manager:
+        description: 'Package manager to use: npm, pnpm, or yarn'
+        required: false
+        default: 'npm'
+        type: string
+      package-manager-version:
+        description: 'pnpm version to use when package-manager is pnpm'
+        required: false
+        default: '10'
+        type: string
+      cache-dependency-path:
+        description: 'Path to the package manager lockfile'
+        required: false
+        default: 'package-lock.json'
+        type: string
+      install-command:
+        description: 'Command to install dependencies'
+        required: false
+        default: 'npm ci'
+        type: string
     secrets:
       VSCE_PAT:
         description: 'VS Code Marketplace Personal Access Token'
@@ -65,24 +85,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup Node.js and install dependencies
+        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
-
-      - name: Install dependencies
-        run: npm ci
+          package-manager: ${{ inputs.package-manager }}
+          package-manager-version: ${{ inputs.package-manager-version }}
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
+          install-command: ${{ inputs.install-command }}
 
       - name: Bundle extension
         if: inputs.bundle-command != ''
         run: |
           cd ${{ matrix.extension }}
-          # Check if the bundle script exists in package.json
-          if npm run | grep -q "vscode:bundle"; then
-            ${{ inputs.bundle-command }}
-          else
-            echo "⏭️ Skipping bundle step - vscode:bundle script not found"
-          fi
+          ${{ inputs.bundle-command }}
 
       - name: Build extension
         run: |

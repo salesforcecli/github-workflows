@@ -1,0 +1,59 @@
+name: Setup Node and install dependencies
+description: Configures npm, pnpm, or Yarn, restores the matching dependency cache, and installs dependencies.
+inputs:
+  node-version:
+    description: Node.js version to use.
+    required: true
+  package-manager:
+    description: 'Package manager to use: npm, pnpm, or yarn.'
+    required: false
+    default: npm
+  package-manager-version:
+    description: 'pnpm version to install when package-manager is pnpm.'
+    required: false
+    default: '10'
+  cache-dependency-path:
+    description: 'Path to the package manager lockfile.'
+    required: false
+    default: package-lock.json
+  install-command:
+    description: 'Command used to install repository dependencies.'
+    required: false
+    default: npm ci
+runs:
+  using: composite
+  steps:
+    - name: Validate package manager
+      shell: bash
+      run: |
+        if [ "${{ inputs.package-manager }}" != "npm" ] && [ "${{ inputs.package-manager }}" != "pnpm" ] && [ "${{ inputs.package-manager }}" != "yarn" ]; then
+          echo "Unsupported package manager: ${{ inputs.package-manager }}. Expected npm, pnpm, or yarn."
+          exit 1
+        fi
+
+    - name: Setup pnpm
+      if: inputs.package-manager == 'pnpm'
+      uses: pnpm/action-setup@v4
+      with:
+        version: ${{ inputs.package-manager-version }}
+
+    - name: Setup Node.js and restore dependency cache
+      uses: actions/setup-node@v6
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: ${{ inputs.package-manager }}
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
+
+    - name: Install npm dependencies
+      if: inputs.package-manager == 'npm' && inputs.install-command == 'npm ci'
+      uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
+
+    - name: Install Yarn dependencies
+      if: inputs.package-manager == 'yarn' && inputs.install-command == 'yarn install --network-timeout 600000'
+      uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
+
+    - name: Install custom or pnpm dependencies
+      if: (inputs.package-manager != 'npm' || inputs.install-command != 'npm ci') && (inputs.package-manager != 'yarn' || inputs.install-command != 'yarn install --network-timeout 600000')
+      uses: salesforcecli/github-workflows/.github/actions/retry@main
+      with:
+        command: ${{ inputs.install-command }}

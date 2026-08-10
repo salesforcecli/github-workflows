@@ -43,6 +43,41 @@ on:
         required: false
         default: 'packages'
         type: string
+      package-manager:
+        description: 'Package manager to use: npm, pnpm, or yarn'
+        required: false
+        default: 'npm'
+        type: string
+      package-manager-version:
+        description: 'pnpm version to use when package-manager is pnpm'
+        required: false
+        default: '10'
+        type: string
+      cache-dependency-path:
+        description: 'Path to the package manager lockfile'
+        required: false
+        default: 'package-lock.json'
+        type: string
+      install-command:
+        description: 'Command used to install dependencies'
+        required: false
+        default: 'npm ci'
+        type: string
+      package-command:
+        description: 'Command used to create VSIX artifacts'
+        required: false
+        default: 'npm run package:packages'
+        type: string
+      prerelease-package-command:
+        description: 'Command used to create prerelease VSIX artifacts'
+        required: false
+        default: 'npm run package:packages:prerelease'
+        type: string
+      artifact-glob:
+        description: 'Glob for VSIX artifacts relative to the repository root'
+        required: false
+        default: 'packages/**/*.vsix'
+        type: string
     outputs:
       artifact-name:
         description: 'The calculated artifact name'
@@ -69,6 +104,46 @@ on:
         required: false
         default: 'false'
         type: string
+      extensions-root:
+        description: 'Root directory for extensions (default: packages)'
+        required: false
+        default: 'packages'
+        type: string
+      package-manager:
+        description: 'Package manager to use: npm, pnpm, or yarn'
+        required: false
+        default: 'npm'
+        type: string
+      package-manager-version:
+        description: 'pnpm version to use when package-manager is pnpm'
+        required: false
+        default: '10'
+        type: string
+      cache-dependency-path:
+        description: 'Path to the package manager lockfile'
+        required: false
+        default: 'package-lock.json'
+        type: string
+      install-command:
+        description: 'Command used to install dependencies'
+        required: false
+        default: 'npm ci'
+        type: string
+      package-command:
+        description: 'Command used to create VSIX artifacts'
+        required: false
+        default: 'npm run package:packages'
+        type: string
+      prerelease-package-command:
+        description: 'Command used to create prerelease VSIX artifacts'
+        required: false
+        default: 'npm run package:packages:prerelease'
+        type: string
+      artifact-glob:
+        description: 'Glob for VSIX artifacts relative to the repository root'
+        required: false
+        default: 'packages/**/*.vsix'
+        type: string
 
 # Add explicit permissions for security
 permissions:
@@ -87,23 +162,24 @@ jobs:
         with:
           ref: ${{ inputs.branch || github.head_ref || github.ref }}
 
-      - name: Setup Node.js ${{ inputs.node-version || '22.x' }}
-        uses: actions/setup-node@v6
+      - name: Setup Node.js and install dependencies
+        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
-
-      - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
+          package-manager: ${{ inputs.package-manager }}
+          package-manager-version: ${{ inputs.package-manager-version }}
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
+          install-command: ${{ inputs.install-command }}
 
       # Universal + web-target VSIXs are defined in packages/apex-lsp-vscode-extension (Wireit: package + package-web).
-      - name: Package packages
+      - name: Package VSIX artifacts
         env:
           EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
         run: |
           if [ "${{ inputs.pre-release }}" = "true" ]; then
-            npm run package:packages:prerelease
+            ${{ inputs.prerelease-package-command }}
           else
-            npm run package:packages
+            ${{ inputs.package-command }}
           fi
 
       - name: Generate MD5 checksums
@@ -115,20 +191,20 @@ jobs:
 
           # Universal + web-target VSIX under packages/
           VSIX_FILES=$(find "$EXTENSIONS_ROOT" -name "*.vsix" -type f)
-          
+
           if [ -z "$VSIX_FILES" ]; then
             echo "No VSIX files found to generate checksums for"
             echo "checksums_generated=false" >> $GITHUB_OUTPUT
             exit 0
           fi
-          
+
           # Create checksums directory structure
           CHECKSUMS_FILE="checksums.md5"
           CHECKSUMS_JSON_FILE="checksums.json"
           > "$CHECKSUMS_FILE"  # Create/clear checksums file
           > "$CHECKSUMS_JSON_FILE"  # Create/clear JSON file
           echo "[" > "$CHECKSUMS_JSON_FILE"
-          
+
           FIRST=true
           # Generate MD5 checksums for each VSIX file
           while IFS= read -r vsix_file; do
@@ -162,7 +238,7 @@ jobs:
               echo "  Size: $FILE_SIZE bytes"
             fi
           done <<< "$VSIX_FILES"
-          
+
           echo "]" >> "$CHECKSUMS_JSON_FILE"
 
           # Move combined checksums files to packages root for artifact upload
@@ -234,12 +310,10 @@ jobs:
       - name: Upload VSIX artifacts
         id: upload
         uses: actions/upload-artifact@v7
-        env:
-          EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
         with:
           name: ${{ steps.calc-artifact-name.outputs.artifact-name }}
           path: |
-            ${{ inputs.extensions-root || 'packages' }}/**/*.vsix
+            ${{ inputs.artifact-glob }}
             ${{ inputs.extensions-root || 'packages' }}/**/*.vsix.md5
             ${{ inputs.extensions-root || 'packages' }}/checksums.md5
             ${{ inputs.extensions-root || 'packages' }}/checksums.json
@@ -261,10 +335,10 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Extension | MD5 Checksum | Size |" >> $GITHUB_STEP_SUMMARY
           echo "|-----------|-------------|------|" >> $GITHUB_STEP_SUMMARY
-          
+
           # Read checksums from JSON file and format table
           CHECKSUMS_FILE="${{ steps.md5-checksums.outputs.checksums_file }}"
-          
+
           if [ -f "$CHECKSUMS_FILE" ]; then
             # Use node to parse JSON and format table
             node -e "
@@ -281,7 +355,7 @@ jobs:
           else
             echo "| No checksums available | - | - |" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Note:** Individual \`.md5\` files are available alongside each VSIX file in the artifacts." >> $GITHUB_STEP_SUMMARY
           echo "A combined \`checksums.md5\` file and \`checksums.json\` file are also included in the artifacts." >> $GITHUB_STEP_SUMMARY

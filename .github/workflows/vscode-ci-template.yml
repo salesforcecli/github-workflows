@@ -7,10 +7,12 @@ name: CI
 #     ci:
 #       uses: salesforcecli/github-workflows/.github/workflows/vscode/ci-template.yml@main
 #       with:
-#         lint-command: 'npm run lint'
-#         compile-command: 'npm run compile'
-#         test-command: 'npm run test'
-#         test-coverage-command: 'npm run test:coverage'
+#         package-manager: npm
+#         install-command: npm ci
+#         lint-command: npm run lint
+#         build-command: npm run build
+#         test-command: npm run test
+#         coverage-command: npm run test:coverage
 #
 # Features:
 #   - Tests across multiple OS (Ubuntu, Windows)
@@ -22,13 +24,38 @@ name: CI
 on:
   workflow_call:
     inputs:
+      package-manager:
+        description: 'Package manager to use: npm, pnpm, or yarn'
+        required: false
+        default: 'npm'
+        type: string
+      package-manager-version:
+        description: 'pnpm version to use when package-manager is pnpm'
+        required: false
+        default: '10'
+        type: string
+      cache-dependency-path:
+        description: 'Path to the package manager lockfile'
+        required: false
+        default: 'package-lock.json'
+        type: string
+      install-command:
+        description: 'Command to install dependencies'
+        required: false
+        default: 'npm ci'
+        type: string
       lint-command:
         description: 'Command to run linting'
         required: false
         default: 'npm run lint'
         type: string
       compile-command:
-        description: 'Command to compile'
+        description: 'Deprecated compatibility command used when build-command is empty'
+        required: false
+        default: ''
+        type: string
+      build-command:
+        description: 'Command to build or compile the project; leave empty to use compile-command'
         required: false
         default: 'npm run compile'
         type: string
@@ -38,21 +65,126 @@ on:
         default: 'npm run test'
         type: string
       test-coverage-command:
-        description: 'Command to run tests with coverage'
+        description: 'Deprecated compatibility command used when coverage-command is empty'
+        required: false
+        default: ''
+        type: string
+      coverage-command:
+        description: 'Command to run tests with coverage; leave empty to use test-coverage-command'
         required: false
         default: 'npm run test:coverage'
         type: string
       coverage-report-command:
-        description: 'Command to merge coverage reports'
+        description: 'Command to merge coverage reports; set empty to skip'
         required: false
         default: 'npm run test:coverage:report'
         type: string
+      quality-command:
+        description: 'Command to run additional quality checks; set empty to skip'
+        required: false
+        default: 'npm run test:quality'
+        type: string
+      extensions-root:
+        description: 'Root directory containing VS Code extensions'
+        required: false
+        default: 'packages'
+        type: string
+      package-command:
+        description: 'Command to create stable VSIX artifacts'
+        required: false
+        default: 'npm run package:packages'
+        type: string
+      prerelease-package-command:
+        description: 'Command to create prerelease VSIX artifacts'
+        required: false
+        default: 'npm run package:packages:prerelease'
+        type: string
+      artifact-glob:
+        description: 'Glob for VSIX artifacts relative to the repository root'
+        required: false
+        default: 'packages/**/*.vsix'
+        type: string
   workflow_dispatch:
     inputs:
+      package-manager:
+        description: 'Package manager to use: npm, pnpm, or yarn'
+        required: false
+        default: 'npm'
+        type: string
+      package-manager-version:
+        description: 'pnpm version to use when package-manager is pnpm'
+        required: false
+        default: '10'
+        type: string
+      cache-dependency-path:
+        description: 'Path to the package manager lockfile'
+        required: false
+        default: 'package-lock.json'
+        type: string
+      install-command:
+        description: 'Command to install dependencies'
+        required: false
+        default: 'npm ci'
+        type: string
       lint-command:
         description: 'Command to run linting'
         required: false
         default: 'npm run lint'
+        type: string
+      compile-command:
+        description: 'Deprecated compatibility command used when build-command is empty'
+        required: false
+        default: ''
+        type: string
+      build-command:
+        description: 'Command to build or compile the project; leave empty to use compile-command'
+        required: false
+        default: 'npm run compile'
+        type: string
+      test-command:
+        description: 'Command to run tests without coverage'
+        required: false
+        default: 'npm run test'
+        type: string
+      test-coverage-command:
+        description: 'Deprecated compatibility command used when coverage-command is empty'
+        required: false
+        default: ''
+        type: string
+      coverage-command:
+        description: 'Command to run tests with coverage; leave empty to use test-coverage-command'
+        required: false
+        default: 'npm run test:coverage'
+        type: string
+      coverage-report-command:
+        description: 'Command to merge coverage reports; set empty to skip'
+        required: false
+        default: 'npm run test:coverage:report'
+        type: string
+      quality-command:
+        description: 'Command to run additional quality checks; set empty to skip'
+        required: false
+        default: 'npm run test:quality'
+        type: string
+      extensions-root:
+        description: 'Root directory containing VS Code extensions'
+        required: false
+        default: 'packages'
+        type: string
+      package-command:
+        description: 'Command to create stable VSIX artifacts'
+        required: false
+        default: 'npm run package:packages'
+        type: string
+      prerelease-package-command:
+        description: 'Command to create prerelease VSIX artifacts'
+        required: false
+        default: 'npm run package:packages:prerelease'
+        type: string
+      artifact-glob:
+        description: 'Glob for VSIX artifacts relative to the repository root'
+        required: false
+        default: 'packages/**/*.vsix'
         type: string
 
 # Add explicit permissions for security
@@ -78,24 +210,26 @@ jobs:
           persist-credentials: false
           submodules: false
 
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v6
+      - name: Setup Node.js and install dependencies
+        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
+          package-manager: ${{ inputs.package-manager }}
+          package-manager-version: ${{ inputs.package-manager-version }}
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
+          install-command: ${{ inputs.install-command }}
 
       - name: Run linting
         run: ${{ inputs.lint-command }}
 
-      - name: Compile project
-        run: ${{ inputs.compile-command }}
+      - name: Build project
+        env:
+          BUILD_COMMAND: ${{ inputs.build-command || inputs.compile-command }}
+        run: $BUILD_COMMAND
 
       - name: Run tests with coverage (lts/current)
-        if: ${{ matrix.node-version != 'lts/-1' }}
-        run: ${{ inputs.test-coverage-command }}
+        if: ${{ matrix.node-version != 'lts/-1' && (inputs.coverage-command || inputs.test-coverage-command) != '' }}
+        run: ${{ inputs.coverage-command || inputs.test-coverage-command }}
 
       - name: Run tests (lts/-1, no coverage)
         if: ${{ matrix.node-version == 'lts/-1' }}
@@ -106,7 +240,7 @@ jobs:
         run: ${{ inputs.test-command }}
 
       - name: Merge coverage reports
-        if: ${{ matrix.node-version != 'lts/-1' }}
+        if: ${{ matrix.node-version != 'lts/-1' && inputs.coverage-report-command != '' }}
         run: ${{ inputs.coverage-report-command }}
 
       - name: Determine Node Label
@@ -126,7 +260,7 @@ jobs:
           fi
 
       - name: Upload coverage report
-        if: ${{ matrix.node-version != 'lts/-1' }}
+        if: ${{ matrix.node-version != 'lts/-1' && (inputs.coverage-command || inputs.test-coverage-command) != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: coverage-report-${{ matrix.os }}-${{ steps.node-label.outputs.value }}
@@ -149,17 +283,19 @@ jobs:
           persist-credentials: false
           submodules: false
 
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v6
+      - name: Setup Node.js and install dependencies
+        if: inputs.quality-command != ''
+        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
+          package-manager: ${{ inputs.package-manager }}
+          package-manager-version: ${{ inputs.package-manager-version }}
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
+          install-command: ${{ inputs.install-command }}
 
       - name: Run quality tests
-        run: npm run test:quality
+        if: inputs.quality-command != ''
+        run: ${{ inputs.quality-command }}
 
   package:
     name: Package
@@ -170,6 +306,14 @@ jobs:
       branch: ${{ github.head_ref || github.ref_name }}
       artifact-name: vsix-packages
       dry-run: false
+      extensions-root: ${{ inputs.extensions-root }}
+      package-manager: ${{ inputs.package-manager }}
+      package-manager-version: ${{ inputs.package-manager-version }}
+      cache-dependency-path: ${{ inputs.cache-dependency-path }}
+      install-command: ${{ inputs.install-command }}
+      package-command: ${{ inputs.package-command }}
+      prerelease-package-command: ${{ inputs.prerelease-package-command }}
+      artifact-glob: ${{ inputs.artifact-glob }}
 
   ci-complete:
     name: CI Complete

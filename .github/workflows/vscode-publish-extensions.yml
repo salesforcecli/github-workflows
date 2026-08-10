@@ -113,6 +113,41 @@ on:
         required: false
         default: 'action@github.com'
         type: string
+      package-manager:
+        description: 'Package manager to use: npm, pnpm, or yarn'
+        required: false
+        default: 'npm'
+        type: string
+      package-manager-version:
+        description: 'pnpm version to use when package-manager is pnpm'
+        required: false
+        default: '10'
+        type: string
+      cache-dependency-path:
+        description: 'Path to the package manager lockfile'
+        required: false
+        default: 'package-lock.json'
+        type: string
+      install-command:
+        description: 'Command used to install dependencies'
+        required: false
+        default: 'npm ci'
+        type: string
+      package-command:
+        description: 'Command used to create VSIX artifacts'
+        required: false
+        default: 'npm run package:packages'
+        type: string
+      prerelease-package-command:
+        description: 'Command used to create prerelease VSIX artifacts'
+        required: false
+        default: 'npm run package:packages:prerelease'
+        type: string
+      artifact-glob:
+        description: 'Glob for VSIX artifacts relative to the repository root'
+        required: false
+        default: 'packages/**/*.vsix'
+        type: string
 
 # Add explicit permissions for security
 permissions:
@@ -131,13 +166,14 @@ jobs:
         with:
           ref: ${{ inputs.branch || github.ref }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup Node.js and install dependencies
+        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
-
-      - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
+          package-manager: ${{ inputs.package-manager }}
+          package-manager-version: ${{ inputs.package-manager-version }}
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
+          install-command: ${{ inputs.install-command }}
 
       - name: Display Extension Release Plan
         env:
@@ -209,7 +245,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0  # Need full history for git diff against tags
+          fetch-depth: 0 # Need full history for git diff against tags
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -236,7 +272,7 @@ jobs:
           curl -sS "$SCRIPTS_URL/utils.ts" -o .github/scripts/utils.ts
           curl -sS "$SCRIPTS_URL/index.ts" -o .github/scripts/index.ts
 
-          echo "Installing dependencies..."
+          echo "Installing change detection dependencies..."
           npm install --no-save simple-git@3.27.0 chalk@5.3.0 semver@7.6.3 zod@3.24.1 tsx@4.19.2
 
           echo "Running change detection..."
@@ -253,17 +289,20 @@ jobs:
           token: ${{ secrets.IDEE_GH_TOKEN }}
           fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup Node.js and install dependencies
+        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
-
-      - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
+          package-manager: ${{ inputs.package-manager }}
+          package-manager-version: ${{ inputs.package-manager-version }}
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
+          install-command: ${{ inputs.install-command }}
 
       - name: Bump versions and tag for selected extensions
         env:
           VERSION_BUMP: ${{ needs.determine-changes.outputs.version-bumps }}
+          PACKAGE_MANAGER: ${{ inputs.package-manager }}
+          DRY_RUN: ${{ inputs.dry-run || github.event.inputs.dry-run || 'false' }}
           SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
           PRE_RELEASE: ${{ inputs.pre-release || github.event.inputs.pre-release || 'false' }}
           IS_NIGHTLY: 'true'
@@ -366,6 +405,11 @@ jobs:
             local is_nightly=$4
 
             local tag_name
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "DRY RUN: Would create tag for $package_name $version"
+              return 0
+            fi
+
             if [ "$is_nightly" = "true" ]; then
               # Nightly format: v{version}-nightly[.branch].{date}
               local nightly_date=$(date -u +%Y%m%d)
@@ -432,6 +476,30 @@ jobs:
             create_git_tag "$package_name" "$new_version" "$PRE_RELEASE" "$IS_NIGHTLY"
 
             echo ""
+          done
+
+          if [ "$PACKAGE_MANAGER" = "pnpm" ]; then
+            pnpm install --lockfile-only --ignore-scripts
+          elif [ "$PACKAGE_MANAGER" = "yarn" ]; then
+            yarn install --ignore-scripts
+          else
+            npm install --package-lock-only --ignore-scripts
+          fi
+
+          case "$PACKAGE_MANAGER" in
+            pnpm) unexpected_lockfiles=(package-lock.json yarn.lock) ;;
+            yarn) unexpected_lockfiles=(package-lock.json pnpm-lock.yaml) ;;
+            npm) unexpected_lockfiles=(pnpm-lock.yaml yarn.lock) ;;
+          esac
+          for lockfile in "${unexpected_lockfiles[@]}"; do
+            if [ -e "$lockfile" ] && ! git ls-files --error-unmatch "$lockfile" >/dev/null 2>&1; then
+              echo "$PACKAGE_MANAGER version bumps must not create $lockfile"
+              exit 1
+            fi
+            if ! git diff --quiet -- "$lockfile"; then
+              echo "$PACKAGE_MANAGER version bumps must not modify $lockfile"
+              exit 1
+            fi
           done
 
           echo "✅ Version bumping complete"
@@ -573,6 +641,13 @@ jobs:
       dry-run: ${{ inputs.dry-run || github.event.inputs.dry-run || 'false' }}
       pre-release: ${{ inputs.pre-release || github.event.inputs.pre-release || 'false' }}
       extensions-root: ${{ inputs.extensions-root || 'packages' }}
+      package-manager: ${{ inputs.package-manager }}
+      package-manager-version: ${{ inputs.package-manager-version }}
+      cache-dependency-path: ${{ inputs.cache-dependency-path }}
+      install-command: ${{ inputs.install-command }}
+      package-command: ${{ inputs.package-command }}
+      prerelease-package-command: ${{ inputs.prerelease-package-command }}
+      artifact-glob: ${{ inputs.artifact-glob }}
 
   determine-publish-matrix:
     needs: [determine-changes, calculate-artifact-name]
@@ -583,13 +658,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup Node.js and install dependencies
+        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
-
-      - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
+          package-manager: ${{ inputs.package-manager }}
+          package-manager-version: ${{ inputs.package-manager-version }}
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
+          install-command: ${{ inputs.install-command }}
 
       - name: Determine publish matrix
         id: matrix
@@ -822,13 +898,14 @@ jobs:
           ref: ${{ inputs.branch || github.ref }}
           token: ${{ secrets.IDEE_GH_TOKEN }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup Node.js and install dependencies
+        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
-
-      - name: Install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
+          package-manager: ${{ inputs.package-manager }}
+          package-manager-version: ${{ inputs.package-manager-version }}
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
+          install-command: ${{ inputs.install-command }}
 
       - name: Download VSIX artifacts
         uses: actions/download-artifact@v8
@@ -999,7 +1076,13 @@ jobs:
   slack-notify:
     name: Slack Notification
     needs:
-      [determine-changes, bump-versions, package, publish, publish-skipped-notice]
+      [
+        determine-changes,
+        bump-versions,
+        package,
+        publish,
+        publish-skipped-notice,
+      ]
     runs-on: ubuntu-latest
     if: always() && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
     steps:
@@ -1125,7 +1208,13 @@ jobs:
   slack-notify-failure:
     name: Slack Failure Notification
     needs:
-      [determine-changes, bump-versions, package, publish, publish-skipped-notice]
+      [
+        determine-changes,
+        bump-versions,
+        package,
+        publish,
+        publish-skipped-notice,
+      ]
     runs-on: ubuntu-latest
     if: always() && (needs.publish.result == 'failure' || needs.bump-versions.result == 'failure' || needs.package.result == 'failure')
     steps:
