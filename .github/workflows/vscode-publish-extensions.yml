@@ -672,6 +672,7 @@ jobs:
     needs: [bump-versions, calculate-artifact-name]
     uses: salesforcecli/github-workflows/.github/workflows/vscode-package.yml@ph/W-23773464-enable-pnpm-workflows
     with:
+      node-version: ${{ inputs.node-version }}
       branch: ${{ inputs.branch || github.ref_name }}
       artifact-name: ${{ needs.calculate-artifact-name.outputs.artifact-name }}
       dry-run: ${{ inputs.dry-run || github.event.inputs.dry-run || 'false' }}
