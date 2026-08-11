@@ -432,11 +432,13 @@ These workflows use an **odd/even minor version convention** to distinguish rele
 - **Stable releases**: Even minor versions (e.g., `0.6.0`)
 
 **Benefits:**
+
 - Clear visual distinction between release channels
 - Prevents accidental overwrites
 - Predictable version progression: nightly `0.5.x` → pre-release `0.5.y` → stable `0.6.0`
 
 **Version bump types:**
+
 - `major`: Breaking change → next major with first odd minor (e.g., `0.5.3` → `1.1.0`)
 - `minor`: New feature → next odd minor (e.g., `0.5.3` → `0.7.0`)
 - `patch`: Bug fix → increment patch, maintain odd minor (e.g., `0.5.3` → `0.5.4`)
@@ -451,6 +453,32 @@ Most workflows share these common inputs:
 - `dry-run` (optional) - Run without publishing/tagging (default: `false`)
 - `pre-release` (optional) - Mark as pre-release version (default: `true`)
 - `registries` (optional) - Where to publish: `all`, `vsce`, or `ovsx` (default: `all`)
+- `package-manager` (optional) - `npm`, `pnpm`, or `yarn` (default: `npm`)
+- `package-manager-version` (optional) - pnpm version to install
+- `cache-dependency-path` (optional) - Package-manager lockfile path (default: `package-lock.json`)
+- `install-command` (optional) - Dependency installation command (default: `npm ci`)
+- `package-command` / `prerelease-package-command` (optional) - Commands that create stable and prerelease VSIX artifacts
+- `artifact-glob` (optional) - Glob for the produced VSIX artifacts (default: `packages/**/*.vsix`)
+- `publish-web-vsix` (optional) - Publish a web-target VSIX to the CBWeb internal marketplace (default: `false`)
+
+### Node Lifecycle Contract
+
+The workflows execute Node-module lifecycle activities; they do not require a specific `package.json` script name. New consumers should expose the conventional scripts below, while existing consumers can map their current scripts or direct commands through workflow inputs.
+
+| Activity                    | Recommended script                         | Workflow input               |
+| --------------------------- | ------------------------------------------ | ---------------------------- |
+| Install dependencies        | manager-native frozen or immutable install | `install-command`            |
+| Lint                        | `lint`                                     | `lint-command`               |
+| Build                       | `build`                                    | `build-command`              |
+| Test                        | `test`                                     | `test-command`               |
+| CI test variant             | `test:ci`                                  | `test-command`               |
+| Coverage                    | `test:coverage`                            | `coverage-command`           |
+| Merge coverage              | `test:coverage:report`                     | `coverage-report-command`    |
+| Additional quality checks   | `test:quality`                             | `quality-command`            |
+| Package stable artifact     | `package`                                  | `package-command`            |
+| Package prerelease artifact | `package:prerelease`                       | `prerelease-package-command` |
+
+The existing npm defaults remain compatible with VSE: `npm run compile`, `npm run package:packages`, and `npm run package:packages:prerelease`. Direct commands are valid when a repository does not use scripts, such as `cd lana && pnpm exec vsce package --no-dependencies`.
 
 ---
 
@@ -472,10 +500,10 @@ jobs:
   nightly:
     uses: salesforcecli/github-workflows/.github/workflows/vscode-release-explicit.yml@main
     with:
-      extensions: '["packages/ext1", "packages/ext2"]'  # JSON array of paths
-      registries: all  # all | marketplace | openvsx
+      extensions: '["packages/ext1", "packages/ext2"]' # JSON array of paths
+      registries: all # all | marketplace | openvsx
       pre-release: true
-      version-bump: auto  # auto | major | minor | patch
+      version-bump: auto # auto | major | minor | patch
       package-command: 'npx vsce package --no-dependencies'
       dry-run: false
     secrets:
@@ -484,6 +512,7 @@ jobs:
 ```
 
 **Inputs:**
+
 - `extensions` (required) - JSON array of extension directory paths
 - `registries` (optional) - Where to publish: `all`, `marketplace`, or `openvsx` (default: `all`)
 - `pre-release` (optional) - Mark as pre-release version (default: `true`)
@@ -493,6 +522,7 @@ jobs:
 - `dry-run` (optional) - Skip actual publishing for testing (default: `false`)
 
 **Required Secrets:**
+
 - `VSCE_PAT` - VS Code Marketplace Personal Access Token
 - `OVSX_PAT` - Open VSX Personal Access Token
 
@@ -524,10 +554,16 @@ jobs:
   ci:
     uses: salesforcecli/github-workflows/.github/workflows/vscode-ci-template.yml@main
     with:
+      package-manager: npm
+      install-command: npm ci
       lint-command: 'npm run lint'
-      compile-command: 'npm run compile'
+      build-command: 'npm run build'
       test-command: 'npm run test'
-      test-coverage-command: 'npm run test:coverage'
+      coverage-command: 'npm run test:coverage'
+      coverage-report-command: 'npm run test:coverage:report'
+      quality-command: 'npm run test:quality'
+      package-command: 'npm run package'
+      prerelease-package-command: 'npm run package:prerelease'
 ```
 
 ### vscode-publish-extensions
@@ -542,19 +578,57 @@ jobs:
     uses: salesforcecli/github-workflows/.github/workflows/vscode-publish-extensions.yml@main
     with:
       branch: main
-      extensions: changed  # or 'all' or 'ext1,ext2'
-      registries: all  # all | vsce | ovsx
+      extensions: changed # or 'all' or 'ext1,ext2'
+      registries: all # all | vsce | ovsx
       pre-release: true
-      version-bump: auto  # auto | major | minor | patch
-      extensions-root: packages  # for monorepos
+      version-bump: auto # auto | major | minor | patch
+      extensions-root: packages # for monorepos
       exclude-web-vsix: 'false'
+      publish-web-vsix: false # set true only for repos with a CBWeb web VSIX
       slack-notification-title: '🎉 Extensions Released Successfully!'
       node-version: '22.x'
       dry-run: false
     secrets: inherit
 ```
 
+**pnpm caller example:**
+
+```yaml
+jobs:
+  publish:
+    uses: salesforcecli/github-workflows/.github/workflows/vscode-publish-extensions.yml@main
+    with:
+      branch: main
+      extensions: lana
+      extensions-root: .
+      package-manager: pnpm
+      package-manager-version: '10'
+      cache-dependency-path: pnpm-lock.yaml
+      install-command: pnpm run ci:install
+      package-command: cd lana && pnpm exec vsce package --no-dependencies
+      prerelease-package-command: cd lana && pnpm exec vsce package --pre-release --no-dependencies
+      artifact-glob: lana/*.vsix
+      dry-run: true
+    secrets: inherit
+```
+
+**Yarn caller example:**
+
+```yaml
+jobs:
+  publish:
+    uses: salesforcecli/github-workflows/.github/workflows/vscode-publish-extensions.yml@main
+    with:
+      package-manager: yarn
+      cache-dependency-path: yarn.lock
+      install-command: yarn install --network-timeout 600000
+      package-command: yarn package:packages
+      prerelease-package-command: yarn package:packages:prerelease
+    secrets: inherit
+```
+
 **Key Features:**
+
 - Auto-detects changed extensions in monorepos
 - Smart version bumping using odd/even convention
 - Conventional commit analysis
@@ -563,6 +637,7 @@ jobs:
 - Slack notifications on success
 
 **Inputs:**
+
 - `extensions` (optional) - Extensions to release: `changed`, `all`, or comma-separated names (default: `changed`)
 - `version-bump` (optional) - Version bump type: `auto`, `patch`, `minor`, `major` (default: `auto`)
 - `slack-notification-title` (optional) - Slack notification title (default: `🎉 Extensions Released Successfully!`)
@@ -578,20 +653,22 @@ jobs:
   promote:
     uses: salesforcecli/github-workflows/.github/workflows/vscode-promote-prerelease.yml@main
     with:
-      extension-name: 'my-extension'  # Used for tracking tags
-      min-tag-age-days: '7'  # Nightly must be at least 7 days old
-      vsix-name-pattern: 'my-extension-*.vsix'  # Pattern to match VSIX files
-      exclude-web-vsix: 'true'  # Exclude *-web-* VSIX files
+      extension-name: 'my-extension' # Used for tracking tags
+      min-tag-age-days: '7' # Nightly must be at least 7 days old
+      vsix-name-pattern: 'my-extension-*.vsix' # Pattern to match VSIX files
+      exclude-web-vsix: 'true' # Exclude *-web-* VSIX files
       dry-run: 'false'
     secrets: inherit
 ```
 
 **Requirements:**
+
 - Nightly tags matching `v{version}-nightly.*` pattern (e.g., `v1.2.3-nightly.20260709`)
 - GitHub releases for each nightly tag with VSIX files attached
 - Passing CI checks on nightly commits
 
 **How it works:**
+
 1. Finds oldest nightly tag ≥ min-tag-age-days that hasn't been promoted
 2. Verifies CI checks passed for that commit
 3. Downloads VSIX from nightly GitHub release
@@ -618,6 +695,7 @@ jobs:
 ```
 
 **Requirements:**
+
 - `marketplace-prerelease-*` tracking tags from previous promotions
 - Local actions in calling repository (see Prerequisites section above)
 
@@ -626,6 +704,7 @@ jobs:
 ### vscode-manual-publish
 
 Manually publish a specific nightly or CI build to the marketplace. Supports two source paths:
+
 1. **Tag path**: Publish from a nightly GitHub Release
 2. **Run path**: Publish from a CI build artifact (with quality check bypass)
 
@@ -638,8 +717,8 @@ jobs:
     with:
       extension-name: 'my-extension'
       vsix-name-pattern: 'my-extension-*.vsix'
-      version-tag: 'v0.5.3-nightly.20260301'  # OR use source-run-id
-      slot: 'pre-release'  # or 'stable'
+      version-tag: 'v0.5.3-nightly.20260301' # OR use source-run-id
+      slot: 'pre-release' # or 'stable'
       registries: 'all'
       exclude-web-vsix: 'true'
       extensions-root: 'packages'
@@ -648,6 +727,7 @@ jobs:
 ```
 
 **Requirements:**
+
 - Local actions in calling repository (see Prerequisites section above)
 - Environment: `manual-publish-gate` (with required reviewers for approval)
 

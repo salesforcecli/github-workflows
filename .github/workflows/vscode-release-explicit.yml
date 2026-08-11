@@ -8,22 +8,22 @@ on:
         required: true
         type: string
       registries:
-        description: 'Where to publish: marketplace | openvsx | all'
+        description: "Where to publish: marketplace | openvsx | all"
         required: false
         type: string
-        default: 'all'
+        default: "all"
       pre-release:
-        description: 'Mark as pre-release'
+        description: "Mark as pre-release"
         required: false
         type: boolean
         default: true
       version-bump:
-        description: 'Version bump strategy: auto | major | minor | patch'
+        description: "Version bump strategy: auto | major | minor | patch"
         required: false
         type: string
-        default: 'auto'
+        default: "auto"
       dry-run:
-        description: 'Skip actual publishing (for testing)'
+        description: "Skip actual publishing (for testing)"
         required: false
         type: boolean
         default: false
@@ -31,23 +31,43 @@ on:
         description: 'Command to build VSIX packages (e.g., "npm run vscode:package" or "vsce package")'
         required: false
         type: string
-        default: 'vsce package'
+        default: "vsce package"
       bundle-command:
         description: 'Command to bundle extension code (e.g., "npm run vscode:bundle"). Set to empty string to skip bundling.'
         required: false
         type: string
-        default: 'npm run vscode:bundle'
+        default: "npm run vscode:bundle"
       node-version:
-        description: 'Node.js version to use'
+        description: "Node.js version to use"
         required: false
-        default: '22.x'
+        default: "22.x"
+        type: string
+      package-manager:
+        description: "Package manager to use: npm, pnpm, or yarn"
+        required: false
+        default: "npm"
+        type: string
+      package-manager-version:
+        description: "pnpm version to use when package-manager is pnpm"
+        required: false
+        default: "10"
+        type: string
+      cache-dependency-path:
+        description: "Path to the package manager lockfile"
+        required: false
+        default: "package-lock.json"
+        type: string
+      install-command:
+        description: "Command to install dependencies"
+        required: false
+        default: "npm ci"
         type: string
     secrets:
       VSCE_PAT:
-        description: 'VS Code Marketplace Personal Access Token'
+        description: "VS Code Marketplace Personal Access Token"
         required: false
       OVSX_PAT:
-        description: 'Open VSX Personal Access Token'
+        description: "Open VSX Personal Access Token"
         required: false
 
 permissions:
@@ -65,36 +85,46 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup Node.js and install dependencies
+        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
-
-      - name: Install dependencies
-        run: npm ci
+          package-manager: ${{ inputs.package-manager }}
+          package-manager-version: ${{ inputs.package-manager-version }}
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
+          install-command: ${{ inputs.install-command }}
 
       - name: Bundle extension
         if: inputs.bundle-command != ''
+        env:
+          BUNDLE_COMMAND: ${{ inputs.bundle-command }}
+          EXTENSION: ${{ matrix.extension }}
         run: |
-          cd ${{ matrix.extension }}
-          # Check if the bundle script exists in package.json
-          if npm run | grep -q "vscode:bundle"; then
-            ${{ inputs.bundle-command }}
+          cd "$EXTENSION"
+          if jq -e '.scripts["vscode:bundle"]' package.json > /dev/null; then
+            bash -c "$BUNDLE_COMMAND"
           else
-            echo "⏭️ Skipping bundle step - vscode:bundle script not found"
+            echo "Skipping bundle step: vscode:bundle script not found"
           fi
 
       - name: Build extension
+        env:
+          EXTENSION: ${{ matrix.extension }}
+          PACKAGE_COMMAND: ${{ inputs.package-command }}
         run: |
-          cd ${{ matrix.extension }}
-          ${{ inputs.package-command }}
+          cd "$EXTENSION"
+          bash -c "$PACKAGE_COMMAND"
 
       - name: Publish (dry-run)
         if: inputs.dry-run
+        env:
+          EXTENSION: ${{ matrix.extension }}
+          REGISTRIES: ${{ inputs.registries }}
+          PRE_RELEASE: ${{ inputs.pre-release }}
         run: |
-          echo "🔍 DRY RUN: Would publish ${{ matrix.extension }}"
-          echo "  Registry: ${{ inputs.registries }}"
-          echo "  Pre-release: ${{ inputs.pre-release }}"
+          echo "🔍 DRY RUN: Would publish $EXTENSION"
+          echo "  Registry: $REGISTRIES"
+          echo "  Pre-release: $PRE_RELEASE"
 
       - name: Publish to VS Code Marketplace
         if: |
@@ -102,9 +132,11 @@ jobs:
           (inputs.registries == 'marketplace' || inputs.registries == 'all')
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          EXTENSION: ${{ matrix.extension }}
+          PRE_RELEASE_FLAG: ${{ inputs.pre-release && '--pre-release' || '' }}
         run: |
-          cd ${{ matrix.extension }}
-          npx vsce publish ${{ inputs.pre-release && '--pre-release' || '' }}
+          cd "$EXTENSION"
+          npx vsce publish $PRE_RELEASE_FLAG
 
       - name: Publish to Open VSX
         if: |
@@ -112,9 +144,11 @@ jobs:
           (inputs.registries == 'openvsx' || inputs.registries == 'all')
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
+          EXTENSION: ${{ matrix.extension }}
+          PRE_RELEASE_FLAG: ${{ inputs.pre-release && '--pre-release' || '' }}
         run: |
-          cd ${{ matrix.extension }}
-          npx ovsx publish ${{ inputs.pre-release && '--pre-release' || '' }} -p $OVSX_PAT
+          cd "$EXTENSION"
+          npx ovsx publish $PRE_RELEASE_FLAG -p "$OVSX_PAT"
 
       - name: Prepare artifact name
         id: artifact
