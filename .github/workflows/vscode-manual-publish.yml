@@ -22,7 +22,7 @@ name: Manual Publish VS Code Extension
 #
 # Requirements - calling repository must have:
 #   - Secrets: IDEE_GH_TOKEN, VSCE_PERSONAL_ACCESS_TOKEN, IDEE_OVSX_PAT
-#   - Action: ./.github/actions/npm-install-with-retries (custom npm install with retry logic)
+#   - The package manager and lockfile inputs must match the caller repository.
 #   - Action: ./.github/actions/check-ci-status (validates CI checks passed before publish)
 #   - Action: ./.github/actions/repackage-vsix-stable (repackages pre-release VSIX as stable)
 #   - Action: ./.github/actions/publish-vsix (publishes to VS Code Marketplace and/or Open VSX)
@@ -106,6 +106,31 @@ on:
         required: false
         default: "22.x"
         type: string
+      package-manager:
+        description: "Package manager to use: npm, pnpm, or yarn"
+        required: false
+        default: "npm"
+        type: string
+      package-manager-version:
+        description: "pnpm version to use when package-manager is pnpm"
+        required: false
+        default: "10"
+        type: string
+      cache-dependency-path:
+        description: "Path to the package manager lockfile"
+        required: false
+        default: "package-lock.json"
+        type: string
+      lockfile-path:
+        description: "Single lockfile path to update and commit with the stable version"
+        required: false
+        default: "package-lock.json"
+        type: string
+      install-command:
+        description: "Command used to install dependencies"
+        required: false
+        default: "npm ci"
+        type: string
   workflow_dispatch:
     inputs:
       extension-name:
@@ -187,6 +212,32 @@ on:
         required: false
         default: "22.x"
         type: string
+      package-manager:
+        description: "Package manager to use: npm, pnpm, or yarn"
+        required: false
+        default: "npm"
+        type: choice
+        options: [npm, pnpm, yarn]
+      package-manager-version:
+        description: "pnpm version to use when package-manager is pnpm"
+        required: false
+        default: "10"
+        type: string
+      cache-dependency-path:
+        description: "Path to the package manager lockfile"
+        required: false
+        default: "package-lock.json"
+        type: string
+      lockfile-path:
+        description: "Single lockfile path to update and commit with the stable version"
+        required: false
+        default: "package-lock.json"
+        type: string
+      install-command:
+        description: "Command used to install dependencies"
+        required: false
+        default: "npm ci"
+        type: string
 
 concurrency:
   group: manual-publish
@@ -253,13 +304,14 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.IDEE_GH_TOKEN }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup Node.js and install dependencies
+        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
-
-      - name: Install dependencies
-        uses: ./.github/actions/npm-install-with-retries
+          package-manager: ${{ inputs.package-manager }}
+          package-manager-version: ${{ inputs.package-manager-version }}
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
+          install-command: ${{ inputs.install-command }}
 
       - name: Resolve source and compute versions
         id: resolve
@@ -612,6 +664,12 @@ jobs:
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
 
+      - name: Setup pnpm
+        if: inputs.package-manager == 'pnpm'
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ inputs.package-manager-version }}
+
       - name: Download source VSIX
         uses: actions/download-artifact@v8
         with:
@@ -676,9 +734,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
-
-      - name: Install dependencies
-        uses: ./.github/actions/npm-install-with-retries
 
       - name: Download VSIX
         uses: actions/download-artifact@v8
@@ -845,7 +900,8 @@ jobs:
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
 
-      - name: Commit stable version bump to main
+      - name: Update stable version
+        id: update-version
         env:
           STABLE_VERSION: ${{ needs.prepare.outputs.stable-version }}
           DRY_RUN: ${{ inputs.dry-run || 'false' }}
@@ -876,11 +932,13 @@ jobs:
           ')
           if [ "$IS_GT" != "yes" ]; then
             echo "Skipping commit-back: main ($CURRENT_VERSION) is already >= stable ($STABLE_VERSION)"
+            echo "should-commit=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           if [ "$DRY_RUN" = "true" ]; then
             echo "DRY RUN: Would set $PKG_DIR to $STABLE_VERSION and commit to main"
+            echo "should-commit=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -890,12 +948,35 @@ jobs:
 
           ( cd "$PKG_DIR" && npm version "$STABLE_VERSION" --no-git-tag-version )
 
-          npm install --package-lock-only --ignore-scripts
+          git add "$PKG_DIR/package.json"
+          if git diff --cached --quiet -- "$PKG_DIR/package.json"; then
+            echo "Package version was not updated: $PKG_DIR/package.json"
+            exit 1
+          fi
+          echo "should-commit=true" >> "$GITHUB_OUTPUT"
 
-          git add "$PKG_DIR/package.json" package-lock.json
-          if git diff --staged --quiet; then
-            echo "No version change to commit - skipping (idempotent rerun)"
-            exit 0
+      - name: Refresh lockfile with retries
+        if: steps.update-version.outputs.should-commit == 'true'
+        uses: salesforcecli/github-workflows/.github/actions/updateNodeLockfile@main
+        with:
+          package-manager: ${{ inputs.package-manager }}
+          package-manager-version: ${{ inputs.package-manager-version }}
+          lockfile-path: ${{ inputs.lockfile-path }}
+
+      - name: Commit stable version bump
+        if: steps.update-version.outputs.should-commit == 'true'
+        env:
+          STABLE_VERSION: ${{ needs.prepare.outputs.stable-version }}
+          EXTENSION_NAME: ${{ inputs.extension-name }}
+          EXTENSIONS_ROOT: ${{ inputs.extensions-root }}
+          LOCKFILE_PATH: ${{ inputs.lockfile-path }}
+        run: |
+          set -euo pipefail
+          git add "$LOCKFILE_PATH"
+          if [ -n "$(git diff --name-only)" ]; then
+            echo "Lockfile refresh produced unstaged changes:"
+            git diff --name-only
+            exit 1
           fi
 
           git commit -m "chore: set stable version $STABLE_VERSION [skip ci]"
