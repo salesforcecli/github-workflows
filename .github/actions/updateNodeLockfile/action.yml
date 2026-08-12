@@ -55,6 +55,6 @@ runs:
         echo "value=$COMMAND" >> "$GITHUB_OUTPUT"
 
     - name: Refresh lockfile with retries
-      uses: salesforcecli/github-workflows/.github/actions/retry@ph/W-23832274-pnpm-stable-promotion
+      uses: salesforcecli/github-workflows/.github/actions/retry@main
       with:
         command: ${{ steps.command.outputs.value }}

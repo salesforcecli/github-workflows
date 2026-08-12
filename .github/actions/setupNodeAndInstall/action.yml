@@ -71,6 +71,6 @@ runs:
 
     - name: Install custom or pnpm dependencies
       if: (inputs.package-manager != 'npm' || steps.install-command.outputs.value != 'npm ci') && (inputs.package-manager != 'yarn' || steps.install-command.outputs.value != 'yarn install --network-timeout 600000')
-      uses: salesforcecli/github-workflows/.github/actions/retry@ph/W-23832274-pnpm-stable-promotion
+      uses: salesforcecli/github-workflows/.github/actions/retry@main
       with:
         command: ${{ steps.install-command.outputs.value }}
