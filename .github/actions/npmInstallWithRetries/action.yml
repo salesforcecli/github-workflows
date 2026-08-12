@@ -11,6 +11,6 @@ runs:
       run: npm config set fetch-timeout 600000
       shell: bash
     - name: npm ci
-      uses: salesforcecli/github-workflows/.github/actions/retry@main
+      uses: salesforcecli/github-workflows/.github/actions/retry@ph/W-23832274-pnpm-stable-promotion
       with:
         command: npm ci --no-audit --no-fund ${{ inputs.ignore-scripts == 'true' && '--ignore-scripts' || '' }}

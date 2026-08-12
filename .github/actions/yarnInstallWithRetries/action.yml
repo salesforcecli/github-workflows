@@ -8,6 +8,6 @@ runs:
   using: composite
   steps:
     - name: yarn install
-      uses: salesforcecli/github-workflows/.github/actions/retry@main
+      uses: salesforcecli/github-workflows/.github/actions/retry@ph/W-23832274-pnpm-stable-promotion
       with:
         command: yarn install --network-timeout 600000 ${{ inputs.ignore-scripts == 'true' && '--ignore-scripts' || '' }}

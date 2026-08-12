@@ -63,14 +63,14 @@ runs:
 
     - name: Install npm dependencies
       if: inputs.package-manager == 'npm' && steps.install-command.outputs.value == 'npm ci'
-      uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
+      uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@ph/W-23832274-pnpm-stable-promotion
 
     - name: Install Yarn dependencies
       if: inputs.package-manager == 'yarn' && steps.install-command.outputs.value == 'yarn install --network-timeout 600000'
-      uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
+      uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@ph/W-23832274-pnpm-stable-promotion
 
     - name: Install custom or pnpm dependencies
       if: (inputs.package-manager != 'npm' || steps.install-command.outputs.value != 'npm ci') && (inputs.package-manager != 'yarn' || steps.install-command.outputs.value != 'yarn install --network-timeout 600000')
-      uses: salesforcecli/github-workflows/.github/actions/retry@main
+      uses: salesforcecli/github-workflows/.github/actions/retry@ph/W-23832274-pnpm-stable-promotion
       with:
         command: ${{ steps.install-command.outputs.value }}
