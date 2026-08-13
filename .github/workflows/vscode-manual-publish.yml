@@ -335,7 +335,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          token: ${{ secrets.IDEE_GH_TOKEN }}
+          token: ${{ secrets.IDEE_GH_TOKEN || github.token }}
 
       - name: Setup Node.js and install dependencies
         uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@ph/W-23832274-pnpm-stable-promotion
@@ -349,7 +349,7 @@ jobs:
       - name: Resolve source and compute versions
         id: resolve
         env:
-          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN || github.token }}
           VERSION_TAG: ${{ inputs.version-tag }}
           SOURCE_RUN_ID: ${{ inputs.source-run-id }}
           SLOT: ${{ inputs.slot }}
@@ -530,7 +530,7 @@ jobs:
         id: ci-commit
         if: inputs.skip-quality-checks != 'true'
         env:
-          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN || github.token }}
           REPO: ${{ github.repository }}
           START_SHA: ${{ steps.resolve.outputs.commit-sha }}
         run: |
@@ -668,7 +668,7 @@ jobs:
         uses: ./.github/actions/check-ci-status
         with:
           commit-sha: ${{ needs.prepare.outputs.ci-commit-sha }}
-          token: ${{ secrets.IDEE_GH_TOKEN }}
+          token: ${{ secrets.IDEE_GH_TOKEN || github.token }}
           required-checks: ${{ inputs.required-ci-checks }}
 
   # ── gate ───────────────────────────────────────────────────────────────────
@@ -851,7 +851,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          token: ${{ secrets.IDEE_GH_TOKEN }}
+          token: ${{ secrets.IDEE_GH_TOKEN || github.token }}
 
       - name: Download VSIX
         uses: actions/download-artifact@v8
@@ -861,7 +861,7 @@ jobs:
 
       - name: Create GitHub release for stable version
         env:
-          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN || github.token }}
           STABLE_VERSION: ${{ needs.prepare.outputs.stable-version }}
           PRERELEASE_VERSION: ${{ needs.prepare.outputs.prerelease-version }}
           SOURCE_TYPE: ${{ needs.prepare.outputs.source-type }}
@@ -923,7 +923,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          token: ${{ secrets.IDEE_GH_TOKEN }}
+          token: ${{ secrets.IDEE_GH_TOKEN || github.token }}
 
       - name: Create tracking tag
         env:
@@ -932,7 +932,7 @@ jobs:
           STABLE_VERSION: ${{ needs.prepare.outputs.stable-version }}
           COMMIT_SHA: ${{ needs.prepare.outputs.commit-sha }}
           DRY_RUN: ${{ inputs.dry-run || 'false' }}
-          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN || github.token }}
           EXTENSION_NAME: ${{ inputs.extension-name }}
         run: |
           if [ "$SLOT" = "stable" ]; then
@@ -970,7 +970,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-          token: ${{ secrets.IDEE_GH_TOKEN }}
+          token: ${{ secrets.IDEE_GH_TOKEN || github.token }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -982,7 +982,7 @@ jobs:
         env:
           STABLE_VERSION: ${{ needs.prepare.outputs.stable-version }}
           DRY_RUN: ${{ inputs.dry-run || 'false' }}
-          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN || github.token }}
           EXTENSION_NAME: ${{ inputs.extension-name }}
           EXTENSIONS_ROOT: ${{ inputs.extensions-root }}
         run: |
