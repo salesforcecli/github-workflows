@@ -14,7 +14,7 @@ name: Manual Publish VS Code Extension
 #         vsix-name-pattern: 'apex-language-server-extension-*.vsix'
 #         version-tag: 'apex-language-server-extension-v0.5.3-nightly.20260301'  # OR source-run-id
 #         slot: 'pre-release'  # or 'stable'
-#         registries: 'all'  # or 'vsce', 'ovsx', or 'internal'
+#         registries: 'all'  # or 'vsce' or 'ovsx'
 #         exclude-web-vsix: 'true'
 #         extensions-root: 'packages'
 #         dry-run: 'false'
@@ -22,7 +22,6 @@ name: Manual Publish VS Code Extension
 #
 # Requirements - calling repository must have:
 #   - Secrets: IDEE_GH_TOKEN, VSCE_PERSONAL_ACCESS_TOKEN, IDEE_OVSX_PAT
-#   - For internal publishing: MARKETPLACE_DEPLOY_TOKEN and MARKETPLACE_URL variable
 #   - The package manager and lockfile inputs must match the caller repository.
 #   - Action: ./.github/actions/check-ci-status (validates CI checks passed before publish)
 #   - Action: ./.github/actions/repackage-vsix-stable (repackages pre-release VSIX as stable)
@@ -58,7 +57,7 @@ on:
         required: true
         type: string
       registries:
-        description: "Registries to publish to (all, vsce, ovsx, internal). A version-tag source limits all to public registries."
+        description: "Registries to publish to (all, vsce, ovsx)"
         required: false
         default: "all"
         type: string
@@ -169,7 +168,6 @@ on:
           - all
           - vsce
           - ovsx
-          - internal
       target-stable-version:
         description: "Optional stable version override"
         required: false
@@ -270,12 +268,6 @@ jobs:
           SOURCE_RUN_ID="${{ inputs.source-run-id }}"
           SKIP_QC="${{ inputs.skip-quality-checks }}"
           BYPASS="${{ inputs.confirm-bypass }}"
-          REGISTRIES="${{ inputs.registries }}"
-
-          case "$REGISTRIES" in
-            all|vsce|ovsx|internal) ;;
-            *) echo "ERROR: registries must be all, vsce, ovsx, or internal."; exit 1 ;;
-          esac
 
           # Exactly one source must be provided
           if [ -z "$VERSION_TAG" ] && [ -z "$SOURCE_RUN_ID" ]; then
@@ -285,20 +277,6 @@ jobs:
           if [ -n "$VERSION_TAG" ] && [ -n "$SOURCE_RUN_ID" ]; then
             echo "ERROR: version-tag and source-run-id are mutually exclusive."
             exit 1
-          fi
-
-          if [ -n "$VERSION_TAG" ] && [ "$REGISTRIES" = "internal" ]; then
-            echo "ERROR: registries=internal requires source-run-id because nightly GitHub releases do not include web VSIX artifacts."
-            exit 1
-          fi
-
-          if { [ "$REGISTRIES" = "internal" ] || { [ "$REGISTRIES" = "all" ] && [ -n "$SOURCE_RUN_ID" ]; }; } && [ "${{ inputs.slot }}" != "pre-release" ]; then
-            echo "ERROR: CBWeb publishing currently supports only the pre-release slot."
-            exit 1
-          fi
-
-          if [ -n "$VERSION_TAG" ] && [ "$REGISTRIES" = "all" ]; then
-            echo "INFO: version-tag source contains no web VSIX; limiting registries=all to VS Code Marketplace and Open VSX."
           fi
 
           # Run path requires bypass (branch CI profiles differ from main)
@@ -743,7 +721,7 @@ jobs:
   # ── publish ────────────────────────────────────────────────────────────────
   publish:
     needs: [prepare, repackage]
-    if: always() && inputs.registries != 'internal' && needs.prepare.result == 'success' && needs.repackage.result == 'success'
+    if: always() && needs.prepare.result == 'success' && needs.repackage.result == 'success'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -785,51 +763,6 @@ jobs:
         env:
           VSCE_PERSONAL_ACCESS_TOKEN: ${{ secrets.VSCE_PERSONAL_ACCESS_TOKEN }}
           OVSX_PAT: ${{ secrets.IDEE_OVSX_PAT }}
-
-  publish-internal:
-    needs: [prepare, gate]
-    if: always() && (inputs.registries == 'internal' || (inputs.registries == 'all' && inputs.source-run-id != '')) && needs.prepare.result == 'success' && needs.gate.result == 'success'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download source VSIX artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: source-vsix
-          path: ./vsix-artifacts
-
-      - name: Locate web VSIX
-        id: web-vsix
-        env:
-          VSIX_NAME_PATTERN: ${{ inputs.vsix-name-pattern }}
-        run: |
-          VSIX_FILE=$(find ./vsix-artifacts -type f -name "$VSIX_NAME_PATTERN" -name '*-web-*' | head -1)
-          if [ -z "$VSIX_FILE" ]; then
-            echo "ERROR: registries=${{ inputs.registries }} requires a web VSIX artifact from source-run-id."
-            exit 1
-          fi
-          echo "vsix-file=$VSIX_FILE" >> "$GITHUB_OUTPUT"
-
-      - name: Publish web VSIX to CBWeb internal marketplace
-        env:
-          DRY_RUN: ${{ inputs.dry-run || 'false' }}
-          MARKETPLACE_URL: ${{ vars.MARKETPLACE_URL }}
-          MARKETPLACE_DEPLOY_TOKEN: ${{ secrets.MARKETPLACE_DEPLOY_TOKEN }}
-          VSIX_FILE: ${{ steps.web-vsix.outputs.vsix-file }}
-        run: |
-          if [ "$DRY_RUN" = "true" ]; then
-            echo "DRY RUN: Would publish $VSIX_FILE to CBWeb marketplace"
-            exit 0
-          fi
-
-          if [ -z "$MARKETPLACE_URL" ] || [ -z "$MARKETPLACE_DEPLOY_TOKEN" ]; then
-            echo "CBWeb marketplace credentials are required for live publishing"
-            exit 1
-          fi
-
-          curl --fail-with-body \
-            -X POST "${MARKETPLACE_URL}/api/internal/publish" \
-            -H "Authorization: Bearer ${MARKETPLACE_DEPLOY_TOKEN}" \
-            -F "vsix=@${VSIX_FILE}"
 
   # ── create-github-release ──────────────────────────────────────────────────
   create-github-release:
@@ -905,8 +838,8 @@ jobs:
 
   # ── tag-published ──────────────────────────────────────────────────────────
   tag-published:
-    needs: [prepare, publish, publish-internal, create-github-release]
-    if: always() && needs.prepare.result == 'success' && (needs.publish.result == 'success' || needs.publish.result == 'skipped') && (needs.publish-internal.result == 'success' || needs.publish-internal.result == 'skipped') && (inputs.slot == 'pre-release' || needs.create-github-release.result == 'success')
+    needs: [prepare, publish, create-github-release]
+    if: always() && needs.publish.result == 'success' && (inputs.slot == 'pre-release' || needs.create-github-release.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -951,8 +884,8 @@ jobs:
 
   # ── commit-stable-version ────────────────────────────────────────────────
   commit-stable-version:
-    needs: [prepare, publish, publish-internal, create-github-release, tag-published]
-    if: needs.publish.result == 'success' && needs.publish-internal.result == 'skipped' && inputs.slot == 'stable'
+    needs: [prepare, publish, create-github-release, tag-published]
+    if: needs.publish.result == 'success' && inputs.slot == 'stable'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main
