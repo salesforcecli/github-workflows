@@ -348,6 +348,9 @@ jobs:
         run: |
           set -e
 
+          # workflow_dispatch string inputs can retain pasted whitespace.
+          BRANCH=$(echo "$BRANCH" | xargs)
+
           case "$PACKAGE_MANAGER" in
             pnpm) unexpected_lockfiles=(package-lock.json yarn.lock) ;;
             yarn) unexpected_lockfiles=(package-lock.json pnpm-lock.yaml) ;;
@@ -572,6 +575,8 @@ jobs:
           GIT_USER_EMAIL: ${{ inputs.git-user-email }}
           BRANCH: ${{ inputs.branch || github.ref_name }}
         run: |
+          BRANCH=$(echo "$BRANCH" | xargs)
+
           if [ "$DRY_RUN" = "true" ]; then
             echo "🔄 DRY RUN: Would commit and push version bumps..."
             echo "📋 DRY RUN: Changes that would be committed:"
@@ -976,6 +981,8 @@ jobs:
           EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
           EXCLUDE_WEB: ${{ inputs.exclude-web-vsix || 'false' }}
         run: |
+          BRANCH=$(echo "$BRANCH" | xargs)
+
           echo "Mode: $([ "$DRY_RUN" = "true" ] && echo "DRY RUN" || echo "LIVE")"
           echo "Creating GitHub releases..."
 
