@@ -533,20 +533,34 @@ jobs:
           GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN || github.token }}
           REPO: ${{ github.repository }}
           START_SHA: ${{ steps.resolve.outputs.commit-sha }}
+          REQUIRED_CHECKS: ${{ inputs.required-ci-checks }}
         run: |
           MAX_DEPTH=20
           SHA="$START_SHA"
           CI_SHA=""
 
+          IFS=',' read -r -a CHECK_NAMES <<< "$REQUIRED_CHECKS"
+          for i in "${!CHECK_NAMES[@]}"; do
+            CHECK_NAMES[$i]=$(echo "${CHECK_NAMES[$i]}" | xargs)
+          done
+
           for i in $(seq 1 "$MAX_DEPTH"); do
-            CONCLUSION=$(gh api "repos/$REPO/commits/$SHA/check-runs" --paginate \
-              --jq '[.check_runs[] | select(.name == "CI Complete")] | .[0].conclusion // empty' 2>/dev/null || echo "")
-            if [ "$CONCLUSION" = "success" ]; then
+            CHECK_RUNS=$(gh api "repos/$REPO/commits/$SHA/check-runs" --paginate 2>/dev/null || echo "")
+            MISSING_OR_FAILED=""
+            for CHECK_NAME in "${CHECK_NAMES[@]}"; do
+              CONCLUSION=$(echo "$CHECK_RUNS" | jq -r --arg name "$CHECK_NAME" \
+                '[.check_runs[] | select(.name == $name)] | .[0].conclusion // empty')
+              if [ "$CONCLUSION" != "success" ]; then
+                MISSING_OR_FAILED="${MISSING_OR_FAILED}${MISSING_OR_FAILED:+, }${CHECK_NAME} (${CONCLUSION:-none})"
+              fi
+            done
+
+            if [ -z "$MISSING_OR_FAILED" ]; then
               CI_SHA="$SHA"
               echo "Found CI-tested ancestor at depth $((i - 1)): $CI_SHA"
               break
             fi
-            echo "  $SHA: no successful 'CI Complete' (conclusion='${CONCLUSION:-none}') — walking to parent"
+            echo "  $SHA: required checks not successful: $MISSING_OR_FAILED — walking to parent"
             PARENT=$(git rev-parse "${SHA}^" 2>/dev/null || echo "")
             if [ -z "$PARENT" ]; then
               echo "Reached root of history without a CI-tested commit."
@@ -556,7 +570,7 @@ jobs:
           done
 
           if [ -z "$CI_SHA" ]; then
-            echo "ERROR: No ancestor with a successful 'CI Complete' check found within $MAX_DEPTH commits of $START_SHA."
+            echo "ERROR: No ancestor with successful required checks ('$REQUIRED_CHECKS') found within $MAX_DEPTH commits of $START_SHA."
             echo "Cannot verify CI status — failing to prevent untested promotion. Use skip-quality-checks=true to bypass."
             exit 1
           fi
