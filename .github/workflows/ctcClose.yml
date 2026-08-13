@@ -15,6 +15,21 @@ on:
         type: string
         default: lts/*
         required: false
+      package-manager:
+        description: Package manager used by the calling repository (npm, pnpm, or yarn)
+        type: string
+        default: npm
+        required: false
+      package-manager-version:
+        description: pnpm version to use when package-manager is pnpm
+        type: string
+        default: '10'
+        required: false
+      cache-dependency-path:
+        description: Path to the calling repository's package manager lockfile
+        type: string
+        default: package-lock.json
+        required: false
 
 jobs:
   ctcClose:
@@ -22,11 +37,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        if: inputs.package-manager == 'pnpm'
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ inputs.package-manager-version }}
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.nodeVersion }}
-          # No `cache: npm`: it requires an npm lockfile and so hard-fails on
-          # pnpm/yarn consumer repos; the CTC CLI below is a one-off global install.
+          cache: ${{ inputs.package-manager }}
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
       - run: npm install -g @salesforce/change-case-management --omit=dev
       - id: ctc
         run: |

@@ -20,6 +20,21 @@ on:
         description: Optionally skip ci builds on merges into main
         type: boolean
         default: false
+      package-manager:
+        required: false
+        description: Package manager used by the calling repository (npm, pnpm, or yarn)
+        type: string
+        default: npm
+      package-manager-version:
+        required: false
+        description: pnpm version to use when package-manager is pnpm
+        type: string
+        default: '10'
+      cache-dependency-path:
+        required: false
+        description: Path to the calling repository's package manager lockfile
+        type: string
+        default: package-lock.json
 
 jobs:
   dependabot-automerge:
@@ -29,9 +44,17 @@ jobs:
         with:
           token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
 
+      - name: Setup pnpm
+        if: inputs.package-manager == 'pnpm'
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ inputs.package-manager-version }}
+
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
+          cache: ${{ inputs.package-manager }}
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
 
       - run: npm install -g @salesforce/plugin-release-management --omit=dev
 
