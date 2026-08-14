@@ -642,6 +642,32 @@ jobs:
 - `version-bump` (optional) - Version bump type: `auto`, `patch`, `minor`, `major` (default: `auto`)
 - `slack-notification-title` (optional) - Slack notification title (default: `🎉 Extensions Released Successfully!`)
 
+### vscode-publish-release-vsix
+
+Downloads every VSIX asset from a GitHub release in the calling repository and publishes it to the VS Code Marketplace. The release's pre-release state is preserved, and already-published versions are skipped.
+
+```yaml
+jobs:
+  publish:
+    uses: salesforcecli/github-workflows/.github/workflows/vscode-publish-release-vsix.yml@main
+    with:
+      release-tag: v67.10.0
+    secrets: inherit
+```
+
+### openvsx-publish-release-vsix
+
+Downloads every VSIX asset from a GitHub release in the calling repository and publishes it to Open VSX. The release's pre-release state is preserved, and already-published versions are skipped.
+
+```yaml
+jobs:
+  publish:
+    uses: salesforcecli/github-workflows/.github/workflows/openvsx-publish-release-vsix.yml@main
+    with:
+      release-tag: v67.10.0
+    secrets: inherit
+```
+
 ### vscode-promote-prerelease
 
 Promotes a vetted nightly build to pre-release on VS Code Marketplace and Open VSX. This workflow finds the oldest unpromoted nightly that meets the minimum age requirement, verifies CI checks passed, and publishes it as a pre-release.

@@ -1,0 +1,59 @@
+name: Publish Release VSIXs to Open VSX
+
+on:
+  workflow_call:
+    inputs:
+      release-tag:
+        description: GitHub release tag containing the VSIX assets
+        required: true
+        type: string
+    secrets:
+      IDEE_OVSX_PAT:
+        description: Open VSX publishing token
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release VSIXs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release-tag }}
+        run: |
+          mkdir extensions
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.vsix' --dir extensions
+
+          shopt -s nullglob
+          vsix_files=(extensions/*.vsix)
+          if [ ${#vsix_files[@]} -eq 0 ]; then
+            echo "No VSIX files found in release $RELEASE_TAG"
+            exit 1
+          fi
+
+          echo 'Downloaded VSIX files:'
+          printf '%s\n' "${vsix_files[@]}"
+
+      - name: Detect release type
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release-tag }}
+        run: |
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq .isPrerelease | grep -qx true; then
+            echo 'PRE_RELEASE_FLAG=--pre-release' >> "$GITHUB_ENV"
+          fi
+
+      - name: Publish VSIXs
+        env:
+          IDEE_OVSX_PAT: ${{ secrets.IDEE_OVSX_PAT }}
+        run: |
+          for vsix in extensions/*.vsix; do
+            args=("$vsix" -p "$IDEE_OVSX_PAT" --skip-duplicate)
+            if [ -n "$PRE_RELEASE_FLAG" ]; then
+              args+=(--pre-release)
+            fi
+            npx ovsx publish "${args[@]}"
+          done

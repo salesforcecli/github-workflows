@@ -1,0 +1,59 @@
+name: Publish Release VSIXs to VS Code Marketplace
+
+on:
+  workflow_call:
+    inputs:
+      release-tag:
+        description: GitHub release tag containing the VSIX assets
+        required: true
+        type: string
+    secrets:
+      VSCE_PERSONAL_ACCESS_TOKEN:
+        description: VS Code Marketplace publishing token
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release VSIXs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release-tag }}
+        run: |
+          mkdir extensions
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.vsix' --dir extensions
+
+          shopt -s nullglob
+          vsix_files=(extensions/*.vsix)
+          if [ ${#vsix_files[@]} -eq 0 ]; then
+            echo "No VSIX files found in release $RELEASE_TAG"
+            exit 1
+          fi
+
+          echo 'Downloaded VSIX files:'
+          printf '%s\n' "${vsix_files[@]}"
+
+      - name: Detect release type
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release-tag }}
+        run: |
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq .isPrerelease | grep -qx true; then
+            echo 'PRE_RELEASE_FLAG=--pre-release' >> "$GITHUB_ENV"
+          fi
+
+      - name: Publish VSIXs
+        env:
+          VSCE_PERSONAL_ACCESS_TOKEN: ${{ secrets.VSCE_PERSONAL_ACCESS_TOKEN }}
+        run: |
+          for vsix in extensions/*.vsix; do
+            args=(--packagePath "$vsix" --skip-duplicate)
+            if [ -n "$PRE_RELEASE_FLAG" ]; then
+              args+=(--pre-release)
+            fi
+            VSCE_PAT="$VSCE_PERSONAL_ACCESS_TOKEN" npx @vscode/vsce publish "${args[@]}"
+          done
