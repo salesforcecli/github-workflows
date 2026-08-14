@@ -1,0 +1,51 @@
+name: Publish Release VSIXs to VS Code Marketplace
+
+on:
+  workflow_call:
+    inputs:
+      release-tag:
+        description: GitHub release tag containing the VSIX assets
+        required: true
+        type: string
+      dry-run:
+        description: Download and inspect VSIXs without publishing
+        required: false
+        default: false
+        type: boolean
+    secrets:
+      VSCE_PERSONAL_ACCESS_TOKEN:
+        description: VS Code Marketplace publishing token
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release VSIXs
+        id: release
+        uses: salesforcecli/github-workflows/.github/actions/vscode/download-release-vsix@03cb2583f2edf45cd7d2688f2a452ee29511229e
+        with:
+          release-tag: ${{ inputs.release-tag }}
+
+      - name: Publish VSIXs
+        env:
+          DRY_RUN: ${{ inputs.dry-run }}
+          PRE_RELEASE: ${{ steps.release.outputs.pre-release }}
+          VSCE_PERSONAL_ACCESS_TOKEN: ${{ secrets.VSCE_PERSONAL_ACCESS_TOKEN }}
+        run: |
+          while IFS= read -r -d '' vsix; do
+            args=(--packagePath "$vsix" --skip-duplicate)
+            if [ "$PRE_RELEASE" = true ]; then
+              args+=(--pre-release)
+            fi
+
+            if [ "$DRY_RUN" = true ]; then
+              echo "Would publish $vsix to the VS Code Marketplace: @vscode/vsce publish ${args[*]}"
+              continue
+            fi
+
+            VSCE_PAT="$VSCE_PERSONAL_ACCESS_TOKEN" npx @vscode/vsce publish "${args[@]}"
+          done < <(find extensions -type f -name '*.vsix' -print0)
