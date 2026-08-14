@@ -12,7 +12,7 @@ inputs:
     required: true
   required-checks:
     description: >
-      Comma-separated list of check names that must have succeeded.
+      JSON array of check names that must have succeeded.
       If empty, all non-skipped check-runs must have conclusion "success".
     required: false
     default: ''
@@ -50,9 +50,7 @@ runs:
 
         if [ -n "$REQUIRED_CHECKS" ]; then
           # Only validate the specified checks
-          IFS=',' read -ra CHECKS <<< "$REQUIRED_CHECKS"
-          for CHECK in "${CHECKS[@]}"; do
-            CHECK=$(echo "$CHECK" | xargs)  # trim whitespace
+          while IFS= read -r CHECK; do
             CONCLUSION=$(echo "$CHECK_RUNS" | jq -r --arg name "$CHECK" \
               'select(.name == $name) | .conclusion' | head -1)
             if [ "$CONCLUSION" != "success" ]; then
@@ -61,7 +59,7 @@ runs:
             else
               echo "PASS: required check '$CHECK' succeeded"
             fi
-          done
+          done < <(jq -r '.[]' <<< "$REQUIRED_CHECKS")
         else
           # Validate all non-skipped check-runs
           while IFS= read -r RUN; do

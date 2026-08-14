@@ -267,7 +267,7 @@ jobs:
           # carry a stale `failure` conclusion and block all future promotions.
           # `gate` is the Manual Publish aggregate gate; `tag-published` confirms the
           # nightly/pre-release artifact was successfully published for this commit.
-          required-checks: 'gate,tag-published'
+          required-checks: '["gate","tag-published"]'
 
   repackage:
     needs: [find-prerelease-candidate, quality-gate]

@@ -97,9 +97,9 @@ on:
         default: "vsix-packages"
         type: string
       required-ci-checks:
-        description: 'Comma-separated list of required CI check names (default: "CI Complete, Package / Package, Test Quality (ubuntu-latest, lts/*)")'
+        description: 'JSON array of required CI check names'
         required: false
-        default: "CI Complete, Package / Package, Test Quality (ubuntu-latest, lts/*)"
+        default: '["CI Complete","Package / Package","Test Quality (ubuntu-latest, lts/*)"]'
         type: string
       dry-run:
         description: "Run in dry-run mode (no actual publishing or tagging)"
@@ -537,21 +537,16 @@ jobs:
           SHA="$START_SHA"
           CI_SHA=""
 
-          IFS=',' read -r -a CHECK_NAMES <<< "$REQUIRED_CHECKS"
-          for i in "${!CHECK_NAMES[@]}"; do
-            CHECK_NAMES[$i]=$(echo "${CHECK_NAMES[$i]}" | xargs)
-          done
-
           for i in $(seq 1 "$MAX_DEPTH"); do
             CHECK_RUNS=$(gh api "repos/$REPO/commits/$SHA/check-runs" --paginate 2>/dev/null || echo "")
             MISSING_OR_FAILED=""
-            for CHECK_NAME in "${CHECK_NAMES[@]}"; do
+            while IFS= read -r CHECK_NAME; do
               CONCLUSION=$(echo "$CHECK_RUNS" | jq -r --arg name "$CHECK_NAME" \
                 '[.check_runs[] | select(.name == $name)] | .[0].conclusion // empty')
               if [ "$CONCLUSION" != "success" ]; then
                 MISSING_OR_FAILED="${MISSING_OR_FAILED}${MISSING_OR_FAILED:+, }${CHECK_NAME} (${CONCLUSION:-none})"
               fi
-            done
+            done < <(jq -r '.[]' <<< "$REQUIRED_CHECKS")
 
             if [ -z "$MISSING_OR_FAILED" ]; then
               CI_SHA="$SHA"
