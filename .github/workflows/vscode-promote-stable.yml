@@ -20,12 +20,11 @@ name: Promote Pre-release to Stable
 #   - GitHub releases for each nightly tag with VSIX file(s) attached
 #   - Passing CI checks (gate, tag-published)
 #   - Secrets: IDEE_GH_TOKEN, VSCE_PERSONAL_ACCESS_TOKEN, IDEE_OVSX_PAT
-#   - Action: ./.github/actions/repackage-vsix-stable (repackages pre-release VSIX as stable)
-#   - Action: ./.github/actions/publish-vsix (publishes to VS Code Marketplace and/or Open VSX)
+#   - The shared actions in this repository are resolved from the workflow branch.
 #   - The package manager and lockfile inputs must match the caller repository.
 #
-# Note: This workflow uses local actions from the calling repository. For a fully self-contained
-# workflow that doesn't require local actions, use vscode-promote-prerelease.yml instead.
+# The caller supplies credentials and repository-specific paths; action implementations are
+# resolved from this repository so callers do not need duplicate composite actions.
 #
 # Workflow: finds latest pre-release → verifies quality gate → repackages VSIX
 #           → publishes to both marketplaces → creates GitHub release → tags stable
@@ -258,7 +257,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Check CI status for candidate commit
-        uses: ./.github/actions/check-ci-status
+        uses: salesforcecli/github-workflows/.github/actions/check-ci-status@ph/W-23832274-pnpm-stable-promotion
         with:
           commit-sha: ${{ needs.find-prerelease-candidate.outputs.commit-sha }}
           token: ${{ secrets.IDEE_GH_TOKEN }}
@@ -313,7 +312,7 @@ jobs:
 
       - name: Repackage VSIX with stable version
         id: repack
-        uses: ./.github/actions/repackage-vsix-stable
+        uses: salesforcecli/github-workflows/.github/actions/vscode/repackage-vsix-stable@ph/W-23832274-pnpm-stable-promotion
         with:
           source-vsix-path: ${{ env.VSIX_FILE }}
           prerelease-version: ${{ needs.find-prerelease-candidate.outputs.prerelease-version }}
@@ -369,7 +368,7 @@ jobs:
           echo "VSIX_PATH=$VSIX_FILE" >> $GITHUB_ENV
 
       - name: Publish to ${{ matrix.registry }}
-        uses: ./.github/actions/publish-vsix
+        uses: salesforcecli/github-workflows/.github/actions/publish-vsix@ph/W-23832274-pnpm-stable-promotion
         with:
           vsix-path: ${{ env.VSIX_PATH }}
           publish-tool: ${{ matrix.publish-tool }}
