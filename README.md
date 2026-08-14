@@ -652,6 +652,7 @@ jobs:
     uses: salesforcecli/github-workflows/.github/workflows/vscode-publish-release-vsix.yml@main
     with:
       release-tag: v67.10.0
+      dry-run: true # Download and inspect without publishing
     secrets: inherit
 ```
 
@@ -665,6 +666,7 @@ jobs:
     uses: salesforcecli/github-workflows/.github/workflows/openvsx-publish-release-vsix.yml@main
     with:
       release-tag: v67.10.0
+      dry-run: true # Download and inspect without publishing
     secrets: inherit
 ```
 
