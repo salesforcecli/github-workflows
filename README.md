@@ -644,7 +644,7 @@ jobs:
 
 ### vscode-publish-release-vsix
 
-Downloads every VSIX asset from a GitHub release in the calling repository and publishes it to the VS Code Marketplace. The release's pre-release state is preserved, and already-published versions are skipped.
+Downloads every VSIX asset from a GitHub release in the calling repository and publishes it to the VS Code Marketplace. VSIX files are found recursively, the release's pre-release state is preserved, and already-published versions are skipped.
 
 ```yaml
 jobs:
@@ -657,7 +657,7 @@ jobs:
 
 ### openvsx-publish-release-vsix
 
-Downloads every VSIX asset from a GitHub release in the calling repository and publishes it to Open VSX. The release's pre-release state is preserved, and already-published versions are skipped.
+Downloads every VSIX asset from a GitHub release in the calling repository and publishes it to Open VSX. VSIX files are found recursively, the release's pre-release state is preserved, and already-published versions are skipped.
 
 ```yaml
 jobs:

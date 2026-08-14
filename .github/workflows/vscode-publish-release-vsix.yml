@@ -20,40 +20,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download release VSIXs
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.release-tag }}
-        run: |
-          mkdir extensions
-          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.vsix' --dir extensions
-
-          shopt -s nullglob
-          vsix_files=(extensions/*.vsix)
-          if [ ${#vsix_files[@]} -eq 0 ]; then
-            echo "No VSIX files found in release $RELEASE_TAG"
-            exit 1
-          fi
-
-          echo 'Downloaded VSIX files:'
-          printf '%s\n' "${vsix_files[@]}"
-
-      - name: Detect release type
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.release-tag }}
-        run: |
-          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq .isPrerelease | grep -qx true; then
-            echo 'PRE_RELEASE_FLAG=--pre-release' >> "$GITHUB_ENV"
-          fi
+        id: release
+        uses: salesforcecli/github-workflows/.github/actions/vscode/download-release-vsix@main
+        with:
+          release-tag: ${{ inputs.release-tag }}
 
       - name: Publish VSIXs
         env:
+          PRE_RELEASE: ${{ steps.release.outputs.pre-release }}
           VSCE_PERSONAL_ACCESS_TOKEN: ${{ secrets.VSCE_PERSONAL_ACCESS_TOKEN }}
         run: |
-          for vsix in extensions/*.vsix; do
+          while IFS= read -r -d '' vsix; do
             args=(--packagePath "$vsix" --skip-duplicate)
-            if [ -n "$PRE_RELEASE_FLAG" ]; then
+            if [ "$PRE_RELEASE" = true ]; then
               args+=(--pre-release)
             fi
             VSCE_PAT="$VSCE_PERSONAL_ACCESS_TOKEN" npx @vscode/vsce publish "${args[@]}"
-          done
+          done < <(find extensions -type f -name '*.vsix' -print0)
