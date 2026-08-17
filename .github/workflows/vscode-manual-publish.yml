@@ -923,8 +923,8 @@ jobs:
 
   # ── tag-published ──────────────────────────────────────────────────────────
   tag-published:
-    needs: [prepare, publish, publish-to-cbweb-marketplace, create-github-release]
-    if: always() && needs.prepare.result == 'success' && (needs.publish.result == 'success' || needs.publish.result == 'skipped') && (needs.publish-to-cbweb-marketplace.result == 'success' || needs.publish-to-cbweb-marketplace.result == 'skipped') && (inputs.slot == 'pre-release' || needs.create-github-release.result == 'success')
+    needs: [prepare, gate, publish, publish-to-cbweb-marketplace, create-github-release]
+    if: always() && inputs.registries != 'none' && needs.prepare.result == 'success' && needs.gate.result == 'success' && needs.publish.result == 'success' && (needs.publish-to-cbweb-marketplace.result == 'success' || needs.publish-to-cbweb-marketplace.result == 'skipped') && (inputs.slot == 'pre-release' || needs.create-github-release.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
