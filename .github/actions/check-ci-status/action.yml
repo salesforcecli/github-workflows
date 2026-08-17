@@ -49,6 +49,11 @@ runs:
         FAILED=0
 
         if [ -n "$REQUIRED_CHECKS" ]; then
+          if ! jq -e 'type == "array"' <<< "$REQUIRED_CHECKS" >/dev/null; then
+            echo "ERROR: required-checks must be a JSON array"
+            exit 1
+          fi
+
           # Only validate the specified checks
           while IFS= read -r CHECK; do
 

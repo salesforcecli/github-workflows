@@ -284,6 +284,7 @@ jobs:
           BYPASS="${{ inputs.confirm-bypass }}"
           REGISTRIES="${{ inputs.registries }}"
           PUBLISH_WEB_VSIX="${{ inputs.publish-web-vsix }}"
+          SLOT="${{ inputs.slot }}"
 
           case "$REGISTRIES" in
             all|vsce|ovsx|none) ;;
@@ -305,7 +306,7 @@ jobs:
             exit 1
           fi
 
-          if [ "$PUBLISH_WEB_VSIX" = "true" ] && [ "${{ inputs.slot }}" != "pre-release" ]; then
+          if [ "$PUBLISH_WEB_VSIX" = "true" ] && [ "$SLOT" != "pre-release" ]; then
             echo "ERROR: publish-web-vsix currently supports only the pre-release slot."
             exit 1
           fi
