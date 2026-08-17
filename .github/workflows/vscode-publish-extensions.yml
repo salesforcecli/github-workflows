@@ -568,7 +568,8 @@ jobs:
         if: inputs.dry-run != 'true' && github.event.inputs.dry-run != 'true'
         env:
           GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN || github.token }}
-        run: gh api user --jq '"Authenticated as: \(.login)"'
+        run: |
+          gh api user --jq '"Authenticated as: \(.login)"'
 
       # If the branch push succeeds but tag push fails, do NOT re-run this job.
       # Manually push the missing tags: git push origin --tags
