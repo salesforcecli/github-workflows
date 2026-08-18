@@ -1,0 +1,46 @@
+name: Download Release VSIXs
+description: Download VSIX assets from a GitHub release and determine its release type
+
+inputs:
+  release-tag:
+    description: GitHub release tag containing the VSIX assets
+    required: true
+
+outputs:
+  pre-release:
+    description: Whether the GitHub release is a pre-release
+    value: ${{ steps.release-type.outputs.pre-release }}
+
+runs:
+  using: composite
+  steps:
+    - name: Download VSIXs
+      id: download
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RELEASE_TAG: ${{ inputs.release-tag }}
+      run: |
+        mkdir extensions
+        gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.vsix' --dir extensions
+
+        if ! find extensions -type f -name '*.vsix' -print -quit | grep -q .; then
+          echo "No VSIX files found in release $RELEASE_TAG"
+          exit 1
+        fi
+
+        echo 'Downloaded VSIX files:'
+        find extensions -type f -name '*.vsix'
+
+    - name: Detect release type
+      id: release-type
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RELEASE_TAG: ${{ inputs.release-tag }}
+      run: |
+        if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq .isPrerelease | grep -qx true; then
+          echo 'pre-release=true' >> "$GITHUB_OUTPUT"
+        else
+          echo 'pre-release=false' >> "$GITHUB_OUTPUT"
+        fi
