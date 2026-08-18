@@ -337,7 +337,7 @@ jobs:
           token: ${{ secrets.IDEE_GH_TOKEN || github.token }}
 
       - name: Setup Node.js and install dependencies
-        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@ph/W-23832274-pnpm-stable-promotion
+        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
           package-manager: ${{ inputs.package-manager }}
@@ -673,7 +673,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Check CI status
-        uses: salesforcecli/github-workflows/.github/actions/check-ci-status@ph/W-23832274-pnpm-stable-promotion
+        uses: salesforcecli/github-workflows/.github/actions/check-ci-status@main
         with:
           commit-sha: ${{ needs.prepare.outputs.ci-commit-sha }}
           token: ${{ secrets.IDEE_GH_TOKEN || github.token }}
@@ -738,7 +738,7 @@ jobs:
       - name: Repackage for stable
         id: repack
         if: inputs.slot == 'stable'
-        uses: salesforcecli/github-workflows/.github/actions/vscode/repackage-vsix-stable@ph/W-23832274-pnpm-stable-promotion
+        uses: salesforcecli/github-workflows/.github/actions/vscode/repackage-vsix-stable@main
         with:
           source-vsix-path: ${{ steps.source-vsix.outputs.vsix-file }}
           prerelease-version: ${{ needs.prepare.outputs.prerelease-version }}
@@ -795,7 +795,7 @@ jobs:
           echo "VSIX_PATH=$VSIX_FILE" >> $GITHUB_ENV
 
       - name: Publish to ${{ matrix.registry }}
-        uses: salesforcecli/github-workflows/.github/actions/publish-vsix@ph/W-23832274-pnpm-stable-promotion
+        uses: salesforcecli/github-workflows/.github/actions/publish-vsix@main
         with:
           vsix-path: ${{ env.VSIX_PATH }}
           publish-tool: ${{ matrix.publish-tool }}
@@ -1042,7 +1042,7 @@ jobs:
 
       - name: Refresh lockfile with retries
         if: steps.update-version.outputs.should-commit == 'true'
-        uses: salesforcecli/github-workflows/.github/actions/updateNodeLockfile@ph/W-23832274-pnpm-stable-promotion
+        uses: salesforcecli/github-workflows/.github/actions/updateNodeLockfile@main
         with:
           package-manager: ${{ inputs.package-manager }}
           package-manager-version: ${{ inputs.package-manager-version }}

@@ -128,7 +128,7 @@ jobs:
     needs: [check-publish]
     # CTC will only open when publishing to 'latest'
     if: inputs.ctc && needs.check-publish.outputs.published == 'false' && inputs.tag == 'latest'
-    uses: salesforcecli/github-workflows/.github/workflows/ctcOpen.yml@ph/W-23832274-pnpm-stable-promotion
+    uses: salesforcecli/github-workflows/.github/workflows/ctcOpen.yml@main
     with:
       githubTag: ${{ inputs.githubTag }}
       nodeVersion: ${{ inputs.nodeVersion }}
@@ -161,10 +161,10 @@ jobs:
           cache-dependency-path: ${{ inputs.cacheDependencyPath }}
       - name: Install dependencies with yarn
         if: inputs.packageManager == 'yarn'
-        uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@ph/W-23832274-pnpm-stable-promotion
+        uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
       - name: Install dependencies with npm
         if: inputs.packageManager == 'npm'
-        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@ph/W-23832274-pnpm-stable-promotion
+        uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
       - name: Install dependencies with pnpm
         if: inputs.packageManager == 'pnpm'
         uses: salesforcecli/github-workflows/.github/actions/retry@main
@@ -224,7 +224,7 @@ jobs:
   ctcCloseSuccess:
     needs: [ctc-open, npm-publish]
     if: needs.ctc-open.result == 'success' && needs.npm-publish.result == 'success' && needs.ctc-open.outputs.changeCaseId
-    uses: salesforcecli/github-workflows/.github/workflows/ctcClose.yml@ph/W-23832274-pnpm-stable-promotion
+    uses: salesforcecli/github-workflows/.github/workflows/ctcClose.yml@main
     secrets: inherit
     with:
       changeCaseId: ${{needs.ctc-open.outputs.changeCaseId}}
@@ -236,7 +236,7 @@ jobs:
   ctcCloseFail:
     needs: [ctc-open, npm-publish]
     if: always() && inputs.ctc && needs.ctc-open.outputs.changeCaseId && (needs.ctc-open.result != 'success' || needs.npm-publish.result != 'success')
-    uses: salesforcecli/github-workflows/.github/workflows/ctcClose.yml@ph/W-23832274-pnpm-stable-promotion
+    uses: salesforcecli/github-workflows/.github/workflows/ctcClose.yml@main
     secrets: inherit
     with:
       changeCaseId: ${{ needs.ctc-open.outputs.changeCaseId }}
