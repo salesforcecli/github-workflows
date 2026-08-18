@@ -1,5 +1,5 @@
 name: npm-install-with-retries
-description: 'wraps npm install with retries/timeout to handle network failures'
+description: 'Wraps npm ci with retries and timeouts. New workflows should use setupNodeAndInstall for package-manager-agnostic installation.'
 inputs:
   ignore-scripts:
     default: 'false'

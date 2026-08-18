@@ -14,7 +14,8 @@ name: Manual Publish VS Code Extension
 #         vsix-name-pattern: 'apex-language-server-extension-*.vsix'
 #         version-tag: 'apex-language-server-extension-v0.5.3-nightly.20260301'  # OR source-run-id
 #         slot: 'pre-release'  # or 'stable'
-#         registries: 'all'  # or 'vsce' or 'ovsx'
+#         registries: 'all'  # or 'vsce', 'ovsx', or 'none'
+#         publish-web-vsix: 'true'  # publish the web artifact to CBWeb
 #         exclude-web-vsix: 'true'
 #         extensions-root: 'packages'
 #         dry-run: 'false'
@@ -22,14 +23,13 @@ name: Manual Publish VS Code Extension
 #
 # Requirements - calling repository must have:
 #   - Secrets: IDEE_GH_TOKEN, VSCE_PERSONAL_ACCESS_TOKEN, IDEE_OVSX_PAT
-#   - Action: ./.github/actions/npm-install-with-retries (custom npm install with retry logic)
-#   - Action: ./.github/actions/check-ci-status (validates CI checks passed before publish)
-#   - Action: ./.github/actions/repackage-vsix-stable (repackages pre-release VSIX as stable)
-#   - Action: ./.github/actions/publish-vsix (publishes to VS Code Marketplace and/or Open VSX)
+#   - For CBWeb: MARKETPLACE_DEPLOY_TOKEN and MARKETPLACE_URL variable
+#   - The package manager and lockfile inputs must match the caller repository.
+#   - The shared actions in this repository are resolved from the workflow branch.
 #   - Environment: manual-publish-gate (with required reviewers for approval)
 #
-# Note: This workflow uses local actions from the calling repository. For a fully self-contained
-# workflow that doesn't require local actions, use vscode-promote-prerelease.yml instead.
+# The caller supplies credentials and repository-specific paths; action implementations are
+# resolved from this repository so callers do not need duplicate composite actions.
 
 on:
   workflow_call:
@@ -57,9 +57,14 @@ on:
         required: true
         type: string
       registries:
-        description: "Registries to publish to (all, vsce, ovsx)"
+        description: "Public registries to publish to (all, vsce, ovsx, none)"
         required: false
         default: "all"
+        type: string
+      publish-web-vsix:
+        description: "Publish the web VSIX to the CBWeb internal marketplace"
+        required: false
+        default: "false"
         type: string
       target-stable-version:
         description: "Optional stable version override (e.g., 0.6.1). Must be valid semver with EVEN minor. Only applies when slot is stable. Required when using source-run-id with slot stable."
@@ -92,9 +97,9 @@ on:
         default: "vsix-packages"
         type: string
       required-ci-checks:
-        description: 'Comma-separated list of required CI check names (default: "CI Complete, Package / Package, Test Quality (ubuntu-latest, lts/*)")'
+        description: 'JSON array of required CI check names'
         required: false
-        default: "CI Complete, Package / Package, Test Quality (ubuntu-latest, lts/*)"
+        default: '["CI Complete","Package / Package","Test Quality (ubuntu-latest, lts/*)"]'
         type: string
       dry-run:
         description: "Run in dry-run mode (no actual publishing or tagging)"
@@ -105,6 +110,31 @@ on:
         description: "Node.js version to use"
         required: false
         default: "22.x"
+        type: string
+      package-manager:
+        description: "Package manager to use: npm, pnpm, or yarn"
+        required: false
+        default: "npm"
+        type: string
+      package-manager-version:
+        description: "pnpm version to use when package-manager is pnpm"
+        required: false
+        default: "10"
+        type: string
+      cache-dependency-path:
+        description: "Path to the package manager lockfile"
+        required: false
+        default: "package-lock.json"
+        type: string
+      lockfile-path:
+        description: "Single lockfile path to update and commit with the stable version"
+        required: false
+        default: "package-lock.json"
+        type: string
+      install-command:
+        description: "Command used to install dependencies"
+        required: false
+        default: "npm ci"
         type: string
   workflow_dispatch:
     inputs:
@@ -143,6 +173,15 @@ on:
           - all
           - vsce
           - ovsx
+          - none
+      publish-web-vsix:
+        description: "Publish the web VSIX to the CBWeb internal marketplace"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
       target-stable-version:
         description: "Optional stable version override"
         required: false
@@ -187,6 +226,32 @@ on:
         required: false
         default: "22.x"
         type: string
+      package-manager:
+        description: "Package manager to use: npm, pnpm, or yarn"
+        required: false
+        default: "npm"
+        type: choice
+        options: [npm, pnpm, yarn]
+      package-manager-version:
+        description: "pnpm version to use when package-manager is pnpm"
+        required: false
+        default: "10"
+        type: string
+      cache-dependency-path:
+        description: "Path to the package manager lockfile"
+        required: false
+        default: "package-lock.json"
+        type: string
+      lockfile-path:
+        description: "Single lockfile path to update and commit with the stable version"
+        required: false
+        default: "package-lock.json"
+        type: string
+      install-command:
+        description: "Command used to install dependencies"
+        required: false
+        default: "npm ci"
+        type: string
 
 concurrency:
   group: manual-publish
@@ -217,6 +282,14 @@ jobs:
           SOURCE_RUN_ID="${{ inputs.source-run-id }}"
           SKIP_QC="${{ inputs.skip-quality-checks }}"
           BYPASS="${{ inputs.confirm-bypass }}"
+          REGISTRIES="${{ inputs.registries }}"
+          PUBLISH_WEB_VSIX="${{ inputs.publish-web-vsix }}"
+          SLOT="${{ inputs.slot }}"
+
+          case "$REGISTRIES" in
+            all|vsce|ovsx|none) ;;
+            *) echo "ERROR: registries must be all, vsce, ovsx, or none."; exit 1 ;;
+          esac
 
           # Exactly one source must be provided
           if [ -z "$VERSION_TAG" ] && [ -z "$SOURCE_RUN_ID" ]; then
@@ -225,6 +298,16 @@ jobs:
           fi
           if [ -n "$VERSION_TAG" ] && [ -n "$SOURCE_RUN_ID" ]; then
             echo "ERROR: version-tag and source-run-id are mutually exclusive."
+            exit 1
+          fi
+
+          if [ "$REGISTRIES" = "none" ] && [ "$PUBLISH_WEB_VSIX" != "true" ]; then
+            echo "ERROR: registries=none requires publish-web-vsix=true."
+            exit 1
+          fi
+
+          if [ "$PUBLISH_WEB_VSIX" = "true" ] && [ "$SLOT" != "pre-release" ]; then
+            echo "ERROR: publish-web-vsix currently supports only the pre-release slot."
             exit 1
           fi
 
@@ -251,20 +334,21 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          token: ${{ secrets.IDEE_GH_TOKEN }}
+          token: ${{ secrets.IDEE_GH_TOKEN || github.token }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup Node.js and install dependencies
+        uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
-
-      - name: Install dependencies
-        uses: ./.github/actions/npm-install-with-retries
+          package-manager: ${{ inputs.package-manager }}
+          package-manager-version: ${{ inputs.package-manager-version }}
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
+          install-command: ${{ inputs.install-command }}
 
       - name: Resolve source and compute versions
         id: resolve
         env:
-          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN || github.token }}
           VERSION_TAG: ${{ inputs.version-tag }}
           SOURCE_RUN_ID: ${{ inputs.source-run-id }}
           SLOT: ${{ inputs.slot }}
@@ -445,23 +529,32 @@ jobs:
         id: ci-commit
         if: inputs.skip-quality-checks != 'true'
         env:
-          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN || github.token }}
           REPO: ${{ github.repository }}
           START_SHA: ${{ steps.resolve.outputs.commit-sha }}
+          REQUIRED_CHECKS: ${{ inputs.required-ci-checks }}
         run: |
           MAX_DEPTH=20
           SHA="$START_SHA"
           CI_SHA=""
 
           for i in $(seq 1 "$MAX_DEPTH"); do
-            CONCLUSION=$(gh api "repos/$REPO/commits/$SHA/check-runs" --paginate \
-              --jq '[.check_runs[] | select(.name == "CI Complete")] | .[0].conclusion // empty' 2>/dev/null || echo "")
-            if [ "$CONCLUSION" = "success" ]; then
+            CHECK_RUNS=$(gh api "repos/$REPO/commits/$SHA/check-runs" --paginate 2>/dev/null || echo "")
+            MISSING_OR_FAILED=""
+            while IFS= read -r CHECK_NAME; do
+              CONCLUSION=$(echo "$CHECK_RUNS" | jq -r --arg name "$CHECK_NAME" \
+                '[.check_runs[] | select(.name == $name)] | .[0].conclusion // empty')
+              if [ "$CONCLUSION" != "success" ]; then
+                MISSING_OR_FAILED="${MISSING_OR_FAILED}${MISSING_OR_FAILED:+, }${CHECK_NAME} (${CONCLUSION:-none})"
+              fi
+            done < <(jq -r '.[]' <<< "$REQUIRED_CHECKS")
+
+            if [ -z "$MISSING_OR_FAILED" ]; then
               CI_SHA="$SHA"
               echo "Found CI-tested ancestor at depth $((i - 1)): $CI_SHA"
               break
             fi
-            echo "  $SHA: no successful 'CI Complete' (conclusion='${CONCLUSION:-none}') — walking to parent"
+            echo "  $SHA: required checks not successful: $MISSING_OR_FAILED — walking to parent"
             PARENT=$(git rev-parse "${SHA}^" 2>/dev/null || echo "")
             if [ -z "$PARENT" ]; then
               echo "Reached root of history without a CI-tested commit."
@@ -471,7 +564,7 @@ jobs:
           done
 
           if [ -z "$CI_SHA" ]; then
-            echo "ERROR: No ancestor with a successful 'CI Complete' check found within $MAX_DEPTH commits of $START_SHA."
+            echo "ERROR: No ancestor with successful required checks ('$REQUIRED_CHECKS') found within $MAX_DEPTH commits of $START_SHA."
             echo "Cannot verify CI status — failing to prevent untested promotion. Use skip-quality-checks=true to bypass."
             exit 1
           fi
@@ -580,10 +673,10 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Check CI status
-        uses: ./.github/actions/check-ci-status
+        uses: salesforcecli/github-workflows/.github/actions/check-ci-status@main
         with:
           commit-sha: ${{ needs.prepare.outputs.ci-commit-sha }}
-          token: ${{ secrets.IDEE_GH_TOKEN }}
+          token: ${{ secrets.IDEE_GH_TOKEN || github.token }}
           required-checks: ${{ inputs.required-ci-checks }}
 
   # ── gate ───────────────────────────────────────────────────────────────────
@@ -612,6 +705,12 @@ jobs:
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
 
+      - name: Setup pnpm
+        if: inputs.package-manager == 'pnpm'
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ inputs.package-manager-version }}
+
       - name: Download source VSIX
         uses: actions/download-artifact@v8
         with:
@@ -639,7 +738,7 @@ jobs:
       - name: Repackage for stable
         id: repack
         if: inputs.slot == 'stable'
-        uses: ./.github/actions/repackage-vsix-stable
+        uses: salesforcecli/github-workflows/.github/actions/vscode/repackage-vsix-stable@main
         with:
           source-vsix-path: ${{ steps.source-vsix.outputs.vsix-file }}
           prerelease-version: ${{ needs.prepare.outputs.prerelease-version }}
@@ -663,7 +762,7 @@ jobs:
   # ── publish ────────────────────────────────────────────────────────────────
   publish:
     needs: [prepare, repackage]
-    if: always() && needs.prepare.result == 'success' && needs.repackage.result == 'success'
+    if: always() && inputs.registries != 'none' && needs.prepare.result == 'success' && needs.repackage.result == 'success'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -676,9 +775,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
-
-      - name: Install dependencies
-        uses: ./.github/actions/npm-install-with-retries
 
       - name: Download VSIX
         uses: actions/download-artifact@v8
@@ -699,7 +795,7 @@ jobs:
           echo "VSIX_PATH=$VSIX_FILE" >> $GITHUB_ENV
 
       - name: Publish to ${{ matrix.registry }}
-        uses: ./.github/actions/publish-vsix
+        uses: salesforcecli/github-workflows/.github/actions/publish-vsix@main
         with:
           vsix-path: ${{ env.VSIX_PATH }}
           publish-tool: ${{ matrix.publish-tool }}
@@ -708,6 +804,50 @@ jobs:
         env:
           VSCE_PERSONAL_ACCESS_TOKEN: ${{ secrets.VSCE_PERSONAL_ACCESS_TOKEN }}
           OVSX_PAT: ${{ secrets.IDEE_OVSX_PAT }}
+
+  publish-to-cbweb-marketplace:
+    name: Publish to CBWeb Internal Marketplace
+    needs: [prepare, gate]
+    if: always() && inputs.publish-web-vsix == 'true' && needs.prepare.result == 'success' && needs.gate.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download source VSIX artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: source-vsix
+          path: ./vsix-artifacts
+
+      - name: Find web VSIX
+        id: web-vsix
+        run: |
+          mapfile -t VSIX_FILES < <(find ./vsix-artifacts -type f -name '*-web-*.vsix')
+          if [ "${#VSIX_FILES[@]}" -ne 1 ]; then
+            echo "Expected exactly one web VSIX artifact, found ${#VSIX_FILES[@]}"
+            exit 1
+          fi
+          echo "vsix_file=${VSIX_FILES[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish web VSIX to CBWeb internal marketplace
+        env:
+          DRY_RUN: ${{ inputs.dry-run || 'false' }}
+          MARKETPLACE_URL: ${{ vars.MARKETPLACE_URL }}
+          MARKETPLACE_DEPLOY_TOKEN: ${{ secrets.MARKETPLACE_DEPLOY_TOKEN }}
+          VSIX_FILE: ${{ steps.web-vsix.outputs.vsix_file }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "DRY RUN: Would publish $VSIX_FILE to CBWeb marketplace"
+            exit 0
+          fi
+
+          if [ -z "$MARKETPLACE_URL" ] || [ -z "$MARKETPLACE_DEPLOY_TOKEN" ]; then
+            echo "CBWeb marketplace credentials are required for live publishing"
+            exit 1
+          fi
+
+          curl --fail-with-body \
+            -X POST "${MARKETPLACE_URL}/api/internal/publish" \
+            -H "Authorization: Bearer ${MARKETPLACE_DEPLOY_TOKEN}" \
+            -F "vsix=@${VSIX_FILE}"
 
   # ── create-github-release ──────────────────────────────────────────────────
   create-github-release:
@@ -719,7 +859,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          token: ${{ secrets.IDEE_GH_TOKEN }}
+          token: ${{ secrets.IDEE_GH_TOKEN || github.token }}
 
       - name: Download VSIX
         uses: actions/download-artifact@v8
@@ -729,7 +869,7 @@ jobs:
 
       - name: Create GitHub release for stable version
         env:
-          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN || github.token }}
           STABLE_VERSION: ${{ needs.prepare.outputs.stable-version }}
           PRERELEASE_VERSION: ${{ needs.prepare.outputs.prerelease-version }}
           SOURCE_TYPE: ${{ needs.prepare.outputs.source-type }}
@@ -783,15 +923,15 @@ jobs:
 
   # ── tag-published ──────────────────────────────────────────────────────────
   tag-published:
-    needs: [prepare, publish, create-github-release]
-    if: always() && needs.publish.result == 'success' && (inputs.slot == 'pre-release' || needs.create-github-release.result == 'success')
+    needs: [prepare, gate, publish, publish-to-cbweb-marketplace, create-github-release]
+    if: always() && inputs.registries != 'none' && needs.prepare.result == 'success' && needs.gate.result == 'success' && needs.publish.result == 'success' && (needs.publish-to-cbweb-marketplace.result == 'success' || needs.publish-to-cbweb-marketplace.result == 'skipped') && (inputs.slot == 'pre-release' || needs.create-github-release.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          token: ${{ secrets.IDEE_GH_TOKEN }}
+          token: ${{ secrets.IDEE_GH_TOKEN || github.token }}
 
       - name: Create tracking tag
         env:
@@ -800,7 +940,7 @@ jobs:
           STABLE_VERSION: ${{ needs.prepare.outputs.stable-version }}
           COMMIT_SHA: ${{ needs.prepare.outputs.commit-sha }}
           DRY_RUN: ${{ inputs.dry-run || 'false' }}
-          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN || github.token }}
           EXTENSION_NAME: ${{ inputs.extension-name }}
         run: |
           if [ "$SLOT" = "stable" ]; then
@@ -829,8 +969,8 @@ jobs:
 
   # ── commit-stable-version ────────────────────────────────────────────────
   commit-stable-version:
-    needs: [prepare, publish, create-github-release, tag-published]
-    if: needs.publish.result == 'success' && inputs.slot == 'stable'
+    needs: [prepare, publish, publish-to-cbweb-marketplace, create-github-release, tag-published]
+    if: needs.publish.result == 'success' && needs.publish-to-cbweb-marketplace.result == 'skipped' && inputs.slot == 'stable'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main
@@ -838,18 +978,19 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-          token: ${{ secrets.IDEE_GH_TOKEN }}
+          token: ${{ secrets.IDEE_GH_TOKEN || github.token }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
 
-      - name: Commit stable version bump to main
+      - name: Update stable version
+        id: update-version
         env:
           STABLE_VERSION: ${{ needs.prepare.outputs.stable-version }}
           DRY_RUN: ${{ inputs.dry-run || 'false' }}
-          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN || github.token }}
           EXTENSION_NAME: ${{ inputs.extension-name }}
           EXTENSIONS_ROOT: ${{ inputs.extensions-root }}
         run: |
@@ -876,11 +1017,13 @@ jobs:
           ')
           if [ "$IS_GT" != "yes" ]; then
             echo "Skipping commit-back: main ($CURRENT_VERSION) is already >= stable ($STABLE_VERSION)"
+            echo "should-commit=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           if [ "$DRY_RUN" = "true" ]; then
             echo "DRY RUN: Would set $PKG_DIR to $STABLE_VERSION and commit to main"
+            echo "should-commit=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -890,12 +1033,35 @@ jobs:
 
           ( cd "$PKG_DIR" && npm version "$STABLE_VERSION" --no-git-tag-version )
 
-          npm install --package-lock-only --ignore-scripts
+          git add "$PKG_DIR/package.json"
+          if git diff --cached --quiet -- "$PKG_DIR/package.json"; then
+            echo "Package version was not updated: $PKG_DIR/package.json"
+            exit 1
+          fi
+          echo "should-commit=true" >> "$GITHUB_OUTPUT"
 
-          git add "$PKG_DIR/package.json" package-lock.json
-          if git diff --staged --quiet; then
-            echo "No version change to commit - skipping (idempotent rerun)"
-            exit 0
+      - name: Refresh lockfile with retries
+        if: steps.update-version.outputs.should-commit == 'true'
+        uses: salesforcecli/github-workflows/.github/actions/updateNodeLockfile@main
+        with:
+          package-manager: ${{ inputs.package-manager }}
+          package-manager-version: ${{ inputs.package-manager-version }}
+          lockfile-path: ${{ inputs.lockfile-path }}
+
+      - name: Commit stable version bump
+        if: steps.update-version.outputs.should-commit == 'true'
+        env:
+          STABLE_VERSION: ${{ needs.prepare.outputs.stable-version }}
+          EXTENSION_NAME: ${{ inputs.extension-name }}
+          EXTENSIONS_ROOT: ${{ inputs.extensions-root }}
+          LOCKFILE_PATH: ${{ inputs.lockfile-path }}
+        run: |
+          set -euo pipefail
+          git add "$LOCKFILE_PATH"
+          if [ -n "$(git diff --name-only)" ]; then
+            echo "Lockfile refresh produced unstaged changes:"
+            git diff --name-only
+            exit 1
           fi
 
           git commit -m "chore: set stable version $STABLE_VERSION [skip ci]"

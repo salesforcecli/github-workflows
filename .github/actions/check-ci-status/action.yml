@@ -12,7 +12,7 @@ inputs:
     required: true
   required-checks:
     description: >
-      Comma-separated list of check names that must have succeeded.
+      JSON array of check names that must have succeeded.
       If empty, all non-skipped check-runs must have conclusion "success".
     required: false
     default: ''
@@ -49,10 +49,13 @@ runs:
         FAILED=0
 
         if [ -n "$REQUIRED_CHECKS" ]; then
+          if ! jq -e 'type == "array"' <<< "$REQUIRED_CHECKS" >/dev/null; then
+            echo "ERROR: required-checks must be a JSON array"
+            exit 1
+          fi
+
           # Only validate the specified checks
-          IFS=',' read -ra CHECKS <<< "$REQUIRED_CHECKS"
-          for CHECK in "${CHECKS[@]}"; do
-            CHECK=$(echo "$CHECK" | xargs)  # trim whitespace
+          while IFS= read -r CHECK; do
 
             # Grab the latest run for this name (check-runs are newest-first per name).
             MATCH=$(echo "$CHECK_RUNS" | jq -c --arg name "$CHECK" \
@@ -76,7 +79,7 @@ runs:
             else
               echo "PASS: required check '$CHECK' succeeded"
             fi
-          done
+          done < <(jq -r '.[]' <<< "$REQUIRED_CHECKS")
         else
           # Validate all non-skipped check-runs
           while IFS= read -r RUN; do

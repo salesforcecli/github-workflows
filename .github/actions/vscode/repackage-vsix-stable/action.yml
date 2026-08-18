@@ -1,0 +1,72 @@
+name: "Repackage VSIX for Stable"
+description: >
+  Repackage a pre-release VSIX as a stable build by repacking its extension
+  contents with vsce.
+
+inputs:
+  source-vsix-path:
+    description: "Path to the source pre-release VSIX"
+    required: true
+  prerelease-version:
+    description: "Current pre-release version, used for logging"
+    required: true
+  stable-version:
+    description: "Stable version to stamp into the repackaged VSIX"
+    required: true
+  output-dir:
+    description: "Directory for the repackaged VSIX"
+    required: false
+    default: "./vsix-artifacts"
+
+outputs:
+  vsix-path:
+    description: "Path to the repackaged stable VSIX"
+    value: ${{ steps.repack.outputs.vsix-path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Repackage VSIX with stable version
+      id: repack
+      shell: bash
+      env:
+        SOURCE_VSIX: ${{ inputs.source-vsix-path }}
+        PRERELEASE_VERSION: ${{ inputs.prerelease-version }}
+        STABLE_VERSION: ${{ inputs.stable-version }}
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+      run: |
+        set -euo pipefail
+        echo "Repackaging VSIX via vsce: $PRERELEASE_VERSION -> $STABLE_VERSION"
+
+        if [ ! -f "$SOURCE_VSIX" ]; then
+          echo "::error::Source VSIX not found: $SOURCE_VSIX"
+          exit 1
+        fi
+
+        WORK_DIR="./vsix-repack"
+        rm -rf "$WORK_DIR"
+        mkdir -p "$WORK_DIR" "$OUTPUT_DIR"
+        unzip -q "$SOURCE_VSIX" -d "$WORK_DIR"
+
+        PKG_JSON="$WORK_DIR/extension/package.json"
+        if [ ! -f "$PKG_JSON" ]; then
+          echo "::error::extension/package.json not found in VSIX"
+          exit 1
+        fi
+
+        node -e "
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('$PKG_JSON', 'utf8'));
+          pkg.version = '$STABLE_VERSION';
+          delete pkg.preRelease;
+          fs.writeFileSync('$PKG_JSON', JSON.stringify(pkg, null, 2) + '\\n');
+        "
+
+        OUT_ABS="$(cd "$OUTPUT_DIR" && pwd)/apex-language-server-extension-${STABLE_VERSION}.vsix"
+        (
+          cd "$WORK_DIR/extension"
+          npx --yes @vscode/vsce@3 package --no-dependencies --out "$OUT_ABS"
+        )
+
+        echo "Created stable VSIX: $OUT_ABS"
+        echo "vsix-path=$OUT_ABS" >> "$GITHUB_OUTPUT"

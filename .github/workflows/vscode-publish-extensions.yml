@@ -348,6 +348,9 @@ jobs:
         run: |
           set -e
 
+          # workflow_dispatch string inputs can retain pasted whitespace.
+          BRANCH=$(echo "$BRANCH" | xargs)
+
           case "$PACKAGE_MANAGER" in
             pnpm) unexpected_lockfiles=(package-lock.json yarn.lock) ;;
             yarn) unexpected_lockfiles=(package-lock.json pnpm-lock.yaml) ;;
@@ -545,7 +548,7 @@ jobs:
       - name: Validate GitHub authentication
         if: inputs.dry-run != 'true' && github.event.inputs.dry-run != 'true'
         env:
-          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN || github.token }}
         run: |
           # Validate that required tokens are present
           if [ -z "$GH_TOKEN" ]; then
@@ -565,13 +568,15 @@ jobs:
       # Manually push the missing tags: git push origin --tags
       - name: Commit version bumps with tags
         env:
-          # Ensure GitHub CLI has proper authentication
-          GITHUB_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
+          # Use the IDE token when configured; otherwise retain GitHub's workflow token.
+          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN || github.token }}
           DRY_RUN: ${{ inputs.dry-run || github.event.inputs.dry-run || 'false' }}
           GIT_USER_NAME: ${{ inputs.git-user-name }}
           GIT_USER_EMAIL: ${{ inputs.git-user-email }}
           BRANCH: ${{ inputs.branch || github.ref_name }}
         run: |
+          BRANCH=$(echo "$BRANCH" | xargs)
+
           if [ "$DRY_RUN" = "true" ]; then
             echo "🔄 DRY RUN: Would commit and push version bumps..."
             echo "📋 DRY RUN: Changes that would be committed:"
@@ -599,8 +604,8 @@ jobs:
             export GIT_COMMITTER_NAME="$GIT_USER_NAME"
             export GIT_COMMITTER_EMAIL="$GIT_USER_EMAIL"
 
-            # Configure git to use the PAT for authentication
-            git remote set-url origin https://x-access-token:${{ secrets.IDEE_GH_TOKEN }}@github.com/${{ github.repository }}.git
+            # Configure git to use the effective workflow token for authentication.
+            git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
 
             # Add all changes
             # Note: git add . respects .gitignore, so ignored files won't be added
@@ -964,7 +969,7 @@ jobs:
 
       - name: Create GitHub releases
         env:
-          GITHUB_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN || github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
           IS_NIGHTLY: ${{ inputs.nightly && 'true' || 'false' }}
@@ -976,6 +981,8 @@ jobs:
           EXTENSIONS_ROOT: ${{ inputs.extensions-root || 'packages' }}
           EXCLUDE_WEB: ${{ inputs.exclude-web-vsix || 'false' }}
         run: |
+          BRANCH=$(echo "$BRANCH" | xargs)
+
           echo "Mode: $([ "$DRY_RUN" = "true" ] && echo "DRY RUN" || echo "LIVE")"
           echo "Creating GitHub releases..."
 
@@ -1205,6 +1212,7 @@ jobs:
         if: inputs.dry-run != 'true' && github.event.inputs.dry-run != 'true' && needs.publish.result == 'success'
         uses: slackapi/slack-github-action@v3.0.3
         with:
+          webhook-type: incoming-webhook
           payload: |
             {
               "text": "${{ inputs.slack-notification-title }}",
@@ -1338,6 +1346,7 @@ jobs:
         if: inputs.dry-run != 'true' && github.event.inputs.dry-run != 'true' && (needs.publish.result == 'failure' || needs.bump-versions.result == 'failure' || needs.package.result == 'failure')
         uses: slackapi/slack-github-action@v3.0.3
         with:
+          webhook-type: incoming-webhook
           payload: |
             {
               "text": "❌ VS Code Extension Release Failed!",

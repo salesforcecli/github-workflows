@@ -52,9 +52,19 @@ on:
         required: true
         type: string
       packageManager:
-        description: the package manager to use.  Defaults to yarn, but can be set to npm
+        description: the package manager to use. Defaults to yarn; supports npm, pnpm, or yarn
         required: false
         default: yarn
+        type: string
+      packageManagerVersion:
+        description: pnpm version to use when packageManager is pnpm
+        required: false
+        default: '10'
+        type: string
+      cacheDependencyPath:
+        description: path to the package manager lockfile; defaults to yarn.lock, so npm and pnpm callers must override it
+        required: false
+        default: yarn.lock
         type: string
       vulnerabilityCheck:
         description: if true, checks for known vulnerable package versions
@@ -81,8 +91,8 @@ jobs:
           ref: ${{ inputs.githubTag }}
       - name: Validate package manager
         run: |
-          if [[ "$INPUTS_PACKAGE_MANAGER" != "yarn" && "$INPUTS_PACKAGE_MANAGER" != "npm" ]]; then
-            echo "Error: packageManager must be 'yarn' or 'npm', got '$INPUTS_PACKAGE_MANAGER'"
+          if [[ "$INPUTS_PACKAGE_MANAGER" != "yarn" && "$INPUTS_PACKAGE_MANAGER" != "npm" && "$INPUTS_PACKAGE_MANAGER" != "pnpm" ]]; then
+            echo "Error: packageManager must be 'npm', 'pnpm', or 'yarn', got '$INPUTS_PACKAGE_MANAGER'"
             exit 1
           fi
       - uses: actions/setup-node@v4
@@ -122,6 +132,9 @@ jobs:
     with:
       githubTag: ${{ inputs.githubTag }}
       nodeVersion: ${{ inputs.nodeVersion }}
+      package-manager: ${{ inputs.packageManager }}
+      package-manager-version: ${{ inputs.packageManagerVersion }}
+      cache-dependency-path: ${{ inputs.cacheDependencyPath }}
     secrets: inherit
 
   npm-publish:
@@ -136,16 +149,27 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.githubTag }}
+      - name: Setup pnpm
+        if: inputs.packageManager == 'pnpm'
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ inputs.packageManagerVersion }}
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: ${{ inputs.packageManager }}
+          cache-dependency-path: ${{ inputs.cacheDependencyPath }}
       - name: Install dependencies with yarn
         if: inputs.packageManager == 'yarn'
         uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
       - name: Install dependencies with npm
         if: inputs.packageManager == 'npm'
         uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
+      - name: Install dependencies with pnpm
+        if: inputs.packageManager == 'pnpm'
+        uses: salesforcecli/github-workflows/.github/actions/retry@main
+        with:
+          command: pnpm install --frozen-lockfile
       - name: Vulnerability check
         if: inputs.vulnerabilityCheck
         # Check for known vulnerable packages from the following supply chain attacks:
@@ -205,6 +229,9 @@ jobs:
     with:
       changeCaseId: ${{needs.ctc-open.outputs.changeCaseId}}
       nodeVersion: ${{ inputs.nodeVersion }}
+      package-manager: ${{ inputs.packageManager }}
+      package-manager-version: ${{ inputs.packageManagerVersion }}
+      cache-dependency-path: ${{ inputs.cacheDependencyPath }}
 
   ctcCloseFail:
     needs: [ctc-open, npm-publish]
@@ -215,3 +242,6 @@ jobs:
       changeCaseId: ${{ needs.ctc-open.outputs.changeCaseId }}
       nodeVersion: ${{ inputs.nodeVersion }}
       status: Not Implemented
+      package-manager: ${{ inputs.packageManager }}
+      package-manager-version: ${{ inputs.packageManagerVersion }}
+      cache-dependency-path: ${{ inputs.cacheDependencyPath }}

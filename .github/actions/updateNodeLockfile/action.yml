@@ -1,0 +1,60 @@
+name: Update Node lockfile
+description: Refreshes an npm, pnpm, or Yarn lockfile with retries and without lifecycle scripts.
+inputs:
+  package-manager:
+    description: 'Package manager to use: npm, pnpm, or yarn.'
+    required: true
+  package-manager-version:
+    description: 'pnpm version to install when package-manager is pnpm.'
+    required: false
+    default: '10'
+  lockfile-path:
+    description: 'Path to the lockfile to refresh.'
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Validate package manager and lockfile
+      shell: bash
+      env:
+        PACKAGE_MANAGER: ${{ inputs.package-manager }}
+        LOCKFILE_PATH: ${{ inputs.lockfile-path }}
+      run: |
+        case "$PACKAGE_MANAGER" in
+          npm|pnpm|yarn) ;;
+          *) echo "Unsupported package manager: $PACKAGE_MANAGER"; exit 1 ;;
+        esac
+        [ -f "$LOCKFILE_PATH" ] || { echo "Lockfile not found: $LOCKFILE_PATH"; exit 1; }
+
+    - name: Setup pnpm
+      if: inputs.package-manager == 'pnpm'
+      uses: pnpm/action-setup@v4
+      with:
+        version: ${{ inputs.package-manager-version }}
+
+    - name: Resolve lockfile update command
+      id: command
+      shell: bash
+      env:
+        PACKAGE_MANAGER: ${{ inputs.package-manager }}
+        LOCKFILE_PATH: ${{ inputs.lockfile-path }}
+      run: |
+        LOCKFILE_DIR=$(dirname "$LOCKFILE_PATH")
+        case "$PACKAGE_MANAGER" in
+          npm) COMMAND="cd '$LOCKFILE_DIR' && npm install --package-lock-only --ignore-scripts" ;;
+          pnpm) COMMAND="cd '$LOCKFILE_DIR' && pnpm install --lockfile-only --ignore-scripts" ;;
+          yarn)
+            YARN_MAJOR=$(yarn --version | cut -d. -f1)
+            if [ "$YARN_MAJOR" -ge 2 ]; then
+              COMMAND="cd '$LOCKFILE_DIR' && YARN_ENABLE_IMMUTABLE_INSTALLS=false yarn install --mode=skip-build"
+            else
+              COMMAND="cd '$LOCKFILE_DIR' && yarn install --ignore-scripts"
+            fi
+            ;;
+        esac
+        echo "value=$COMMAND" >> "$GITHUB_OUTPUT"
+
+    - name: Refresh lockfile with retries
+      uses: salesforcecli/github-workflows/.github/actions/retry@main
+      with:
+        command: ${{ steps.command.outputs.value }}
