@@ -11,6 +11,7 @@ name: Promote Pre-release to Stable
 #         vsix-name-pattern: 'apex-language-server-extension-*.vsix'
 #         exclude-web-vsix: 'true'
 #         extensions-root: 'packages'
+#         required-ci-checks: '["CI Complete"]'
 #         dry-run: 'false'
 #       secrets: inherit
 #
@@ -18,7 +19,7 @@ name: Promote Pre-release to Stable
 #   - marketplace-prerelease-* tracking tags
 #   - Nightly tags matching v{version}-nightly.* pattern
 #   - GitHub releases for each nightly tag with VSIX file(s) attached
-#   - Passing CI checks (gate, tag-published)
+#   - Passing CI checks on the nightly candidate commit
 #   - Secrets: IDEE_GH_TOKEN, VSCE_PERSONAL_ACCESS_TOKEN, IDEE_OVSX_PAT
 #   - The shared actions in this repository are resolved from the workflow branch.
 #   - The package manager and lockfile inputs must match the caller repository.
@@ -51,6 +52,11 @@ on:
         description: 'Root directory for extensions (default: packages)'
         required: false
         default: 'packages'
+        type: string
+      required-ci-checks:
+        description: 'JSON array of CI check names required before promotion'
+        required: false
+        default: '["CI Complete"]'
         type: string
       dry-run:
         description: 'Run in dry-run mode (no actual publishing or tagging)'
@@ -110,6 +116,11 @@ on:
         description: 'Root directory for extensions (default: packages)'
         required: false
         default: 'packages'
+        type: string
+      required-ci-checks:
+        description: 'JSON array of CI check names required before promotion'
+        required: false
+        default: '["CI Complete"]'
         type: string
       dry-run:
         description: 'Run in dry-run mode (no actual publishing or tagging)'
@@ -261,13 +272,14 @@ jobs:
         with:
           commit-sha: ${{ needs.find-prerelease-candidate.outputs.commit-sha }}
           token: ${{ secrets.IDEE_GH_TOKEN }}
-          # Validate only the publish-pipeline checks that gate the candidate's quality.
+          # Validate only checks produced on the nightly candidate commit.
           # Without this, the action validates every check-run on the commit — including
           # this workflow's own `quality-gate` job, whose superseded historical runs can
           # carry a stale `failure` conclusion and block all future promotions.
-          # `gate` is the Manual Publish aggregate gate; `tag-published` confirms the
-          # nightly/pre-release artifact was successfully published for this commit.
-          required-checks: '["gate","tag-published"]'
+          # `CI Complete` is the aggregate release gate emitted by vscode-ci-template.
+          # The marketplace-prerelease tracking tag found above proves prerelease publication.
+          # Callers can override the CI check names for their repository.
+          required-checks: ${{ inputs.required-ci-checks }}
 
   repackage:
     needs: [find-prerelease-candidate, quality-gate]

@@ -685,6 +685,7 @@ jobs:
       min-tag-age-days: '7' # Nightly must be at least 7 days old
       vsix-name-pattern: 'my-extension-*.vsix' # Pattern to match VSIX files
       exclude-web-vsix: 'true' # Exclude *-web-* VSIX files
+      required-ci-checks: '["CI Complete"]'
       dry-run: 'false'
     secrets: inherit
 ```
@@ -694,6 +695,8 @@ jobs:
 - Nightly tags matching `v{version}-nightly.*` pattern (e.g., `v1.2.3-nightly.20260709`)
 - GitHub releases for each nightly tag with VSIX files attached
 - Passing CI checks on nightly commits
+
+`required-ci-checks` is a JSON array of check-run names that must pass on the nightly commit. It defaults to `["CI Complete"]`, the aggregate release gate emitted by `vscode-ci-template.yml`; set it to the matching checks from the calling repository's CI workflow.
 
 **How it works:**
 
@@ -718,6 +721,7 @@ jobs:
       vsix-name-pattern: 'my-extension-*.vsix'
       exclude-web-vsix: 'true'
       extensions-root: 'packages'
+      required-ci-checks: '["CI Complete"]'
       dry-run: 'false'
     secrets: inherit
 ```
@@ -726,6 +730,8 @@ jobs:
 
 - `marketplace-prerelease-*` tracking tags from previous promotions
 - Local actions in calling repository (see Prerequisites section above)
+
+`required-ci-checks` is a JSON array of check-run names that must pass on the nightly candidate commit. It defaults to `["CI Complete"]`, the aggregate release gate emitted by `vscode-ci-template.yml`; set it to the matching CI checks from the calling repository. The required `marketplace-prerelease-*` tracking tag is separate evidence that the prerelease marketplace publication completed.
 
 **Note:** This workflow requires local actions. For a fully self-contained alternative, use `vscode-promote-prerelease.yml`.
 
