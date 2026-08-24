@@ -26,9 +26,9 @@ on:
         default: '10'
         required: false
       cache-dependency-path:
-        description: Path to the calling repository's package manager lockfile
+        description: Path to the calling repository's package manager lockfile; auto-derived from package-manager if not set
         type: string
-        default: package-lock.json
+        default: ''
         required: false
 
 jobs:
@@ -47,7 +47,7 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: ${{ inputs.package-manager }}
-          cache-dependency-path: ${{ inputs.cache-dependency-path }}
+          cache-dependency-path: ${{ inputs.cache-dependency-path || (inputs.package-manager == 'yarn' && 'yarn.lock' || (inputs.package-manager == 'pnpm' && 'pnpm-lock.yaml' || 'package-lock.json')) }}
       - run: npm install -g @salesforce/change-case-management --omit=dev
       - id: ctc
         run: |
