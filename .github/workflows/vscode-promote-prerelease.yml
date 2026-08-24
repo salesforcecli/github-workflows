@@ -2,7 +2,11 @@ name: Promote Nightly to Pre-release
 
 # Promotes a vetted nightly build to pre-release on VS Code Marketplace and Open VSX.
 #
-# Usage:
+# Two modes:
+#   1. Auto-detect (default): finds oldest unpromoted nightly ≥ min-tag-age-days
+#   2. Specific tag: publishes a specific release tag (for emergency pre-releases)
+#
+# Usage - Auto-detect mode:
 #   jobs:
 #     promote:
 #       uses: salesforcecli/github-workflows/.github/workflows/vscode-promote-prerelease.yml@main
@@ -15,20 +19,33 @@ name: Promote Nightly to Pre-release
 #         dry-run: 'false'
 #       secrets: inherit
 #
+# Usage - Specific tag mode (emergency pre-releases):
+#   jobs:
+#     promote:
+#       uses: salesforcecli/github-workflows/.github/workflows/vscode-promote-prerelease.yml@main
+#       with:
+#         release-tag: 'v67.13.7-nightly.develop.20260820'  # specific tag to publish
+#         extension-name: 'apex-lsp-vscode-extension'
+#       secrets: inherit
+#
 # Requirements - calling repository must have:
 #   - Nightly tags matching *-nightly.* (e.g., v1.2.3-nightly.20260629)
 #   - GitHub releases for each nightly tag with VSIX file(s) attached
 #   - Passing CI checks on nightly commits
 #   - Secrets: IDEE_GH_TOKEN, VSCE_PERSONAL_ACCESS_TOKEN, IDEE_OVSX_PAT
 #
-# Workflow: finds oldest unpromoted nightly ≥ min-tag-age-days → verifies CI →
+# Workflow: finds eligible nightly (or uses release-tag) → verifies CI →
 #           downloads VSIX → publishes to both marketplaces → creates tracking tag
 
 on:
   workflow_call:
     inputs:
+      release-tag:
+        description: "Specific release tag to publish (e.g., v67.13.7-nightly.develop.20260820). Overrides min-tag-age-days auto-detection."
+        required: false
+        type: string
       min-tag-age-days:
-        description: "Minimum nightly age in days before eligible for promotion"
+        description: "Minimum nightly age in days before eligible for promotion (ignored if release-tag provided)"
         required: false
         default: "7"
         type: string
@@ -63,8 +80,12 @@ on:
         type: string
   workflow_dispatch:
     inputs:
+      release-tag:
+        description: "Specific release tag to publish (e.g., v67.13.7-nightly.develop.20260820). Overrides min-tag-age-days auto-detection."
+        required: false
+        type: string
       min-tag-age-days:
-        description: "Minimum nightly age in days before eligible for promotion (default: 7)"
+        description: "Minimum nightly age in days before eligible for promotion (default: 7, ignored if release-tag provided)"
         required: false
         default: "7"
         type: string
@@ -129,8 +150,27 @@ jobs:
       - name: Find eligible nightly
         id: find
         env:
+          RELEASE_TAG: ${{ inputs.release-tag || '' }}
           MIN_TAG_AGE_DAYS: ${{ inputs.min-tag-age-days || '7' }}
         run: |
+          # If specific release-tag provided, use it directly
+          if [ -n "$RELEASE_TAG" ]; then
+            echo "Using specific release tag: $RELEASE_TAG"
+
+            # Verify tag exists
+            if ! git rev-parse "$RELEASE_TAG" >/dev/null 2>&1; then
+              echo "::error::Release tag $RELEASE_TAG does not exist"
+              exit 1
+            fi
+
+            COMMIT_SHA=$(git rev-parse "$RELEASE_TAG^{commit}")
+            echo "nightly-tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+            echo "commit-sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+            echo "✓ Found release tag: $RELEASE_TAG (commit: $COMMIT_SHA)"
+            exit 0
+          fi
+
+          # Auto-detect mode: find nightly tags older than MIN_TAG_AGE_DAYS
           echo "Finding nightly tags older than $MIN_TAG_AGE_DAYS days..."
 
           # Get all nightly tags sorted by date (newest first)
