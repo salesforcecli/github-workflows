@@ -62,9 +62,9 @@ on:
         default: '10'
         type: string
       cacheDependencyPath:
-        description: path to the package manager lockfile; defaults to yarn.lock, so npm and pnpm callers must override it
+        description: path to the package manager lockfile; auto-derived from packageManager if not set
         required: false
-        default: yarn.lock
+        default: ''
         type: string
       vulnerabilityCheck:
         description: if true, checks for known vulnerable package versions
@@ -134,7 +134,7 @@ jobs:
       nodeVersion: ${{ inputs.nodeVersion }}
       package-manager: ${{ inputs.packageManager }}
       package-manager-version: ${{ inputs.packageManagerVersion }}
-      cache-dependency-path: ${{ inputs.cacheDependencyPath }}
+      cache-dependency-path: ${{ inputs.cacheDependencyPath || (inputs.packageManager == 'yarn' && 'yarn.lock' || (inputs.packageManager == 'pnpm' && 'pnpm-lock.yaml' || 'package-lock.json')) }}
     secrets: inherit
 
   npm-publish:
@@ -158,7 +158,7 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: ${{ inputs.packageManager }}
-          cache-dependency-path: ${{ inputs.cacheDependencyPath }}
+          cache-dependency-path: ${{ inputs.cacheDependencyPath || (inputs.packageManager == 'yarn' && 'yarn.lock' || (inputs.packageManager == 'pnpm' && 'pnpm-lock.yaml' || 'package-lock.json')) }}
       - name: Install dependencies with yarn
         if: inputs.packageManager == 'yarn'
         uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
@@ -231,7 +231,7 @@ jobs:
       nodeVersion: ${{ inputs.nodeVersion }}
       package-manager: ${{ inputs.packageManager }}
       package-manager-version: ${{ inputs.packageManagerVersion }}
-      cache-dependency-path: ${{ inputs.cacheDependencyPath }}
+      cache-dependency-path: ${{ inputs.cacheDependencyPath || (inputs.packageManager == 'yarn' && 'yarn.lock' || (inputs.packageManager == 'pnpm' && 'pnpm-lock.yaml' || 'package-lock.json')) }}
 
   ctcCloseFail:
     needs: [ctc-open, npm-publish]
@@ -244,4 +244,4 @@ jobs:
       status: Not Implemented
       package-manager: ${{ inputs.packageManager }}
       package-manager-version: ${{ inputs.packageManagerVersion }}
-      cache-dependency-path: ${{ inputs.cacheDependencyPath }}
+      cache-dependency-path: ${{ inputs.cacheDependencyPath || (inputs.packageManager == 'yarn' && 'yarn.lock' || (inputs.packageManager == 'pnpm' && 'pnpm-lock.yaml' || 'package-lock.json')) }}
