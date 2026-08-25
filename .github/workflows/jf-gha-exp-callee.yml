@@ -25,7 +25,10 @@ jobs:
               issue_number: Number(process.env.PR_NUMBER)
             });
             console.log(`COMMENT COUNT IS ${comments.length}`);
-            const commentsByBot = comments.filter(comment => {
+            const filterFn = (comment) => {
               return comment.user.type === "Bot"
+                && comment.body === "Comment added by a machine! Beep boop!"
+                && comment.reactions.eyes >= 0
             });
-            console.log(`FILTERED: ${JSON.stringify(commentsByBot, null, 2)}`);
+            const commentsAcknowledgedByUser = comments.filter(filterFn);
+            console.log(`NUMBER OF FILTER COMMENTS IS ${commentsAcknowledgedByUser.length}`);
