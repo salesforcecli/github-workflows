@@ -29,6 +29,6 @@ jobs:
               return comment.user.type === "Bot"
                 && comment.body === "Comment added by a machine! Beep boop!"
                 && comment.reactions.eyes >= 0
-            });
+            };
             const commentsAcknowledgedByUser = comments.filter(filterFn);
             console.log(`NUMBER OF FILTER COMMENTS IS ${commentsAcknowledgedByUser.length}`);
