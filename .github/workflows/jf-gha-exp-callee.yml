@@ -32,3 +32,4 @@ jobs:
             };
             const commentsAcknowledgedByUser = comments.filter(filterFn);
             console.log(`NUMBER OF FILTER COMMENTS IS ${commentsAcknowledgedByUser.length}`);
+            console.log(JSON.stringify(commentsAcknowledgedByUser, null, 2));
