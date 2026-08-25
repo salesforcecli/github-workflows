@@ -15,11 +15,13 @@ jobs:
     steps:
       - name: Add a comment to the PR
         uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
         with:
           script: |
-            const comments = await github.rest.issues.listComments({
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: ${{ inputs.pr_number }}
+              issue_number: Number(process.env.PR_NUMBER)
             });
             console.log(`COMMENT COUNT IS ${comments.length}`);
