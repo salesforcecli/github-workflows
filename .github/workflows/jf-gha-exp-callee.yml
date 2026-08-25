@@ -24,17 +24,11 @@ jobs:
               repo: context.repo.repo,
               issue_number: Number(process.env.PR_NUMBER)
             });
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: Number(process.env.PR_NUMBER),
-              body: 'DIFFERENT MESSAGE, BLEEP BLOOP'
-            });
             console.log(`COMMENT COUNT IS ${comments.length}`);
             const filterFn = (comment) => {
               return comment.user.type === "Bot"
                 && comment.body === "Comment added by a machine! Beep boop!"
-                && comment.reactions.eyes >= 0
+                && comment.reactions.eyes > 0
             };
             const commentsAcknowledgedByUser = comments.filter(filterFn);
             console.log(`NUMBER OF FILTER COMMENTS IS ${commentsAcknowledgedByUser.length}`);
