@@ -25,9 +25,7 @@ jobs:
               issue_number: Number(process.env.PR_NUMBER)
             });
             console.log(`COMMENT COUNT IS ${comments.length}`);
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: Number(process.env.PR_NUMBER),
-              body: 'Comment added by a machine! Beep boop!'
+            const commentsByBot = comments.filter(comment => {
+              return comment.user.type === "Bot"
             });
+            console.log(`FILTERED: ${JSON.stringify(commentsByBot, null, 2)}`);
