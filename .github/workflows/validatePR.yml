@@ -18,7 +18,7 @@ jobs:
         id: regex-match-gus-wi-body
         with:
           text: ${{ github.event.pull_request.body }}
-          regex: '(${{ steps.regex-match-gus-wi-title.outputs.match }})'
+          regex: '@(${{ steps.regex-match-gus-wi-title.outputs.match }})@'
           flags: gmi
 
       # Disabling GHA Run and Github Issue (for now) due to E360 lookup
