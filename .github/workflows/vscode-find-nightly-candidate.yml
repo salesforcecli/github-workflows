@@ -1,0 +1,94 @@
+name: Find Nightly Candidate
+
+# Reusable workflow to find eligible nightly tag for promotion
+# Used by repos to implement their own gate-check before calling vscode-promote-prerelease.yml
+
+on:
+  workflow_call:
+    inputs:
+      min-tag-age-days:
+        description: "Minimum nightly age in days before eligible for promotion"
+        required: false
+        default: "7"
+        type: string
+      release-tag:
+        description: "Specific release tag to use (overrides min-tag-age-days)"
+        required: false
+        type: string
+    outputs:
+      commit-sha:
+        description: "Commit SHA that the nightly tag points to"
+        value: ${{ jobs.find-nightly.outputs.commit-sha }}
+      nightly-tag:
+        description: "Nightly tag selected for promotion"
+        value: ${{ jobs.find-nightly.outputs.nightly-tag }}
+
+jobs:
+  find-nightly:
+    runs-on: ubuntu-latest
+    outputs:
+      commit-sha: ${{ steps.find.outputs.commit-sha }}
+      nightly-tag: ${{ steps.find.outputs.nightly-tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Find eligible nightly
+        id: find
+        env:
+          RELEASE_TAG: ${{ inputs.release-tag || '' }}
+          MIN_TAG_AGE_DAYS: ${{ inputs.min-tag-age-days || '7' }}
+        run: |
+          # If specific release-tag provided, use it directly
+          if [ -n "$RELEASE_TAG" ]; then
+            echo "Using specific release tag: $RELEASE_TAG"
+
+            if ! git rev-parse "$RELEASE_TAG" >/dev/null 2>&1; then
+              echo "❌ Release tag $RELEASE_TAG does not exist"
+              exit 1
+            fi
+
+            COMMIT_SHA=$(git rev-parse "$RELEASE_TAG^{commit}")
+            echo "nightly-tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+            echo "commit-sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+            echo "✅ Found release tag: $RELEASE_TAG (commit: $COMMIT_SHA)"
+            exit 0
+          fi
+
+          # Auto-detect mode: find nightly tags older than MIN_TAG_AGE_DAYS
+          echo "Finding nightly tags older than $MIN_TAG_AGE_DAYS days..."
+
+          NIGHTLY_TAGS=$(git tag -l '*-nightly.*' --sort=-creatordate)
+
+          if [ -z "$NIGHTLY_TAGS" ]; then
+            echo "❌ No nightly tags found"
+            exit 1
+          fi
+
+          CUTOFF_TIMESTAMP=$(date -u -d "$MIN_TAG_AGE_DAYS days ago" +%s 2>/dev/null || date -u -v-${MIN_TAG_AGE_DAYS}d +%s)
+
+          while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+
+            TAG_TIMESTAMP=$(git log -1 --format=%ct "$tag" 2>/dev/null)
+            [ -z "$TAG_TIMESTAMP" ] && continue
+
+            if [ "$TAG_TIMESTAMP" -lt "$CUTOFF_TIMESTAMP" ]; then
+              VERSION=$(echo "$tag" | grep -oP '\d+\.\d+\.\d+' | head -1)
+              PROMO_TAG="marketplace-prerelease-*-v${VERSION}"
+
+              if ! git tag -l "$PROMO_TAG" | grep -q .; then
+                SELECTED_TAG="$tag"
+                SELECTED_SHA=$(git rev-list -n 1 "$tag")
+                echo "nightly-tag=$SELECTED_TAG" >> $GITHUB_OUTPUT
+                echo "commit-sha=$SELECTED_SHA" >> $GITHUB_OUTPUT
+                echo "✅ Found eligible nightly: $SELECTED_TAG (SHA: $SELECTED_SHA)"
+                exit 0
+              fi
+            fi
+          done <<< "$NIGHTLY_TAGS"
+
+          echo "❌ No eligible nightly found (all nightlies either too new or already promoted)"
+          exit 1
