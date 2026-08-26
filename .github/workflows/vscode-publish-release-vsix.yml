@@ -26,7 +26,7 @@ jobs:
     steps:
       - name: Download release VSIXs
         id: release
-        uses: salesforcecli/github-workflows/.github/actions/vscode/download-release-vsix@03cb2583f2edf45cd7d2688f2a452ee29511229e
+        uses: salesforcecli/github-workflows/.github/actions/vscode/download-release-vsix@main
         with:
           release-tag: ${{ inputs.release-tag }}
 
