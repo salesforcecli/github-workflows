@@ -19,17 +19,31 @@ jobs:
           PR_NUMBER: ${{ inputs.pr_number }}
         with:
           script: |
+            const roboCommentBody = "This PR lacks any commits of the 'fix' or 'feat' type, and therefore will not trigger a release. To silence all further warnings, react to this warning comment (or any other) with the :eyes: emoji.";
+            const commits = await github.paginate(github.rest.pulls.listCommits, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: Number(process.env.PR_NUMBER),
+              per_page: 100
+            });
+            const hasFixOrFeatCommits = commits.some(c => {
+              return c.commit.message.startsWith('fix') || c.commit.message.startsWith('feat');
+            });
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: Number(process.env.PR_NUMBER)
             });
-            console.log(`COMMENT COUNT IS ${comments.length}`);
-            const filterFn = (comment) => {
-              return comment.user.type === "Bot"
-                && comment.body === "Comment added by a machine! Beep boop!"
+            const hasAcknowledgedRoboComment = comments.some(comment => {
+              return comment.user.type === 'Bot'
+                && comment.body === roboCommentBody
                 && comment.reactions.eyes > 0
-            };
-            const commentsAcknowledgedByUser = comments.filter(filterFn);
-            console.log(`NUMBER OF FILTER COMMENTS IS ${commentsAcknowledgedByUser.length}`);
-            console.log(JSON.stringify(commentsAcknowledgedByUser, null, 2));
+            });
+            if (!hasFixOrFeatCommits && !hasAcknowledgedRoboComment) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: Number(process.env.PR_NUMBER),
+                body: roboCommentBody
+              });
+            }
