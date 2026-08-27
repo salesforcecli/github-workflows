@@ -30,6 +30,8 @@ jobs:
       commit-sha: ${{ steps.find.outputs.commit-sha }}
       nightly-tag: ${{ steps.find.outputs.nightly-tag }}
     steps:
+      # Checks out the calling repository (not salesforcecli/github-workflows)
+      # Note: May need explicit token parameter if calling from private repos
       - name: Checkout
         uses: actions/checkout@v6
         with:
