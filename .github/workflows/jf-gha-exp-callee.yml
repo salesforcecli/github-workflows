@@ -8,16 +8,6 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - name: check merge settings
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          squash=$(gh api "repos/${{ github.repository }}" --jq '.allow_squash_merge')
-          echo "Squash merge enabled: $squash"
-          if [ "$squash" = "true" ]; then
-            echo "SQUASH IS ENABLED"
-            echo "squash_enabled=true" >> "$GITHUB_OUTPUT"
-          fi
       - name: Add a comment to the PR
         uses: actions/github-script@v7
         env:
@@ -28,7 +18,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
             });
-            console.log(`squashing? ${repo.allow_squash_merge)}`);
+            console.log(`squashing? ${repo.allow_squash_merge}`);
             core.info(`allow_squash_merge: ${repo.allow_squash_merge}`);
             core.setOutput('squash_enabled', repo.allow_squash_merge);
             const roboCommentBody = "This PR lacks any commits of the 'fix' or 'feat' type, and therefore will not trigger a release. To silence all further warnings, react to this warning comment (or any other) with the :eyes: emoji.";
