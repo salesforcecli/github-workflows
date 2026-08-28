@@ -51,7 +51,7 @@ jobs:
           
           # Determine which criteria were met/unmet based on the outputs we captured
           [[ '${{ steps.regex-match-gus-wi-title.outputs.match }}' == '' ]] && TITLE_WI=$FAIL || TITLE_WI=$PASS
-          [[ '${{ steps.regex.match-gus-wi-body.outputs.match }}' == '' ]] && BODY_WI=$FAIL || BODY_WI=$PASS
+          [[ '${{ steps.regex-match-gus-wi-body.outputs.match }}' == '' ]] && BODY_WI=$FAIL || BODY_WI=$PASS
           
           # Output criteria summary
           echo "::warning::PRs must meet the specified criteria.
@@ -71,7 +71,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         with:
           script: |
-            const roboCommentBody = "This PR lacks any commits of the 'fix' or 'feat' type, and therefore will not trigger a release. To silence all further warnings, react to this warning comment (or any other) with the :eyes: emoji.\n\nNOTE: If your repo uses squash commits, make sure to add the appropriate conventional commit prefix (e.g., \"fix:\", \"feat\:", \"chore:\", etc) in the squash commit message.";
+            const roboCommentBody = "This PR lacks any commits of the 'fix' or 'feat' type, and therefore will not trigger a release. To silence all further warnings, react to this warning comment (or any other) with the :eyes: emoji.\n\nNOTE: If your repo uses squash commits, make sure to add the appropriate conventional commit prefix (e.g., 'fix:', 'feat:', 'chore:', etc) in the squash commit message.";
             const commits = await github.paginate(github.rest.pulls.listCommits, {
               owner: context.repo.owner,
               repo: context.repo.repo,
