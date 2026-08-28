@@ -10,7 +10,7 @@ jobs:
         id: regex-match-gus-wi-title
         with:
           text: ${{ github.event.pull_request.title }}
-          regex: 'W-\d{7,8}'
+          regex: '(W-\d{7,})'
           flags: gmi
 
       - name: Find GUS Work Item in Body
@@ -18,7 +18,7 @@ jobs:
         id: regex-match-gus-wi-body
         with:
           text: ${{ github.event.pull_request.body }}
-          regex: '@W-\d{7,8}@'
+          regex: '@(${{ steps.regex-match-gus-wi-title.outputs.match }})@'
           flags: gmi
 
       # Disabling GHA Run and Github Issue (for now) due to E360 lookup
@@ -45,9 +45,60 @@ jobs:
           (github.event.pull_request.user.login != 'SF-CLI-BOT' || github.event.pull_request.user.login != 'svc-cli-bot') &&
           (steps.regex-match-gus-wi-title.outputs.match == '' || steps.regex-match-gus-wi-body.outputs.match == '')
         run: |
-          echo "::warning::PRs need to reference a GUS Work Item in both the PR title AND body. More details in the logs above.
-          - PR titles should start with a Work Item followed by a description, ex: W-12345678: My PR title
-          - PR bodies must include a Work Item wrapped in @s, ex: @W-12345678@ or [@W-12345678@](https://some-url)
-          - If you absolutely must skip this validation, add [skip-validate-pr] to the PR title or body"
+          # Define a checkmark and an x-mark as variables
+          PASS=$'\u2714'
+          FAIL=$'\u2715'
+          
+          # Determine which criteria were met/unmet based on the outputs we captured
+          [[ '${{ steps.regex-match-gus-wi-title.outputs.match }}' == '' ]] && TITLE_WI=$FAIL || TITLE_WI=$PASS
+          [[ '${{ steps.regex-match-gus-wi-body.outputs.match }}' == '' ]] && BODY_WI=$FAIL || BODY_WI=$PASS
+          
+          # Output criteria summary
+          echo "::warning::PRs must meet the specified criteria.
+          - [$TITLE_WI] PR Title must include a Work Item number
+          - [$BODY_WI] PR Body must include Work Item number from Title, wrapped in '@'s, ex: @W-12345678@
+          If you ABSOLUTELY MUST bypass these validations, include '[skip-validate-pr]' in the PR Title or Body."
           exit 1
 
+  notify-of-release-worthiness:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Add a comment to the PR
+        uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        with:
+          script: |
+            const roboCommentBody = "This PR lacks any commits of the 'fix' or 'feat' type, and therefore will not trigger a release. To silence all further warnings, react to this warning comment (or any other) with the :eyes: emoji.\n\nNOTE: If your repo uses squash commits, make sure to add the appropriate conventional commit prefix (e.g., 'fix:', 'feat:', 'chore:', etc) in the squash commit message.";
+            const commits = await github.paginate(github.rest.pulls.listCommits, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: Number(process.env.PR_NUMBER),
+              per_page: 100
+            });
+            const hasFixOrFeatCommits = commits.some(c => {
+              return c.commit.message.startsWith('fix') || c.commit.message.startsWith('feat');
+            });
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(process.env.PR_NUMBER)
+            });
+            const hasExistingRoboComment = comments.some(comment => {
+              return comment.user.type === 'Bot'
+                && comment.body === roboCommentBody
+            });
+            const hasAcknowledgedRoboComment = comments.some(comment => {
+              return comment.user.type === 'Bot'
+                && comment.reactions.eyes > 0
+            });
+            if (!hasFixOrFeatCommits && !hasExistingRoboComment && !hasAcknowledgedRoboComment) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: Number(process.env.PR_NUMBER),
+                body: roboCommentBody
+              });
+            }
