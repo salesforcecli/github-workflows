@@ -71,7 +71,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         with:
           script: |
-            const roboCommentBody = "This PR lacks any commits of the 'fix' or 'feat' type, and therefore will not trigger a release. To silence all further warnings, react to this warning comment (or any other) with the :eyes: emoji.";
+            const roboCommentBody = "This PR lacks any commits of the 'fix' or 'feat' type, and therefore will not trigger a release. To silence all further warnings, react to this warning comment (or any other) with the :eyes: emoji.\n\nNOTE: If your repo uses squash commits, make sure to add the appropriate conventional commit prefix (e.g., \"fix:\", \"feat\:", \"chore:\", etc) in the squash commit message.";
             const commits = await github.paginate(github.rest.pulls.listCommits, {
               owner: context.repo.owner,
               repo: context.repo.repo,
