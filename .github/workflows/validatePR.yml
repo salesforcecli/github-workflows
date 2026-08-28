@@ -55,7 +55,7 @@ jobs:
           
           # Output criteria summary
           echo "::warning::PRs must meet the specified criteria.
-          - [$TITLE_WI] PR Title must include include a Work Item number
+          - [$TITLE_WI] PR Title must include a Work Item number
           - [$BODY_WI] PR Body must include Work Item number from Title, wrapped in '@'s, ex: @W-12345678@
           If you ABSOLUTELY MUST bypass these validations, include '[skip-validate-pr]' in the PR Title or Body."
           exit 1
@@ -86,12 +86,15 @@ jobs:
               repo: context.repo.repo,
               issue_number: Number(process.env.PR_NUMBER)
             });
-            const hasAcknowledgedRoboComment = comments.some(comment => {
+            const hasExistingRoboComment = comments.some(comment => {
               return comment.user.type === 'Bot'
                 && comment.body === roboCommentBody
+            });
+            const hasAcknowledgedRoboComment = comments.some(comment => {
+              return comment.user.type === 'Bot'
                 && comment.reactions.eyes > 0
             });
-            if (!hasFixOrFeatCommits && !hasAcknowledgedRoboComment) {
+            if (!hasFixOrFeatCommits && !hasExistingRoboComment && !hasAcknowledgedRoboComment) {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
