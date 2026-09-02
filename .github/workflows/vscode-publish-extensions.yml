@@ -984,9 +984,15 @@ jobs:
           BRANCH=$(echo "$BRANCH" | xargs)
 
           echo "Mode: $([ "$DRY_RUN" = "true" ] && echo "DRY RUN" || echo "LIVE")"
-          echo "Creating GitHub releases..."
+          echo "Creating GitHub release with all VSIXs..."
 
           IFS=',' read -ra extensions <<< "$SELECTED_EXTENSIONS"
+
+          # Collect all VSIX files from all extensions
+          all_vsix_files=()
+          first_ext=""
+          release_version=""
+          extension_names=()
 
           for ext in "${extensions[@]}"; do
             [ -z "$ext" ] && continue
@@ -1001,6 +1007,14 @@ jobs:
             package_name=$(jq -r '.name' "$package_json")
             echo "Processing extension: $ext (package: $package_name, version: $current_version)"
 
+            # Store first extension for release tag/title
+            if [ -z "$first_ext" ]; then
+              first_ext="$ext"
+              release_version="$current_version"
+            fi
+
+            extension_names+=("$package_name")
+
             # Find VSIX files using the package name from package.json
             vsix_pattern="*${package_name}*.vsix"
 
@@ -1012,62 +1026,77 @@ jobs:
 
             # Optionally filter out *-web-* builds
             if [ "${EXCLUDE_WEB:-false}" = "true" ]; then
-              filtered_files=()
               for file in "${vsix_files[@]}"; do
                 if [[ ! "$(basename "$file")" =~ -web- ]]; then
-                  filtered_files+=("$file")
+                  all_vsix_files+=("$file")
                 fi
               done
             else
-              filtered_files=("${vsix_files[@]}")
+              all_vsix_files+=("${vsix_files[@]}")
             fi
+          done
 
-            # Create release tag
-            release_tag="v$current_version"
-            release_title="$ext v$current_version"
+          # Check if we have any VSIX files to release
+          if [ ${#all_vsix_files[@]} -eq 0 ]; then
+            echo "⚠️  No VSIX files found to release"
+            exit 0
+          fi
 
-            if [ "$IS_NIGHTLY" = "true" ]; then
-              nightly_date=$(date -u +%Y%m%d)
-              branch_suffix=""
-              [ "$BRANCH" != "main" ] && branch_suffix=".${BRANCH//\//-}"
-              release_tag="v${current_version}-nightly${branch_suffix}.${nightly_date}"
-              release_title="$ext v$current_version (Nightly $BRANCH $nightly_date)"
-            fi
+          echo "Found ${#all_vsix_files[@]} VSIX files from ${#extension_names[@]} extensions"
 
-            if [ "$DRY_RUN" = "true" ]; then
-              echo "✅ DRY RUN: Would create release $release_tag with ${#filtered_files[@]} VSIX files"
+          # Create release tag based on first extension version
+          release_tag="v$release_version"
+          release_title="$first_ext v$release_version"
+
+          if [ "$IS_NIGHTLY" = "true" ]; then
+            nightly_date=$(date -u +%Y%m%d)
+            branch_suffix=""
+            [ "$BRANCH" != "main" ] && branch_suffix=".${BRANCH//\//-}"
+            release_tag="v${release_version}-nightly${branch_suffix}.${nightly_date}"
+            release_title="$first_ext v$release_version (Nightly $BRANCH $nightly_date)"
+          fi
+
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "✅ DRY RUN: Would create release $release_tag with ${#all_vsix_files[@]} VSIX files"
+            for file in "${all_vsix_files[@]}"; do
+              echo "  - $(basename "$file")"
+            done
+          else
+            # Check if release exists
+            if gh release view "$release_tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+              echo "Release $release_tag already exists, uploading additional VSIXs..."
+              gh release upload "$release_tag" --repo "$GITHUB_REPOSITORY" --clobber "${all_vsix_files[@]}"
+              echo "✅ Uploaded ${#all_vsix_files[@]} VSIX files to existing release"
             else
-              # Check if release exists
-              if gh release view "$release_tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
-                echo "⏭️  Release $release_tag already exists - skipping"
-              else
-                # Generate release notes
-                notes_file=".release-notes-$(date +%s).tmp"
-                cat > "$notes_file" << EOF
-          ## $ext v$current_version
+              # Generate release notes
+              notes_file=".release-notes-$(date +%s).tmp"
+              cat > "$notes_file" << EOF
+          ## $first_ext v$release_version
+
+          ### Extensions Included
+          $(printf '- %s\n' "${extension_names[@]}")
 
           ### Installation
-          Download the VSIX file and install via VS Code.
+          Download the VSIX files and install via VS Code.
 
           $([ "$PRE_RELEASE" = "true" ] && echo "⚠️ **This is a pre-release version**")
           $([ "$IS_NIGHTLY" = "true" ] && echo "🌙 **Nightly build from $(date -u +%Y%m%d)**")
           EOF
 
-                # Create release
-                gh release create "$release_tag" \
-                  --title "$release_title" \
-                  --notes-file "$notes_file" \
-                  --prerelease="$PRE_RELEASE" \
-                  --repo "$GITHUB_REPOSITORY" \
-                  "${filtered_files[@]}"
+              # Create release with all VSIX files
+              gh release create "$release_tag" \
+                --title "$release_title" \
+                --notes-file "$notes_file" \
+                --prerelease="$PRE_RELEASE" \
+                --repo "$GITHUB_REPOSITORY" \
+                "${all_vsix_files[@]}"
 
-                rm -f "$notes_file"
-                echo "✅ Release created for $ext"
-              fi
+              rm -f "$notes_file"
+              echo "✅ Release created with ${#all_vsix_files[@]} VSIX files"
             fi
-          done
+          fi
 
-          echo "$([ "$DRY_RUN" = "true" ] && echo "✅ DRY RUN complete" || echo "✅ Releases created")"
+          echo "$([ "$DRY_RUN" = "true" ] && echo "✅ DRY RUN complete" || echo "✅ Release created")"
 
   publish-to-cbweb-marketplace:
     name: Publish to CBWeb Internal Marketplace
