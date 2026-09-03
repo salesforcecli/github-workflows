@@ -1,0 +1,36 @@
+name: "Collect VSIXs"
+description: "Collect built VSIX files from a packages directory into an output directory with validation"
+
+inputs:
+  packages-dir:
+    description: "Directory to search for built VSIX files"
+    required: false
+    default: "packages"
+  output-dir:
+    description: "Directory to collect VSIX files into"
+    required: false
+    default: "extensions"
+
+runs:
+  using: composite
+  steps:
+    - name: Collect and validate VSIXs
+      shell: bash
+      env:
+        PACKAGES_DIR: ${{ inputs.packages-dir }}
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+      run: |
+        # Create output directory
+        mkdir -p "$OUTPUT_DIR"
+
+        # Collect all VSIX files from the packages directory
+        find "$PACKAGES_DIR" -name "*.vsix" -type f -exec cp {} "./$OUTPUT_DIR" \;
+
+        # Validate that VSIXs were built
+        VSIX_COUNT=$(ls -1 "./$OUTPUT_DIR"/*.vsix 2>/dev/null | wc -l)
+        if [ "$VSIX_COUNT" -eq 0 ]; then
+          echo "::error::No VSIX files found after build. Build may have failed silently."
+          exit 1
+        fi
+
+        echo "✓ Found $VSIX_COUNT VSIX files in $OUTPUT_DIR"
