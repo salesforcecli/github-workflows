@@ -121,6 +121,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
           - registry: vsce
@@ -138,44 +139,102 @@ jobs:
         with:
           node-version: ${{ inputs.node-version || '22.x' }}
 
-      - name: Download VSIX from nightly GitHub release
+      - name: Download VSIXs from nightly GitHub release
         env:
           GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
           NIGHTLY_TAG: ${{ inputs.release-tag }}
-          VSIX_PATTERN: ${{ inputs.vsix-name-pattern || '*.vsix' }}
-          EXCLUDE_WEB: ${{ inputs.exclude-web-vsix || 'false' }}
         run: |
           mkdir -p ./vsix-artifacts
-          echo "Downloading VSIX from release: $NIGHTLY_TAG"
+          echo "Downloading VSIXs from release: $NIGHTLY_TAG"
           gh release download "$NIGHTLY_TAG" \
             --pattern "*.vsix" \
             --dir ./vsix-artifacts \
             --repo "${{ github.repository }}"
 
-          # Find VSIX matching the pattern
-          if [ "$EXCLUDE_WEB" = "true" ]; then
-            VSIX_FILE=$(find ./vsix-artifacts -type f -name "$VSIX_PATTERN" ! -name '*-web-*' | head -1)
-          else
-            VSIX_FILE=$(find ./vsix-artifacts -type f -name "$VSIX_PATTERN" | head -1)
-          fi
-
-          if [ -z "$VSIX_FILE" ]; then
-            echo "No VSIX found matching pattern '$VSIX_PATTERN' in release $NIGHTLY_TAG"
-            exit 1
-          fi
-          echo "Found VSIX: $VSIX_FILE"
-          echo "VSIX_PATH=$VSIX_FILE" >> $GITHUB_ENV
-
       - name: Publish to ${{ matrix.registry }}
-        uses: salesforcecli/github-workflows/.github/actions/vscode/publish-vsix@main
-        with:
-          vsix-path: ${{ env.VSIX_PATH }}
-          publish-tool: ${{ matrix.publish-tool }}
-          pre-release: "true"
-          dry-run: ${{ inputs.dry-run || 'false' }}
         env:
+          NIGHTLY_TAG: ${{ inputs.release-tag }}
+          VSIX_PATTERN: ${{ inputs.vsix-name-pattern || '*.vsix' }}
+          EXCLUDE_WEB: ${{ inputs.exclude-web-vsix || 'false' }}
+          PUBLISH_TOOL: ${{ matrix.publish-tool }}
+          DRY_RUN: ${{ inputs.dry-run || 'false' }}
           VSCE_PERSONAL_ACCESS_TOKEN: ${{ secrets.VSCE_PERSONAL_ACCESS_TOKEN }}
           OVSX_PAT: ${{ secrets.IDEE_OVSX_PAT }}
+        run: |
+          set -uo pipefail
+
+          # Collect every VSIX matching the caller's pattern (all extensions in a
+          # monorepo; a single file for single-extension repos).
+          VSIX_FILES=()
+          if [ "$EXCLUDE_WEB" = "true" ]; then
+            while IFS= read -r f; do VSIX_FILES+=("$f"); done < <(find ./vsix-artifacts -type f -name "$VSIX_PATTERN" ! -name '*-web-*' | sort)
+          else
+            while IFS= read -r f; do VSIX_FILES+=("$f"); done < <(find ./vsix-artifacts -type f -name "$VSIX_PATTERN" | sort)
+          fi
+
+          if [ "${#VSIX_FILES[@]}" -eq 0 ]; then
+            echo "::error::No VSIX found matching pattern '$VSIX_PATTERN' in release $NIGHTLY_TAG"
+            exit 1
+          fi
+
+          if [ "$PUBLISH_TOOL" = "ovsx" ]; then
+            MARKETPLACE_NAME="Open VSX Registry"
+            TOKEN="$OVSX_PAT"
+          else
+            MARKETPLACE_NAME="Visual Studio Marketplace"
+            TOKEN="$VSCE_PERSONAL_ACCESS_TOKEN"
+          fi
+
+          if [ "$DRY_RUN" != "true" ] && [ -z "$TOKEN" ]; then
+            echo "::error::Token for $PUBLISH_TOOL is not set"
+            exit 1
+          fi
+
+          echo "Publishing ${#VSIX_FILES[@]} VSIX(s) as pre-release to $MARKETPLACE_NAME:"
+          printf '  %s\n' "${VSIX_FILES[@]}"
+
+          RUN_ID="${{ github.run_id }}"
+          ACTOR="${{ github.actor }}"
+          REPO="${{ github.repository }}"
+          FAILED=0
+
+          for VSIX in "${VSIX_FILES[@]}"; do
+            NAME=$(basename "$VSIX")
+            echo "::group::$NAME → $MARKETPLACE_NAME"
+
+            # Audit trail (mirrors the publish-vsix action's per-file record)
+            HASH=$(sha256sum "$VSIX" 2>/dev/null | cut -d' ' -f1 || echo "unknown")
+            echo "[AUDIT] actor=$ACTOR repo=$REPO run_id=$RUN_ID tool=$PUBLISH_TOOL file=$NAME hash=$HASH pre_release=true dry_run=$DRY_RUN"
+
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "🔍 DRY RUN - would publish $NAME (pre-release)"
+              echo "::endgroup::"
+              continue
+            fi
+
+            if [ "$PUBLISH_TOOL" = "vsce" ]; then
+              if VSCE_PAT="$TOKEN" npx @vscode/vsce publish --packagePath "$VSIX" --skip-duplicate --pre-release; then
+                echo "✅ Published $NAME to $MARKETPLACE_NAME"
+              else
+                echo "::error::Failed to publish $NAME to $MARKETPLACE_NAME"
+                FAILED=1
+              fi
+            else
+              if npx ovsx publish "$VSIX" -p "$TOKEN" --skip-duplicate --pre-release; then
+                echo "✅ Published $NAME to $MARKETPLACE_NAME"
+              else
+                echo "::error::Failed to publish $NAME to $MARKETPLACE_NAME"
+                FAILED=1
+              fi
+            fi
+            echo "::endgroup::"
+          done
+
+          if [ "$FAILED" -ne 0 ]; then
+            echo "::error::One or more VSIX publishes failed for $PUBLISH_TOOL"
+            exit 1
+          fi
+          echo "✅ All ${#VSIX_FILES[@]} VSIX(s) processed for $MARKETPLACE_NAME"
 
   tag-promoted:
     needs: publish
