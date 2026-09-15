@@ -1,0 +1,10 @@
+name: jf-gha-caller.yml
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  call-callee:
+    uses: ./.github/workflows/jf-gha-exp-callee.yml
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
