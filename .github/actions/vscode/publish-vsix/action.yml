@@ -117,11 +117,26 @@ runs:
             exit 1
           fi
           
+          publish_with_retry() {
+            local attempt
+            for attempt in 1 2 3; do
+              echo "Publish attempt ${attempt}/3"
+              if "$@"; then
+                return 0
+              fi
+              if [ "$attempt" -lt 3 ]; then
+                echo "Publish failed; retrying in 15s..."
+                sleep 15
+              fi
+            done
+            return 1
+          }
+
           if [ "${{ inputs.publish-tool }}" = "vsce" ]; then
             export VSCE_PAT="${!TOKEN_ENV}"  # ensure the expected env var is set
-            npx @vscode/vsce publish --packagePath "${{ inputs.vsix-path }}" --skip-duplicate $PRE_RELEASE_FLAG
+            publish_with_retry npx @vscode/vsce publish --packagePath "${{ inputs.vsix-path }}" --skip-duplicate $PRE_RELEASE_FLAG
           else
-            npx ovsx publish "${{ inputs.vsix-path }}" -p "${!TOKEN_ENV}" --skip-duplicate $PRE_RELEASE_FLAG
+            publish_with_retry npx ovsx publish "${{ inputs.vsix-path }}" -p "${!TOKEN_ENV}" --skip-duplicate $PRE_RELEASE_FLAG
           fi
           
           echo "✅ Successfully published to $MARKETPLACE_NAME"

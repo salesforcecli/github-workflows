@@ -136,7 +136,13 @@ jobs:
           PRE_RELEASE_FLAG: ${{ inputs.pre-release && '--pre-release' || '' }}
         run: |
           cd "$EXTENSION"
-          npx vsce publish $PRE_RELEASE_FLAG
+          ok=0
+          for attempt in 1 2 3; do
+            echo "Publish attempt ${attempt}/3"
+            npx vsce publish $PRE_RELEASE_FLAG && { ok=1; break; }
+            [ "$attempt" -lt 3 ] && sleep 15
+          done
+          [ "$ok" -eq 1 ]
 
       - name: Publish to Open VSX
         if: |
@@ -148,7 +154,13 @@ jobs:
           PRE_RELEASE_FLAG: ${{ inputs.pre-release && '--pre-release' || '' }}
         run: |
           cd "$EXTENSION"
-          npx ovsx publish $PRE_RELEASE_FLAG -p "$OVSX_PAT"
+          ok=0
+          for attempt in 1 2 3; do
+            echo "Publish attempt ${attempt}/3"
+            npx ovsx publish $PRE_RELEASE_FLAG -p "$OVSX_PAT" && { ok=1; break; }
+            [ "$attempt" -lt 3 ] && sleep 15
+          done
+          [ "$ok" -eq 1 ]
 
       - name: Prepare artifact name
         id: artifact

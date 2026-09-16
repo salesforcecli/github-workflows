@@ -36,6 +36,23 @@ jobs:
           IDEE_OVSX_PAT: ${{ secrets.IDEE_OVSX_PAT }}
           PRE_RELEASE: ${{ steps.release.outputs.pre-release }}
         run: |
+          # Open VSX can hang the same way as vsce; retry per VSIX.
+          # --skip-duplicate makes a retry a no-op if the first attempt committed.
+          publish_with_retry() {
+            local attempt
+            for attempt in 1 2 3; do
+              echo "Publish attempt ${attempt}/3"
+              if "$@"; then
+                return 0
+              fi
+              if [ "$attempt" -lt 3 ]; then
+                echo "Publish failed; retrying in 15s..."
+                sleep 15
+              fi
+            done
+            return 1
+          }
+
           while IFS= read -r -d '' vsix; do
             args=("$vsix" -p "$IDEE_OVSX_PAT" --skip-duplicate)
             pre_release_suffix=''
@@ -49,5 +66,8 @@ jobs:
               continue
             fi
 
-            npx ovsx publish "${args[@]}"
+            if ! publish_with_retry npx ovsx publish "${args[@]}"; then
+              echo "::error::Failed to publish $vsix after 3 attempts"
+              exit 1
+            fi
           done < <(find extensions -type f -name '*.vsix' -print0)

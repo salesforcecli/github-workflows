@@ -36,6 +36,24 @@ jobs:
           PRE_RELEASE: ${{ steps.release.outputs.pre-release }}
           VSCE_PERSONAL_ACCESS_TOKEN: ${{ secrets.VSCE_PERSONAL_ACCESS_TOKEN }}
         run: |
+          # Marketplace gallery requests can sit until typed-rest-client's 180s
+          # socket timeout. vsce has no timeout flag; retry per VSIX.
+          # --skip-duplicate makes a retry a no-op if the first attempt committed.
+          publish_with_retry() {
+            local attempt
+            for attempt in 1 2 3; do
+              echo "Publish attempt ${attempt}/3"
+              if "$@"; then
+                return 0
+              fi
+              if [ "$attempt" -lt 3 ]; then
+                echo "Publish failed; retrying in 15s..."
+                sleep 15
+              fi
+            done
+            return 1
+          }
+
           while IFS= read -r -d '' vsix; do
             args=(--packagePath "$vsix" --skip-duplicate)
             if [ "$PRE_RELEASE" = true ]; then
@@ -47,5 +65,8 @@ jobs:
               continue
             fi
 
-            VSCE_PAT="$VSCE_PERSONAL_ACCESS_TOKEN" npx @vscode/vsce publish "${args[@]}"
+            if ! VSCE_PAT="$VSCE_PERSONAL_ACCESS_TOKEN" publish_with_retry npx @vscode/vsce publish "${args[@]}"; then
+              echo "::error::Failed to publish $vsix after 3 attempts"
+              exit 1
+            fi
           done < <(find extensions -type f -name '*.vsix' -print0)
