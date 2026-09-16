@@ -198,6 +198,24 @@ jobs:
           REPO="${{ github.repository }}"
           FAILED=0
 
+          # Marketplace gallery requests can sit until typed-rest-client's 180s
+          # socket timeout. vsce/ovsx have no timeout flag; retry per VSIX.
+          # --skip-duplicate makes a retry a no-op if the first attempt committed.
+          publish_with_retry() {
+            local attempt
+            for attempt in 1 2 3; do
+              echo "Publish attempt ${attempt}/3"
+              if "$@"; then
+                return 0
+              fi
+              if [ "$attempt" -lt 3 ]; then
+                echo "Publish failed; retrying in 15s..."
+                sleep 15
+              fi
+            done
+            return 1
+          }
+
           for VSIX in "${VSIX_FILES[@]}"; do
             NAME=$(basename "$VSIX")
             echo "::group::$NAME → $MARKETPLACE_NAME"
@@ -213,14 +231,14 @@ jobs:
             fi
 
             if [ "$PUBLISH_TOOL" = "vsce" ]; then
-              if VSCE_PAT="$TOKEN" npx @vscode/vsce publish --packagePath "$VSIX" --skip-duplicate --pre-release; then
+              if VSCE_PAT="$TOKEN" publish_with_retry npx @vscode/vsce publish --packagePath "$VSIX" --skip-duplicate --pre-release; then
                 echo "✅ Published $NAME to $MARKETPLACE_NAME"
               else
                 echo "::error::Failed to publish $NAME to $MARKETPLACE_NAME"
                 FAILED=1
               fi
             else
-              if npx ovsx publish "$VSIX" -p "$TOKEN" --skip-duplicate --pre-release; then
+              if publish_with_retry npx ovsx publish "$VSIX" -p "$TOKEN" --skip-duplicate --pre-release; then
                 echo "✅ Published $NAME to $MARKETPLACE_NAME"
               else
                 echo "::error::Failed to publish $NAME to $MARKETPLACE_NAME"
