@@ -13,42 +13,6 @@ on:
         type: string
         default: lts/*
         description: node version to use for the tarball build
-      package-manager:
-        type: string
-        required: false
-        default: yarn
-        description: "Package manager to use: npm, pnpm, or yarn"
-      package-manager-version:
-        type: string
-        required: false
-        default: "10"
-        description: pnpm version to install when package-manager is pnpm
-      cache-dependency-path:
-        type: string
-        required: false
-        default: yarn.lock
-        description: Path to the package manager lockfile
-      install-command:
-        type: string
-        required: false
-        default: yarn install --network-timeout 600000
-        description: Command used to install repository dependencies
-      pack-command:
-        type: string
-        required: false
-        default: yarn pack:macos
-        description: Command used to pack the macos installer
-      upload-command:
-        type: string
-        required: false
-        default: yarn upload:macos
-        description: Command used to upload the macos installer
-      promote-command:
-        type: string
-        required: false
-        default: yarn channel:promote --cli sf --version "$INPUTS_VERSION" --target "$INPUTS_CHANNEL" --platform macos
-        description: Command used to promote the macos installer
-
 jobs:
   macos:
     env:
@@ -57,34 +21,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.nodeVersion }}
-          package-manager: ${{ inputs.package-manager }}
-          package-manager-version: ${{ inputs.package-manager-version }}
-          cache-dependency-path: ${{ inputs.cache-dependency-path }}
-          install-command: ${{ inputs.install-command }}
+          cache: yarn
+
+      - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
 
       - name: Pack for macos
         uses: salesforcecli/github-workflows/.github/actions/retry@main
         with:
-          command: ${{ inputs.pack-command }}
+          command: yarn pack:macos
 
       - name: Upload macos
+        run: yarn upload:macos
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          UPLOAD_COMMAND: ${{ inputs.upload-command }}
-        run: bash -c "$UPLOAD_COMMAND"
 
       - name: Promote macos to ${{ inputs.channel }} channel
+        run: yarn channel:promote --cli sf --version "$INPUTS_VERSION" --target "$INPUTS_CHANNEL" --platform macos
         env:
           INPUTS_VERSION: ${{ inputs.version }}
           INPUTS_CHANNEL: ${{ inputs.channel }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          PROMOTE_COMMAND: ${{ inputs.promote-command }}
-        run: bash -c "$PROMOTE_COMMAND"
 
       - name: Upload artifacts to Github release
         run: gh release upload "$INPUTS_VERSION" ./dist/macos/sf-*.pkg --clobber --repo "$GIT_REPOSITORY"

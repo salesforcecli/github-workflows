@@ -13,41 +13,6 @@ on:
         type: string
         default: lts/*
         description: node version to use for the tarball build
-      package-manager:
-        type: string
-        required: false
-        default: yarn
-        description: "Package manager to use: npm, pnpm, or yarn"
-      package-manager-version:
-        type: string
-        required: false
-        default: "10"
-        description: pnpm version to install when package-manager is pnpm
-      cache-dependency-path:
-        type: string
-        required: false
-        default: yarn.lock
-        description: Path to the package manager lockfile
-      install-command:
-        type: string
-        required: false
-        default: yarn install --network-timeout 600000
-        description: Command used to install repository dependencies
-      pack-command:
-        type: string
-        required: false
-        default: yarn pack:win
-        description: Command used to pack the Windows installer
-      upload-command:
-        type: string
-        required: false
-        default: yarn upload:win
-        description: Command used to upload the Windows installer
-      promote-command:
-        type: string
-        required: false
-        default: yarn channel:promote --cli sf --version "$INPUTS_VERSION" --target "$INPUTS_CHANNEL" --platform win
-        description: Command used to promote the Windows installer
 
 jobs:
   win:
@@ -57,13 +22,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.nodeVersion }}
-          package-manager: ${{ inputs.package-manager }}
-          package-manager-version: ${{ inputs.package-manager-version }}
-          cache-dependency-path: ${{ inputs.cache-dependency-path }}
-          install-command: ${{ inputs.install-command }}
+          cache: yarn
 
       - name: Set up Homebrew
         uses: Homebrew/actions/setup-homebrew@e05416b42376bcda221f9102c4f595f4994016be
@@ -71,26 +33,24 @@ jobs:
       # TODO: It would be nice if we chould ditch homebrew for this install
       - run: brew install makensis
 
+      - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
+
       - name: Pack for Windows
-        env:
-          PACK_COMMAND: ${{ inputs.pack-command }}
-        run: bash -c "$PACK_COMMAND"
+        run: yarn pack:win
 
       - name: Upload Windows
+        run: yarn upload:win
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          UPLOAD_COMMAND: ${{ inputs.upload-command }}
-        run: bash -c "$UPLOAD_COMMAND"
 
       - name: Promote win to ${{ inputs.channel }} channel
+        run: yarn channel:promote --cli sf --version "$INPUTS_VERSION" --target "$INPUTS_CHANNEL" --platform win
         env:
           INPUTS_VERSION: ${{ inputs.version }}
           INPUTS_CHANNEL: ${{ inputs.channel }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          PROMOTE_COMMAND: ${{ inputs.promote-command }}
-        run: bash -c "$PROMOTE_COMMAND"
 
       - name: Upload artifacts to Github release
         run: gh release upload "$INPUTS_VERSION" ./dist/win32/sf-*.exe --clobber --repo "$GITHUB_REPOSITORY"

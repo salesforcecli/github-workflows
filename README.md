@@ -305,14 +305,14 @@ jobs:
       wireit-install-command: pnpm add wireit@^0.14.12
 ```
 
-Shared inputs for `unitTest.yml`, `unitTestsLinux.yml`, `unitTestsWindows.yml`, `nut.yml`, `publishTypedoc.yml`, `tarballs.yml`, `packUploadMac.yml`, and `packUploadWindows.yml`:
+Shared inputs for `unitTest.yml`, `unitTestsLinux.yml`, `unitTestsWindows.yml`, and `nut.yml`:
 
 - `package-manager` (optional) - `npm`, `pnpm`, or `yarn` (default: `yarn`)
 - `package-manager-version` (optional) - pnpm version to install when `package-manager` is `pnpm` (default: `10`)
 - `cache-dependency-path` (optional) - lockfile path (default: `yarn.lock`)
 - `install-command` (optional) - dependency install command (default: `yarn install --network-timeout 600000`)
 
-Workflow-specific command inputs keep the previous Yarn defaults (`yarn build`, `yarn test`, `yarn test:nuts`, `yarn docs`, `yarn pack:tarballs`, and the pack/upload/promote commands). Node setup, caching, and installs go through `.github/actions/setupNodeAndInstall`.
+Workflow-specific command inputs keep the previous Yarn defaults (`yarn build`, `yarn test`, `yarn test:nuts`). Node setup, caching, and installs go through `.github/actions/setupNodeAndInstall`.
 
 ## Other Tooling
 
