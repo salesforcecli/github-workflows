@@ -263,6 +263,57 @@ jobs:
       os: ${{ matrix.os }}
 ```
 
+Yarn is the default for these CLI testing workflows, so existing callers do not need new inputs. npm and pnpm callers pass package-manager setup and the commands that replaced hard-coded Yarn steps.
+
+```yml
+jobs:
+  unit-tests:
+    uses: salesforcecli/github-workflows/.github/workflows/unitTest.yml@main
+    with:
+      package-manager: npm
+      cache-dependency-path: package-lock.json
+      install-command: npm ci
+      build-command: npm run build
+      test-command: npm test
+      wireit-install-command: npm install wireit@^0.14.12
+  nuts:
+    needs: unit-tests
+    uses: salesforcecli/github-workflows/.github/workflows/nut.yml@main
+    secrets: inherit
+    with:
+      os: ubuntu-latest
+      package-manager: npm
+      cache-dependency-path: package-lock.json
+      install-command: npm ci
+      compile-command: npm run compile
+      oclif-manifest-command: npm run oclif -- manifest
+      command: npm run test:nuts
+      wireit-install-command: npm install wireit@^0.14.12
+```
+
+```yml
+jobs:
+  unit-tests:
+    uses: salesforcecli/github-workflows/.github/workflows/unitTest.yml@main
+    with:
+      package-manager: pnpm
+      package-manager-version: '10'
+      cache-dependency-path: pnpm-lock.yaml
+      install-command: pnpm install --frozen-lockfile
+      build-command: pnpm run build
+      test-command: pnpm test
+      wireit-install-command: pnpm add wireit@^0.14.12
+```
+
+Shared inputs for `unitTest.yml`, `unitTestsLinux.yml`, `unitTestsWindows.yml`, `nut.yml`, `publishTypedoc.yml`, `tarballs.yml`, `packUploadMac.yml`, and `packUploadWindows.yml`:
+
+- `package-manager` (optional) - `npm`, `pnpm`, or `yarn` (default: `yarn`)
+- `package-manager-version` (optional) - pnpm version to install when `package-manager` is `pnpm` (default: `10`)
+- `cache-dependency-path` (optional) - lockfile path (default: `yarn.lock`)
+- `install-command` (optional) - dependency install command (default: `yarn install --network-timeout 600000`)
+
+Workflow-specific command inputs keep the previous Yarn defaults (`yarn build`, `yarn test`, `yarn test:nuts`, `yarn docs`, `yarn pack:tarballs`, and the pack/upload/promote commands). Node setup, caching, and installs go through `.github/actions/setupNodeAndInstall`.
+
 ## Other Tooling
 
 ### nut conditional on commit message

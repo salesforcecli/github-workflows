@@ -17,6 +17,51 @@ on:
         type: string
         default: lts/*
         description: node version to use for the tarball build
+      package-manager:
+        type: string
+        required: false
+        default: yarn
+        description: "Package manager to use: npm, pnpm, or yarn"
+      package-manager-version:
+        type: string
+        required: false
+        default: "10"
+        description: pnpm version to install when package-manager is pnpm
+      cache-dependency-path:
+        type: string
+        required: false
+        default: yarn.lock
+        description: Path to the package manager lockfile
+      install-command:
+        type: string
+        required: false
+        default: yarn install --network-timeout 600000
+        description: Command used to install repository dependencies
+      pack-command:
+        type: string
+        required: false
+        default: yarn pack:tarballs
+        description: Command used to pack tarballs
+      verify-command:
+        type: string
+        required: false
+        default: yarn pack:verify
+        description: Command used to verify packed tarballs
+      smoke-command:
+        type: string
+        required: false
+        default: yarn test:smoke-unix
+        description: Command used to run unix smoke tests
+      upload-command:
+        type: string
+        required: false
+        default: yarn upload:tarballs
+        description: Command used to upload tarballs
+      promote-command:
+        type: string
+        required: false
+        default: yarn channel:promote --cli sf --version "$INPUTS_VERSION" --target "$INPUTS_CHANNEL"
+        description: Command used to promote uploaded tarballs
 
 jobs:
   tarballs:
@@ -26,36 +71,47 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
         with:
           node-version: ${{ inputs.nodeVersion }}
-          cache: yarn
-
-      - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
+          package-manager: ${{ inputs.package-manager }}
+          package-manager-version: ${{ inputs.package-manager-version }}
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
+          install-command: ${{ inputs.install-command }}
 
       - name: pack tarballs
         uses: salesforcecli/github-workflows/.github/actions/retry@main
         with:
-          command: yarn pack:tarballs
+          command: ${{ inputs.pack-command }}
           retry_on: error
 
-      - run: yarn pack:verify
+      - name: Verify tarballs
+        env:
+          VERIFY_COMMAND: ${{ inputs.verify-command }}
+        run: bash -c "$VERIFY_COMMAND"
 
-      - run: yarn test:smoke-unix
+      - name: Smoke tests
+        env:
+          SMOKE_COMMAND: ${{ inputs.smoke-command }}
+        run: bash -c "$SMOKE_COMMAND"
 
       - if: inputs.upload
-        run: yarn upload:tarballs
+        name: Upload tarballs
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          UPLOAD_COMMAND: ${{ inputs.upload-command }}
+        run: bash -c "$UPLOAD_COMMAND"
 
       - if: inputs.upload && inputs.version && inputs.channel
-        run: yarn channel:promote --cli sf --version "$INPUTS_VERSION" --target "$INPUTS_CHANNEL"
+        name: Promote tarballs
         env:
           INPUTS_VERSION: ${{ inputs.version }}
           INPUTS_CHANNEL: ${{ inputs.channel }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          PROMOTE_COMMAND: ${{ inputs.promote-command }}
+        run: bash -c "$PROMOTE_COMMAND"
 
       - if: inputs.upload
         run: |
