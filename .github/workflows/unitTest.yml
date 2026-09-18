@@ -1,8 +1,60 @@
 on:
   workflow_call:
+    inputs:
+      package-manager:
+        type: string
+        required: false
+        default: yarn
+        description: "Package manager to use: npm, pnpm, or yarn"
+      package-manager-version:
+        type: string
+        required: false
+        default: "10"
+        description: pnpm version to install when package-manager is pnpm
+      cache-dependency-path:
+        type: string
+        required: false
+        default: yarn.lock
+        description: Path to the package manager lockfile
+      install-command:
+        type: string
+        required: false
+        default: yarn install --network-timeout 600000
+        description: Command used to install repository dependencies
+      build-command:
+        type: string
+        required: false
+        default: yarn build
+        description: Command used to build the project
+      test-command:
+        type: string
+        required: false
+        default: yarn test
+        description: Command used to run unit tests
+      wireit-install-command:
+        type: string
+        required: false
+        default: yarn add wireit@^0.14.12
+        description: Command used to install the wireit workaround
 
 jobs:
   linux-unit-tests:
     uses: salesforcecli/github-workflows/.github/workflows/unitTestsLinux.yml@main
+    with:
+      package-manager: ${{ inputs.package-manager }}
+      package-manager-version: ${{ inputs.package-manager-version }}
+      cache-dependency-path: ${{ inputs.cache-dependency-path }}
+      install-command: ${{ inputs.install-command }}
+      build-command: ${{ inputs.build-command }}
+      test-command: ${{ inputs.test-command }}
+      wireit-install-command: ${{ inputs.wireit-install-command }}
   windows-unit-tests:
     uses: salesforcecli/github-workflows/.github/workflows/unitTestsWindows.yml@main
+    with:
+      package-manager: ${{ inputs.package-manager }}
+      package-manager-version: ${{ inputs.package-manager-version }}
+      cache-dependency-path: ${{ inputs.cache-dependency-path }}
+      install-command: ${{ inputs.install-command }}
+      build-command: ${{ inputs.build-command }}
+      test-command: ${{ inputs.test-command }}
+      wireit-install-command: ${{ inputs.wireit-install-command }}

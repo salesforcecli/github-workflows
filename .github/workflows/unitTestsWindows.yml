@@ -1,5 +1,41 @@
 on:
   workflow_call:
+    inputs:
+      package-manager:
+        type: string
+        required: false
+        default: yarn
+        description: "Package manager to use: npm, pnpm, or yarn"
+      package-manager-version:
+        type: string
+        required: false
+        default: "10"
+        description: pnpm version to install when package-manager is pnpm
+      cache-dependency-path:
+        type: string
+        required: false
+        default: yarn.lock
+        description: Path to the package manager lockfile
+      install-command:
+        type: string
+        required: false
+        default: yarn install --network-timeout 600000
+        description: Command used to install repository dependencies
+      build-command:
+        type: string
+        required: false
+        default: yarn build
+        description: Command used to build the project
+      test-command:
+        type: string
+        required: false
+        default: yarn test
+        description: Command used to run unit tests
+      wireit-install-command:
+        type: string
+        required: false
+        default: yarn add wireit@^0.14.12
+        description: Command used to install the wireit workaround
 
 jobs:
   determine-node-versions:
@@ -28,34 +64,30 @@ jobs:
       - uses: google/wireit@setup-github-actions-caching/v2
         continue-on-error: true
 
-      - uses: actions/setup-node@v4
+      - uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
         with:
           node-version: ${{ matrix.node_version }}
-          cache: yarn
-
-      - name: Cache node modules
-        id: cache-nodemodules
-        uses: actions/cache@v4
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: "**/node_modules"
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/yarn.lock') }}
-
-      - uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
-        if: ${{ steps.cache-nodemodules.outputs.cache-hit != 'true' }}
+          package-manager: ${{ inputs.package-manager }}
+          package-manager-version: ${{ inputs.package-manager-version }}
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
+          install-command: ${{ inputs.install-command }}
 
       # This is a temporary workaround to ensure wireit is >= 0.14.12
       # Once all plugins/libraries that use this workflow are updated, this can be removed
       # See: https://github.com/google/wireit/issues/1297#issuecomment-2794737569
       - name: Install wireit
-        run: yarn add wireit@^0.14.12
+        env:
+          WIREIT_INSTALL_COMMAND: ${{ inputs.wireit-install-command }}
+        run: bash -c "$WIREIT_INSTALL_COMMAND"
 
-      - run: yarn build
+      - name: Build
+        env:
+          BUILD_COMMAND: ${{ inputs.build-command }}
+        run: bash -c "$BUILD_COMMAND"
 
-      - name: yarn test
+      - name: Test
         uses: salesforcecli/github-workflows/.github/actions/retry@main
         with:
-          command: yarn test
+          command: ${{ inputs.test-command }}
         env:
           SF_DISABLE_TELEMETRY: true
