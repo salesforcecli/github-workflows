@@ -110,6 +110,32 @@ jobs:
     secrets: inherit
 ```
 
+### Trusted Publishing (OIDC)
+
+Set `trustedPublishing: true` to publish to npm using [trusted publishing](https://docs.npmjs.com/trusted-publishers) (OIDC) instead of an `NPM_TOKEN`. You must also grant the `id-token: write` permission on the calling job.
+
+```yml
+on:
+  release:
+    # the result of the githubRelease workflow
+    types: [published]
+
+jobs:
+  my-publish:
+    permissions:
+      id-token: write
+      contents: read
+    uses: salesforcecli/github-workflows/.github/workflows/npmPublish.yml
+    with:
+      trustedPublishing: true
+      tag: latest
+      githubTag: ${{ github.event.release.tag_name }}
+    secrets: inherit
+```
+
+> [!IMPORTANT]  
+> Configure the trusted publisher on npmjs.com (`Settings > Trusted Publisher`) against the filename of **your calling workflow** (ex: `publish.yml`), _not_ `npmPublish.yml`. npm validates the top-level workflow, so pointing it at the reusable workflow will fail at publish time. `NPM_TOKEN` is not needed in this mode. Requires npm >= 11.5.1 and Node >= 22.14.0 (this workflow installs `npm@latest` for you when enabled).
+
 ### Prereleases
 
 `main` will release to `latest`. Other branches can create github prereleases and publish to other npm dist tags.

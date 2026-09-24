@@ -76,6 +76,15 @@ on:
         required: false
         type: string
         default: .
+      trustedPublishing:
+        description: |
+          Publish to npm using trusted publishing (OIDC) instead of an NPM_TOKEN.
+          - The calling workflow must also grant `id-token: write` permission.
+          - Configure the trusted publisher on npmjs.com against your CALLING workflow's filename (not npmPublish.yml), since npm validates the top-level workflow.
+          - Requires npm >= 11.5.1 and Node >= 22.14.0 (this workflow installs npm@latest when enabled).
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   check-publish:
@@ -141,6 +150,10 @@ jobs:
     needs: [check-publish, ctc-open]
     if: ${{ always() && needs.check-publish.outputs.published == 'false' && (!inputs.ctc || (inputs.ctc && inputs.tag != 'latest') || (inputs.ctc && needs.ctc-open.outputs.changeCaseId)) }}
     runs-on: ${{ inputs.runsOn }}
+    permissions:
+      # Required for npm trusted publishing (OIDC). Only used when inputs.trustedPublishing is true.
+      id-token: write
+      contents: read
     env:
       INPUTS_PACKAGE_MANAGER: ${{ inputs.packageManager }}
       INPUTS_GITHUB_TAG: ${{ inputs.githubTag }}
@@ -205,6 +218,10 @@ jobs:
             fi
           done
       - run: $INPUTS_PACKAGE_MANAGER run build
+      - name: Upgrade npm for trusted publishing
+        # Trusted publishing (OIDC) requires npm >= 11.5.1, newer than the npm bundled with Node LTS.
+        if: inputs.trustedPublishing
+        run: npm install -g npm@latest
       - run: npm install -g @salesforce/plugin-release-management
       - name: NPM Release
         run: |
@@ -214,10 +231,12 @@ jobs:
             --no-install \
             ${{ inputs.dryrun && '--dryrun' || '' }} \
             ${{ inputs.prerelease && format('--prerelease {0}', github.ref_name) || '' }} \
-            ${{ inputs.sign && '--sign' || '' }}
+            ${{ inputs.sign && '--sign' || '' }} \
+            ${{ inputs.trustedPublishing && '--trusted-publishing' || '' }}
         working-directory: ${{ inputs.packagePath }}
         env:
-          NPM_TOKEN: ${{secrets.NPM_TOKEN}}
+          # Omit the token in trusted-publishing mode so npm uses the OIDC flow.
+          NPM_TOKEN: ${{ inputs.trustedPublishing && '' || secrets.NPM_TOKEN }}
           AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
           AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
 
