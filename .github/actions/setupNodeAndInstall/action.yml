@@ -69,8 +69,12 @@ runs:
       if: inputs.package-manager == 'yarn' && steps.install-command.outputs.value == 'yarn install --network-timeout 600000'
       uses: salesforcecli/github-workflows/.github/actions/yarnInstallWithRetries@main
 
-    - name: Install custom or pnpm dependencies
-      if: (inputs.package-manager != 'npm' || steps.install-command.outputs.value != 'npm ci') && (inputs.package-manager != 'yarn' || steps.install-command.outputs.value != 'yarn install --network-timeout 600000')
+    - name: Install pnpm dependencies
+      if: inputs.package-manager == 'pnpm' && steps.install-command.outputs.value == 'pnpm install --frozen-lockfile'
+      uses: salesforcecli/github-workflows/.github/actions/pnpmInstallWithRetries@main
+
+    - name: Install custom dependencies
+      if: (inputs.package-manager != 'npm' || steps.install-command.outputs.value != 'npm ci') && (inputs.package-manager != 'yarn' || steps.install-command.outputs.value != 'yarn install --network-timeout 600000') && (inputs.package-manager != 'pnpm' || steps.install-command.outputs.value != 'pnpm install --frozen-lockfile')
       uses: salesforcecli/github-workflows/.github/actions/retry@main
       with:
         command: ${{ steps.install-command.outputs.value }}

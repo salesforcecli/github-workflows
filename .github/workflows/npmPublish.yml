@@ -167,9 +167,7 @@ jobs:
         uses: salesforcecli/github-workflows/.github/actions/npmInstallWithRetries@main
       - name: Install dependencies with pnpm
         if: inputs.packageManager == 'pnpm'
-        uses: salesforcecli/github-workflows/.github/actions/retry@main
-        with:
-          command: pnpm install --frozen-lockfile
+        uses: salesforcecli/github-workflows/.github/actions/pnpmInstallWithRetries@main
       - name: Vulnerability check
         if: inputs.vulnerabilityCheck
         # Check for known vulnerable packages from the following supply chain attacks:
