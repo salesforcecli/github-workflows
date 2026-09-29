@@ -127,10 +127,7 @@ jobs:
         run: bash -c "$WIREIT_INSTALL_COMMAND"
 
       - name: Compile
-        shell: bash
-        env:
-          COMPILE_COMMAND: ${{ inputs.compile-command }}
-        run: bash -c "$COMPILE_COMMAND"
+        run: ${{ inputs.compile-command }}
 
       - name: Check that oclif config exists
         shell: bash
