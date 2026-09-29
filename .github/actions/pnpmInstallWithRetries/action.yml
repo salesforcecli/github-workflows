@@ -1,0 +1,13 @@
+name: pnpm-install-with-retries
+description: 'wraps `pnpm install --frozen-lockfile` with retries/timeout to handle network failures'
+inputs:
+  ignore-scripts:
+    default: 'false'
+    description: 'Skip pre/post install scripts'
+runs:
+  using: composite
+  steps:
+    - name: pnpm install
+      uses: salesforcecli/github-workflows/.github/actions/retry@main
+      with:
+        command: pnpm install --frozen-lockfile ${{ inputs.ignore-scripts == 'true' && '--ignore-scripts' || '' }}
