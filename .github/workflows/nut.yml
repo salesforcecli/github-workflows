@@ -91,6 +91,9 @@ on:
 
 jobs:
   nut:
+    defaults:
+      run:
+        shell: bash
     name: ${{ inputs.command }}
     runs-on: ${{ inputs.os }}
     steps:

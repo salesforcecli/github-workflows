@@ -50,6 +50,9 @@ jobs:
           nodeDisableVersions: ${{ vars.NODE_DISABLE_VERSIONS }}
 
   windows-unit-tests:
+    defaults:
+      run:
+        shell: bash
     needs: determine-node-versions
     strategy:
       matrix:
