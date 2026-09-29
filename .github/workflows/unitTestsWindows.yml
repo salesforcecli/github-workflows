@@ -50,9 +50,6 @@ jobs:
           nodeDisableVersions: ${{ vars.NODE_DISABLE_VERSIONS }}
 
   windows-unit-tests:
-    defaults:
-      run:
-        shell: bash
     needs: determine-node-versions
     strategy:
       matrix:
@@ -79,11 +76,13 @@ jobs:
       # Once all plugins/libraries that use this workflow are updated, this can be removed
       # See: https://github.com/google/wireit/issues/1297#issuecomment-2794737569
       - name: Install wireit
+        shell: bash
         env:
           WIREIT_INSTALL_COMMAND: ${{ inputs.wireit-install-command }}
         run: bash -c "$WIREIT_INSTALL_COMMAND"
 
       - name: Build
+        shell: bash
         env:
           BUILD_COMMAND: ${{ inputs.build-command }}
         run: bash -c "$BUILD_COMMAND"
