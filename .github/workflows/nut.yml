@@ -121,10 +121,7 @@ jobs:
       # Once all plugins/libs that use this workflow are updated, this can be removed
       # See: https://github.com/google/wireit/issues/1297#issuecomment-2794737569
       - name: Install wireit
-        shell: bash
-        env:
-          WIREIT_INSTALL_COMMAND: ${{ inputs.wireit-install-command }}
-        run: bash -c "$WIREIT_INSTALL_COMMAND"
+        run: ${{ inputs.wireit-install-command }}
 
       - name: Compile
         run: ${{ inputs.compile-command }}
@@ -135,11 +132,8 @@ jobs:
         run: echo "bool=$(jq 'if .oclif then true else false end' package.json)" >> "$GITHUB_OUTPUT"
 
       - name: Generate oclif manifest
-        shell: bash
         if: ${{ steps.is-oclif-plugin.outputs.bool == 'true' }}
-        env:
-          OCLIF_MANIFEST_COMMAND: ${{ inputs.oclif-manifest-command }}
-        run: bash -c "$OCLIF_MANIFEST_COMMAND"
+        run: ${{ inputs.oclif-manifest-command }}
 
       - name: Set optional sf executable path
         shell: bash
