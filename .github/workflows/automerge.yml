@@ -22,17 +22,17 @@ on:
         default: false
       package-manager:
         required: false
-        description: Package manager used by the calling repository (npm, pnpm, or yarn)
+        description: Deprecated and unused. Kept for backward compatibility with callers that pass it.
         type: string
         default: npm
       package-manager-version:
         required: false
-        description: pnpm version to use when package-manager is pnpm
+        description: Deprecated and unused. Kept for backward compatibility with callers that pass it.
         type: string
         default: '10'
       cache-dependency-path:
         required: false
-        description: Path to the calling repository's package manager lockfile
+        description: Deprecated and unused. Kept for backward compatibility with callers that pass it.
         type: string
         default: package-lock.json
 
@@ -44,17 +44,14 @@ jobs:
         with:
           token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
 
-      - name: Setup pnpm
-        if: inputs.package-manager == 'pnpm'
-        uses: pnpm/action-setup@v4
-        with:
-          version: ${{ inputs.package-manager-version }}
-
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
-          cache: ${{ inputs.package-manager }}
-          cache-dependency-path: ${{ inputs.cache-dependency-path }}
+          # No cache and no package-manager setup: this job only installs
+          # plugin-release-management globally and calls the GitHub API.
+          # It never installs repo dependencies, so caching on the caller's
+          # lockfile only adds failure modes (e.g. cache: npm fails on pnpm
+          # repos with no package-lock.json).
 
       - run: npm install -g @salesforce/plugin-release-management --omit=dev
 
