@@ -98,11 +98,6 @@ on:
         required: false
         default: "false"
         type: string
-      slack-notification-title:
-        description: "Title for Slack success notifications"
-        required: false
-        default: "🎉 Extensions Released Successfully!"
-        type: string
       node-version:
         description: "Node.js version to use"
         required: false
@@ -181,7 +176,7 @@ on:
       MARKETPLACE_DEPLOY_TOKEN:
         description: "CBWeb internal marketplace publishing token"
         required: false
-      IDEE_RELEASE_SLACK_WEBHOOK:
+      IDEE_NIGHTLY_RELEASE_WEBHOOK:
         description: "Slack notification webhook"
         required: false
 
@@ -1237,62 +1232,31 @@ jobs:
           echo "  Versions: ${{ steps.extension-details.outputs.extension_versions }}"
           echo "  Release Type: ${{ steps.extension-details.outputs.pre_release == 'true' && 'Pre-release' || 'Stable' }}"
 
+      # Posts directly to a Slack Workflow Builder webhook trigger (hooks.slack.com/triggers/...),
+      # not a classic incoming webhook -- the payload must be the flat set of input variables
+      # defined on that trigger (status, error_details, run_url, registries, extension_names,
+      # versions, release_type), not a free-form Block Kit message.
       - name: Notify Slack
         if: inputs.dry-run != 'true' && github.event.inputs.dry-run != 'true' && needs.publish.result == 'success'
-        uses: slackapi/slack-github-action@v3.0.3
-        with:
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "${{ inputs.slack-notification-title }}",
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "${{ inputs.slack-notification-title }}"
-                  }
-                },
-                {
-                  "type": "section",
-                  "fields": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Repository:*\n${{ github.repository }}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Branch:*\n${{ inputs.branch || github.ref_name }}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Extensions:*\n${{ steps.extension-details.outputs.extension_display_names }}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Versions:*\n${{ steps.extension-details.outputs.extension_versions }}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Release Type:*\n${{ steps.extension-details.outputs.pre_release == 'true' && 'Pre-release' || 'Stable' }}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Version Bump:*\n${{ steps.extension-details.outputs.version_bump }}"
-                    }
-                  ]
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*Workflow Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>"
-                  }
-                }
-              ]
-            }
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.IDEE_RELEASE_SLACK_WEBHOOK }}
+          SLACK_WEBHOOK_URL: ${{ secrets.IDEE_NIGHTLY_RELEASE_WEBHOOK }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REGISTRIES: ${{ inputs.registries }}
+          EXTENSION_NAMES: ${{ steps.extension-details.outputs.extension_display_names }}
+          VERSIONS: ${{ steps.extension-details.outputs.extension_versions }}
+          RELEASE_TYPE: ${{ steps.extension-details.outputs.pre_release == 'true' && 'Pre-release' || 'Stable' }}
+        run: |
+          curl --fail -sS -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            --data "$(jq -n \
+              --arg status 'success' \
+              --arg error_details '' \
+              --arg run_url "$RUN_URL" \
+              --arg registries "$REGISTRIES" \
+              --arg extension_names "$EXTENSION_NAMES" \
+              --arg versions "$VERSIONS" \
+              --arg release_type "$RELEASE_TYPE" \
+              '{status: $status, error_details: $error_details, run_url: $run_url, registries: $registries, extension_names: $extension_names, versions: $versions, release_type: $release_type}')"
 
   slack-notify-failure:
     name: Slack Failure Notification
@@ -1371,68 +1335,29 @@ jobs:
           echo "  Failed jobs: publish=${{ needs.publish.result }}, bump-versions=${{ needs.bump-versions.result }}, package=${{ needs.package.result }}"
           echo "  Note: Failure occurred in dry-run mode"
 
+      # Posts directly to a Slack Workflow Builder webhook trigger (hooks.slack.com/triggers/...),
+      # not a classic incoming webhook -- the payload must be the flat set of input variables
+      # defined on that trigger (status, error_details, run_url, registries, extension_names,
+      # versions, release_type), not a free-form Block Kit message.
       - name: Notify Slack
         if: inputs.dry-run != 'true' && github.event.inputs.dry-run != 'true' && (needs.publish.result == 'failure' || needs.bump-versions.result == 'failure' || needs.package.result == 'failure')
-        uses: slackapi/slack-github-action@v3.0.3
-        with:
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "❌ VS Code Extension Release Failed!",
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "❌ VS Code Extension Release Failed!"
-                  }
-                },
-                {
-                  "type": "section",
-                  "fields": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Repository:*\n${{ github.repository }}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Branch:*\n${{ inputs.branch || github.ref_name }}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Extensions:*\n${{ steps.extension-details.outputs.extension_display_names }}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Versions:*\n${{ steps.extension-details.outputs.extension_versions }}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Release Type:*\n${{ steps.extension-details.outputs.pre_release == 'true' && 'Pre-release' || 'Stable' }}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Version Bump:*\n${{ steps.extension-details.outputs.version_bump }}"
-                    }
-                  ]
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*Workflow Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>"
-                  }
-                },
-                {
-                  "type": "context",
-                  "elements": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "Please check the workflow logs for detailed error information."
-                    }
-                  ]
-                }
-              ]
-            }
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.IDEE_RELEASE_SLACK_WEBHOOK }}
+          SLACK_WEBHOOK_URL: ${{ secrets.IDEE_NIGHTLY_RELEASE_WEBHOOK }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REGISTRIES: ${{ inputs.registries }}
+          EXTENSION_NAMES: ${{ steps.extension-details.outputs.extension_display_names }}
+          VERSIONS: ${{ steps.extension-details.outputs.extension_versions }}
+          RELEASE_TYPE: ${{ steps.extension-details.outputs.pre_release == 'true' && 'Pre-release' || 'Stable' }}
+          ERROR_DETAILS: "bump-versions=${{ needs.bump-versions.result }}, package=${{ needs.package.result }}, publish=${{ needs.publish.result }}"
+        run: |
+          curl --fail -sS -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            --data "$(jq -n \
+              --arg status 'failure' \
+              --arg error_details "$ERROR_DETAILS" \
+              --arg run_url "$RUN_URL" \
+              --arg registries "$REGISTRIES" \
+              --arg extension_names "$EXTENSION_NAMES" \
+              --arg versions "$VERSIONS" \
+              --arg release_type "$RELEASE_TYPE" \
+              '{status: $status, error_details: $error_details, run_url: $run_url, registries: $registries, extension_names: $extension_names, versions: $versions, release_type: $release_type}')"
