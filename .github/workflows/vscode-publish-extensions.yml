@@ -181,7 +181,7 @@ on:
       MARKETPLACE_DEPLOY_TOKEN:
         description: "CBWeb internal marketplace publishing token"
         required: false
-      IDEE_MAIN_SLACK_WEBHOOK:
+      IDEE_RELEASE_SLACK_WEBHOOK:
         description: "Slack notification webhook"
         required: false
 
@@ -1292,7 +1292,7 @@ jobs:
               ]
             }
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.IDEE_MAIN_SLACK_WEBHOOK }}
+          SLACK_WEBHOOK_URL: ${{ secrets.IDEE_RELEASE_SLACK_WEBHOOK }}
 
   slack-notify-failure:
     name: Slack Failure Notification
@@ -1435,4 +1435,4 @@ jobs:
               ]
             }
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.IDEE_MAIN_SLACK_WEBHOOK }}
+          SLACK_WEBHOOK_URL: ${{ secrets.IDEE_RELEASE_SLACK_WEBHOOK }}
