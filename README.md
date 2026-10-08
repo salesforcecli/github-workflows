@@ -395,6 +395,22 @@ automerge:
     mergeMethod: squash
 ```
 
+The package manager and lockfile are detected automatically. Without overrides, the workflow uses the first lockfile it finds in this order: `package-lock.json` (npm), `yarn.lock` (yarn), `pnpm-lock.yaml` (pnpm). The workflow fails if no lockfile is found.
+
+Need to override the detection?
+
+```yml
+automerge:
+  with:
+    package-manager: pnpm
+    package-manager-version: '10'
+    cache-dependency-path: pnpm-lock.yaml
+```
+
+- `package-manager` (optional) - `npm`, `pnpm`, or `yarn` (default: detected from the lockfile)
+- `package-manager-version` (optional) - pnpm version to install when `package-manager` is `pnpm` (default: `10`)
+- `cache-dependency-path` (optional) - lockfile path (default: detected; the package manager is inferred from the file name if `package-manager` is not set)
+
 ### versionInfo
 
 > requires npm to exist. Use in a workflow that has already done that
