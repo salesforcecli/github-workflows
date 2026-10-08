@@ -176,7 +176,7 @@ on:
       MARKETPLACE_DEPLOY_TOKEN:
         description: "CBWeb internal marketplace publishing token"
         required: false
-      IDEE_NIGHTLY_RELEASE_WEBHOOK:
+      SLACK_WEBHOOK:
         description: "Slack notification webhook"
         required: false
 
@@ -1239,7 +1239,7 @@ jobs:
       - name: Notify Slack
         if: inputs.dry-run != 'true' && github.event.inputs.dry-run != 'true' && needs.publish.result == 'success'
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.IDEE_NIGHTLY_RELEASE_WEBHOOK }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           REGISTRIES: ${{ inputs.registries }}
           EXTENSION_NAMES: ${{ steps.extension-details.outputs.extension_display_names }}
@@ -1342,7 +1342,7 @@ jobs:
       - name: Notify Slack
         if: inputs.dry-run != 'true' && github.event.inputs.dry-run != 'true' && (needs.publish.result == 'failure' || needs.bump-versions.result == 'failure' || needs.package.result == 'failure')
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.IDEE_NIGHTLY_RELEASE_WEBHOOK }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           REGISTRIES: ${{ inputs.registries }}
           EXTENSION_NAMES: ${{ steps.extension-details.outputs.extension_display_names }}
