@@ -22,9 +22,8 @@ on:
         default: false
       package-manager:
         required: false
-        description: Package manager used by the calling repository (npm, pnpm, or yarn)
+        description: Package manager used by the calling repository (npm, pnpm, or yarn); detected from the lockfile if not set
         type: string
-        default: npm
       package-manager-version:
         required: false
         description: pnpm version to use when package-manager is pnpm
@@ -32,9 +31,8 @@ on:
         default: '10'
       cache-dependency-path:
         required: false
-        description: Path to the calling repository's package manager lockfile
+        description: Path to the calling repository's package manager lockfile; detected if not set
         type: string
-        default: package-lock.json
 
 jobs:
   dependabot-automerge:
@@ -44,8 +42,48 @@ jobs:
         with:
           token: ${{ secrets.SVC_CLI_BOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
 
+      - name: Determine package manager and lockfile
+        id: detect
+        env:
+          INPUTS_PACKAGE_MANAGER: ${{ inputs.package-manager }}
+          INPUTS_CACHE_DEPENDENCY_PATH: ${{ inputs.cache-dependency-path }}
+        run: |
+          package_manager="$INPUTS_PACKAGE_MANAGER"
+          lockfile="$INPUTS_CACHE_DEPENDENCY_PATH"
+
+          if [ -z "$lockfile" ]; then
+            case "$package_manager" in
+              npm) candidates="package-lock.json" ;;
+              pnpm) candidates="pnpm-lock.yaml" ;;
+              yarn) candidates="yarn.lock" ;;
+              *) candidates="package-lock.json yarn.lock pnpm-lock.yaml" ;;
+            esac
+            for candidate in $candidates; do
+              if [ -f "$candidate" ]; then
+                lockfile="$candidate"
+                break
+              fi
+            done
+            if [ -z "$lockfile" ]; then
+              echo "::error::No lockfile found (looked for: $candidates)"
+              exit 1
+            fi
+          fi
+
+          if [ -z "$package_manager" ]; then
+            case "$(basename "$lockfile")" in
+              package-lock.json) package_manager=npm ;;
+              pnpm-lock.yaml) package_manager=pnpm ;;
+              yarn.lock) package_manager=yarn ;;
+              *) echo "::error::Cannot determine package manager from lockfile: $lockfile"; exit 1 ;;
+            esac
+          fi
+
+          echo "package-manager=$package_manager" >> "$GITHUB_OUTPUT"
+          echo "cache-dependency-path=$lockfile" >> "$GITHUB_OUTPUT"
+
       - name: Setup pnpm
-        if: inputs.package-manager == 'pnpm'
+        if: steps.detect.outputs.package-manager == 'pnpm'
         uses: pnpm/action-setup@v4
         with:
           version: ${{ inputs.package-manager-version }}
@@ -53,8 +91,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
-          cache: ${{ inputs.package-manager }}
-          cache-dependency-path: ${{ inputs.cache-dependency-path }}
+          cache: ${{ steps.detect.outputs.package-manager }}
+          cache-dependency-path: ${{ steps.detect.outputs.cache-dependency-path }}
 
       - run: npm install -g @salesforce/plugin-release-management --omit=dev
 
