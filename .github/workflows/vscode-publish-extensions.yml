@@ -303,11 +303,21 @@ jobs:
           curl -sS "$SCRIPTS_URL/utils.ts" -o .github/scripts/utils.ts
           curl -sS "$SCRIPTS_URL/index.ts" -o .github/scripts/index.ts
 
+          # Install into an isolated prefix dir, independent of the CONSUMING repo's own
+          # package.json/workspace config - unlike `npm install` at the repo root, this never
+          # parses that repo's own dependency specifiers. A consuming repo using pnpm's
+          # `workspace:*` protocol (unsupported by plain npm's arborist - EUNSUPPORTEDPROTOCOL)
+          # would otherwise fail here even though these packages have nothing to do with the
+          # repo's own dependency graph. NODE_PATH makes them resolvable to the downloaded
+          # script below, which `require`s/`import`s them as bare specifiers from its own
+          # location under .github/scripts/ (verified: a bare prefix install with no NODE_PATH
+          # runs tsx fine but the script itself then fails with MODULE_NOT_FOUND).
           echo "Installing change detection dependencies..."
-          npm install --no-save simple-git@3.27.0 chalk@5.3.0 semver@7.6.3 zod@3.24.1 tsx@4.19.2
+          DEPS_PREFIX="$(mktemp -d)"
+          npm install --prefix "$DEPS_PREFIX" simple-git@3.27.0 chalk@5.3.0 semver@7.6.3 zod@3.24.1 tsx@4.19.2
 
           echo "Running change detection..."
-          npx tsx .github/scripts/index.ts ext-change-detector
+          NODE_PATH="$DEPS_PREFIX/node_modules" "$DEPS_PREFIX/node_modules/.bin/tsx" .github/scripts/index.ts ext-change-detector
 
   bump-versions:
     needs: [determine-changes]
