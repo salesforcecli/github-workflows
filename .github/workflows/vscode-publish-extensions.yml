@@ -295,19 +295,22 @@ jobs:
         run: |
           # Download the change detection scripts from salesforcecli/github-workflows
           SCRIPTS_URL="https://raw.githubusercontent.com/salesforcecli/github-workflows/main/.github/scripts"
-          mkdir -p .github/scripts
+          helper_dir="$(mktemp -d)"
+          trap 'rm -rf "$helper_dir"' EXIT
+          mkdir -p "$helper_dir/scripts"
 
           echo "Downloading change detection scripts..."
-          curl -sS "$SCRIPTS_URL/ext-change-detector.ts" -o .github/scripts/ext-change-detector.ts
-          curl -sS "$SCRIPTS_URL/types.ts" -o .github/scripts/types.ts
-          curl -sS "$SCRIPTS_URL/utils.ts" -o .github/scripts/utils.ts
-          curl -sS "$SCRIPTS_URL/index.ts" -o .github/scripts/index.ts
+          curl -fsS "$SCRIPTS_URL/ext-change-detector.ts" -o "$helper_dir/scripts/ext-change-detector.ts"
+          curl -fsS "$SCRIPTS_URL/types.ts" -o "$helper_dir/scripts/types.ts"
+          curl -fsS "$SCRIPTS_URL/utils.ts" -o "$helper_dir/scripts/utils.ts"
+          curl -fsS "$SCRIPTS_URL/index.ts" -o "$helper_dir/scripts/index.ts"
 
           echo "Installing change detection dependencies..."
-          npm install --no-save simple-git@3.27.0 chalk@5.3.0 semver@7.6.3 zod@3.24.1 tsx@4.19.2
+          npm install --prefix "$helper_dir" --no-save --package-lock=false \
+            simple-git@3.27.0 chalk@5.3.0 semver@7.6.3 zod@3.24.1 tsx@4.19.2
 
           echo "Running change detection..."
-          npx tsx .github/scripts/index.ts ext-change-detector
+          "$helper_dir/node_modules/.bin/tsx" "$helper_dir/scripts/index.ts" ext-change-detector
 
   bump-versions:
     needs: [determine-changes]
