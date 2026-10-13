@@ -1,0 +1,49 @@
+name: jf-gha-exp.yml
+on:
+  workflow_call:
+    inputs:
+      pr_number:
+        description: The number of the pull request to operate on
+        required: true
+        type: number
+
+jobs:
+  read-comments:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Add a comment to the PR
+        uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.title }}
+        with:
+          script: |
+            const roboCommentBody = "This PR lacks any commits of the 'fix' or 'feat' type, and therefore will not trigger a release. To silence all further warnings, react to this warning comment (or any other) with the :eyes: emoji.";
+            const commits = await github.paginate(github.rest.pulls.listCommits, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: Number(process.env.PR_NUMBER),
+              per_page: 100
+            });
+            const hasFixOrFeatCommits = commits.some(c => {
+              return c.commit.message.startsWith('fix') || c.commit.message.startsWith('feat');
+            });
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(process.env.PR_NUMBER)
+            });
+            const hasAcknowledgedRoboComment = comments.some(comment => {
+              return comment.user.type === 'Bot'
+                && comment.body === roboCommentBody
+                && comment.reactions.eyes > 0
+            });
+            if (!hasFixOrFeatCommits && !hasAcknowledgedRoboComment) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: Number(process.env.PR_NUMBER),
+                body: roboCommentBody
+              });
+            }
