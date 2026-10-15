@@ -15,9 +15,9 @@ on:
         default: npm
         required: false
       package-manager-version:
-        description: pnpm version to use when package-manager is pnpm
+        description: pnpm version to use when package-manager is pnpm. Leave empty to let pnpm/action-setup read the "packageManager" field from the caller's package.json instead.
         type: string
-        default: '10'
+        default: ''
         required: false
       cache-dependency-path:
         description: Path to the calling repository's package manager lockfile; auto-derived from package-manager if not set
