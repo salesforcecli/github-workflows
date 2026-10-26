@@ -36,7 +36,9 @@ name: Promote Nightly to Pre-release
 # Requirements - calling repository must have:
 #   - Nightly tags matching *-nightly.* (e.g., v1.2.3-nightly.20260629)
 #   - GitHub releases for each nightly tag with VSIX file(s) attached
-#   - Secrets: IDEE_GH_TOKEN, VSCE_PERSONAL_ACCESS_TOKEN, IDEE_OVSX_PAT
+#   - Secrets: IDEE_GH_TOKEN, VSCE_PERSONAL_ACCESS_TOKEN
+#   - IDEE_OVSX_PAT, unless skip-ovsx: 'true' (e.g. the caller publishes Open VSX itself via a
+#     separate trusted-publishing dispatch, so its workflow_ref matches its stable release path)
 #
 # Workflow: downloads VSIX → publishes to both marketplaces → creates tracking tag
 
@@ -70,6 +72,11 @@ on:
         description: 'Node.js version to use'
         required: false
         default: '22.x'
+        type: string
+      skip-ovsx:
+        description: "Skip publishing to Open VSX from this workflow (e.g. because the caller publishes it separately via its own trusted-publishing dispatch)"
+        required: false
+        default: "false"
         type: string
   workflow_dispatch:
     inputs:
@@ -107,6 +114,14 @@ on:
         required: false
         default: '22.x'
         type: string
+      skip-ovsx:
+        description: "Skip publishing to Open VSX from this workflow (e.g. because the caller publishes it separately via its own trusted-publishing dispatch)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 
 concurrency:
   group: promote-prerelease
@@ -158,6 +173,7 @@ jobs:
           EXCLUDE_WEB: ${{ inputs.exclude-web-vsix || 'false' }}
           PUBLISH_TOOL: ${{ matrix.publish-tool }}
           DRY_RUN: ${{ inputs.dry-run || 'false' }}
+          SKIP_OVSX: ${{ inputs.skip-ovsx || 'false' }}
           VSCE_PERSONAL_ACCESS_TOKEN: ${{ secrets.VSCE_PERSONAL_ACCESS_TOKEN }}
           OVSX_PAT: ${{ secrets.IDEE_OVSX_PAT }}
         run: |
@@ -183,6 +199,13 @@ jobs:
           else
             MARKETPLACE_NAME="Visual Studio Marketplace"
             TOKEN="$VSCE_PERSONAL_ACCESS_TOKEN"
+          fi
+
+          # Caller publishes Open VSX separately (e.g. via its own trusted-publishing dispatch) --
+          # skip without even requiring OVSX_PAT to be set.
+          if [ "$PUBLISH_TOOL" = "ovsx" ] && [ "$SKIP_OVSX" = "true" ]; then
+            echo "⏭️  Skipping $MARKETPLACE_NAME -- caller publishes it separately (skip-ovsx input)."
+            exit 0
           fi
 
           if [ "$DRY_RUN" != "true" ] && [ -z "$TOKEN" ]; then
