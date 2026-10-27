@@ -1182,10 +1182,12 @@ jobs:
           SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
           VERSION_BUMP_INPUT: ${{ inputs.version-bump }}
           PRE_RELEASE_INPUT: ${{ inputs.pre-release || github.event.inputs.pre-release || 'false' }}
+          IS_NIGHTLY_INPUT: ${{ inputs.nightly && 'true' || 'false' }}
         run: |
           # Get selected extensions and their details
           VERSION_BUMP="$VERSION_BUMP_INPUT"
           PRE_RELEASE="$PRE_RELEASE_INPUT"
+          IS_NIGHTLY="$IS_NIGHTLY_INPUT"
 
           # Initialize arrays for extension details
           EXTENSION_NAMES=""
@@ -1218,6 +1220,7 @@ jobs:
           echo "extension_display_names=$EXTENSION_DISPLAY_NAMES" >> $GITHUB_OUTPUT
           echo "version_bump=$VERSION_BUMP" >> $GITHUB_OUTPUT
           echo "pre_release=$PRE_RELEASE" >> $GITHUB_OUTPUT
+          echo "is_nightly=$IS_NIGHTLY" >> $GITHUB_OUTPUT
 
       - name: Publish skipped summary
         if: needs.publish.result == 'skipped'
@@ -1233,7 +1236,7 @@ jobs:
           echo "🔄 DRY RUN: Would send Slack notification"
           echo "  Extensions: ${{ steps.extension-details.outputs.extension_display_names }}"
           echo "  Versions: ${{ steps.extension-details.outputs.extension_versions }}"
-          echo "  Release Type: ${{ steps.extension-details.outputs.pre_release == 'true' && 'Pre-release' || 'Stable' }}"
+          echo "  Release Type: ${{ steps.extension-details.outputs.is_nightly == 'true' && 'Nightly' || (steps.extension-details.outputs.pre_release == 'true' && 'Pre-release' || 'Stable') }}"
 
       # Posts directly to a Slack Workflow Builder webhook trigger (hooks.slack.com/triggers/...),
       # not a classic incoming webhook -- the payload must be the flat set of input variables
@@ -1247,7 +1250,7 @@ jobs:
           REGISTRIES: ${{ inputs.registries }}
           EXTENSION_NAMES: ${{ steps.extension-details.outputs.extension_display_names }}
           VERSIONS: ${{ steps.extension-details.outputs.extension_versions }}
-          RELEASE_TYPE: ${{ steps.extension-details.outputs.pre_release == 'true' && 'Pre-release' || 'Stable' }}
+          RELEASE_TYPE: ${{ steps.extension-details.outputs.is_nightly == 'true' && 'Nightly' || (steps.extension-details.outputs.pre_release == 'true' && 'Pre-release' || 'Stable') }}
         run: |
           curl --fail -sS -X POST "$SLACK_WEBHOOK_URL" \
             -H 'Content-Type: application/json' \
@@ -1286,10 +1289,12 @@ jobs:
           SELECTED_EXTENSIONS: ${{ needs.determine-changes.outputs.selected-extensions }}
           VERSION_BUMP_INPUT: ${{ inputs.version-bump }}
           PRE_RELEASE_INPUT: ${{ inputs.pre-release || github.event.inputs.pre-release || 'false' }}
+          IS_NIGHTLY_INPUT: ${{ inputs.nightly && 'true' || 'false' }}
         run: |
           # Get selected extensions and their details
           VERSION_BUMP="$VERSION_BUMP_INPUT"
           PRE_RELEASE="$PRE_RELEASE_INPUT"
+          IS_NIGHTLY="$IS_NIGHTLY_INPUT"
 
           # Initialize arrays for extension details
           EXTENSION_NAMES=""
@@ -1322,6 +1327,7 @@ jobs:
           echo "extension_display_names=$EXTENSION_DISPLAY_NAMES" >> $GITHUB_OUTPUT
           echo "version_bump=$VERSION_BUMP" >> $GITHUB_OUTPUT
           echo "pre_release=$PRE_RELEASE" >> $GITHUB_OUTPUT
+          echo "is_nightly=$IS_NIGHTLY" >> $GITHUB_OUTPUT
 
       - name: No failure to report
         if: needs.publish.result == 'skipped' && needs.bump-versions.result != 'failure' && needs.package.result != 'failure'
@@ -1350,7 +1356,7 @@ jobs:
           REGISTRIES: ${{ inputs.registries }}
           EXTENSION_NAMES: ${{ steps.extension-details.outputs.extension_display_names }}
           VERSIONS: ${{ steps.extension-details.outputs.extension_versions }}
-          RELEASE_TYPE: ${{ steps.extension-details.outputs.pre_release == 'true' && 'Pre-release' || 'Stable' }}
+          RELEASE_TYPE: ${{ steps.extension-details.outputs.is_nightly == 'true' && 'Nightly' || (steps.extension-details.outputs.pre_release == 'true' && 'Pre-release' || 'Stable') }}
           ERROR_DETAILS: "bump-versions=${{ needs.bump-versions.result }}, package=${{ needs.package.result }}, publish=${{ needs.publish.result }}"
         run: |
           curl --fail -sS -X POST "$SLACK_WEBHOOK_URL" \
