@@ -1,9 +1,19 @@
 name: Promote Nightly to Pre-release
 
-# Publishes a nightly build to pre-release on VS Code Marketplace and Open VSX.
+# Publishes a nightly build to pre-release on the VS Code Marketplace. Open VSX is NOT published
+# from here -- see the note below.
 #
 # NOTE: Callers should use vscode-find-nightly-candidate.yml and check-ci-status action
 # BEFORE calling this workflow to implement their own gate-check logic.
+#
+# NOTE on Open VSX: Open VSX's trusted-publisher match keys off the OIDC token's workflow_ref
+# claim (the run's initiating workflow), and allows only one trusted-publisher registration per
+# extension. A caller whose stable release publishes Open VSX from a different top-level workflow
+# file than this one would get two different workflow_ref values for the same extension, which
+# can't both be registered. So Open VSX publishing is each caller's own responsibility -- publish
+# it from whichever single top-level workflow file you also use for your stable release's Open VSX
+# publish (dispatched via `gh workflow run`, not `uses:`, so it's a genuinely new, independently
+# initiated run and not nested inside this one).
 #
 # Usage:
 #   jobs:
@@ -37,10 +47,8 @@ name: Promote Nightly to Pre-release
 #   - Nightly tags matching *-nightly.* (e.g., v1.2.3-nightly.20260629)
 #   - GitHub releases for each nightly tag with VSIX file(s) attached
 #   - Secrets: IDEE_GH_TOKEN, VSCE_PERSONAL_ACCESS_TOKEN
-#   - IDEE_OVSX_PAT, unless skip-ovsx: 'true' (e.g. the caller publishes Open VSX itself via a
-#     separate trusted-publishing dispatch, so its workflow_ref matches its stable release path)
 #
-# Workflow: downloads VSIX → publishes to both marketplaces → creates tracking tag
+# Workflow: downloads VSIX → publishes to VS Code Marketplace → creates tracking tag
 
 on:
   workflow_call:
@@ -72,11 +80,6 @@ on:
         description: 'Node.js version to use'
         required: false
         default: '22.x'
-        type: string
-      skip-ovsx:
-        description: "Skip publishing to Open VSX from this workflow (e.g. because the caller publishes it separately via its own trusted-publishing dispatch)"
-        required: false
-        default: "false"
         type: string
   workflow_dispatch:
     inputs:
@@ -114,14 +117,6 @@ on:
         required: false
         default: '22.x'
         type: string
-      skip-ovsx:
-        description: "Skip publishing to Open VSX from this workflow (e.g. because the caller publishes it separately via its own trusted-publishing dispatch)"
-        required: false
-        default: "false"
-        type: choice
-        options:
-          - "false"
-          - "true"
 
 concurrency:
   group: promote-prerelease
@@ -135,14 +130,6 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - registry: vsce
-            publish-tool: vsce
-          - registry: ovsx
-            publish-tool: ovsx
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -166,16 +153,13 @@ jobs:
             --dir ./vsix-artifacts \
             --repo "${{ github.repository }}"
 
-      - name: Publish to ${{ matrix.registry }}
+      - name: Publish to Visual Studio Marketplace
         env:
           NIGHTLY_TAG: ${{ inputs.release-tag }}
           VSIX_PATTERN: ${{ inputs.vsix-name-pattern || '*.vsix' }}
           EXCLUDE_WEB: ${{ inputs.exclude-web-vsix || 'false' }}
-          PUBLISH_TOOL: ${{ matrix.publish-tool }}
           DRY_RUN: ${{ inputs.dry-run || 'false' }}
-          SKIP_OVSX: ${{ inputs.skip-ovsx || 'false' }}
           VSCE_PERSONAL_ACCESS_TOKEN: ${{ secrets.VSCE_PERSONAL_ACCESS_TOKEN }}
-          OVSX_PAT: ${{ secrets.IDEE_OVSX_PAT }}
         run: |
           set -uo pipefail
 
@@ -193,27 +177,13 @@ jobs:
             exit 1
           fi
 
-          if [ "$PUBLISH_TOOL" = "ovsx" ]; then
-            MARKETPLACE_NAME="Open VSX Registry"
-            TOKEN="$OVSX_PAT"
-          else
-            MARKETPLACE_NAME="Visual Studio Marketplace"
-            TOKEN="$VSCE_PERSONAL_ACCESS_TOKEN"
-          fi
-
-          # Caller publishes Open VSX separately (e.g. via its own trusted-publishing dispatch) --
-          # skip without even requiring OVSX_PAT to be set.
-          if [ "$PUBLISH_TOOL" = "ovsx" ] && [ "$SKIP_OVSX" = "true" ]; then
-            echo "⏭️  Skipping $MARKETPLACE_NAME -- caller publishes it separately (skip-ovsx input)."
-            exit 0
-          fi
-
+          TOKEN="$VSCE_PERSONAL_ACCESS_TOKEN"
           if [ "$DRY_RUN" != "true" ] && [ -z "$TOKEN" ]; then
-            echo "::error::Token for $PUBLISH_TOOL is not set"
+            echo "::error::Token for vsce is not set"
             exit 1
           fi
 
-          echo "Publishing ${#VSIX_FILES[@]} VSIX(s) as pre-release to $MARKETPLACE_NAME:"
+          echo "Publishing ${#VSIX_FILES[@]} VSIX(s) as pre-release to Visual Studio Marketplace:"
           printf '  %s\n' "${VSIX_FILES[@]}"
 
           RUN_ID="${{ github.run_id }}"
@@ -222,7 +192,7 @@ jobs:
           FAILED=0
 
           # Marketplace gallery requests can sit until typed-rest-client's 180s
-          # socket timeout. vsce/ovsx have no timeout flag; retry per VSIX.
+          # socket timeout. vsce has no timeout flag; retry per VSIX.
           # --skip-duplicate makes a retry a no-op if the first attempt committed.
           publish_with_retry() {
             local attempt
@@ -241,11 +211,11 @@ jobs:
 
           for VSIX in "${VSIX_FILES[@]}"; do
             NAME=$(basename "$VSIX")
-            echo "::group::$NAME → $MARKETPLACE_NAME"
+            echo "::group::$NAME → Visual Studio Marketplace"
 
             # Audit trail (mirrors the publish-vsix action's per-file record)
             HASH=$(sha256sum "$VSIX" 2>/dev/null | cut -d' ' -f1 || echo "unknown")
-            echo "[AUDIT] actor=$ACTOR repo=$REPO run_id=$RUN_ID tool=$PUBLISH_TOOL file=$NAME hash=$HASH pre_release=true dry_run=$DRY_RUN"
+            echo "[AUDIT] actor=$ACTOR repo=$REPO run_id=$RUN_ID tool=vsce file=$NAME hash=$HASH pre_release=true dry_run=$DRY_RUN"
 
             if [ "$DRY_RUN" = "true" ]; then
               echo "🔍 DRY RUN - would publish $NAME (pre-release)"
@@ -253,29 +223,20 @@ jobs:
               continue
             fi
 
-            if [ "$PUBLISH_TOOL" = "vsce" ]; then
-              if VSCE_PAT="$TOKEN" publish_with_retry npx @vscode/vsce publish --packagePath "$VSIX" --skip-duplicate --pre-release; then
-                echo "✅ Published $NAME to $MARKETPLACE_NAME"
-              else
-                echo "::error::Failed to publish $NAME to $MARKETPLACE_NAME"
-                FAILED=1
-              fi
+            if VSCE_PAT="$TOKEN" publish_with_retry npx @vscode/vsce publish --packagePath "$VSIX" --skip-duplicate --pre-release; then
+              echo "✅ Published $NAME to Visual Studio Marketplace"
             else
-              if publish_with_retry npx ovsx publish "$VSIX" -p "$TOKEN" --skip-duplicate --pre-release; then
-                echo "✅ Published $NAME to $MARKETPLACE_NAME"
-              else
-                echo "::error::Failed to publish $NAME to $MARKETPLACE_NAME"
-                FAILED=1
-              fi
+              echo "::error::Failed to publish $NAME to Visual Studio Marketplace"
+              FAILED=1
             fi
             echo "::endgroup::"
           done
 
           if [ "$FAILED" -ne 0 ]; then
-            echo "::error::One or more VSIX publishes failed for $PUBLISH_TOOL"
+            echo "::error::One or more VSIX publishes failed for vsce"
             exit 1
           fi
-          echo "✅ All ${#VSIX_FILES[@]} VSIX(s) processed for $MARKETPLACE_NAME"
+          echo "✅ All ${#VSIX_FILES[@]} VSIX(s) processed for Visual Studio Marketplace"
 
   tag-promoted:
     needs: publish
