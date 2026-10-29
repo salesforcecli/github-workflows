@@ -5,6 +5,16 @@ name: Manual Publish VS Code Extension
 #   - A nightly GitHub Release (version-tag path — normal workflow)
 #   - A branch CI build artifact (source-run-id path — out-of-band, bypass mandatory)
 #
+# NOTE on Open VSX: this workflow does NOT publish Open VSX itself, even when registries is
+# ovsx/all -- its `publish` job's ovsx leg is a deliberate no-op (see that job's comment). Open
+# VSX's trusted-publisher match keys off the OIDC token's workflow_ref claim (the run's
+# initiating workflow), and allows only one trusted-publisher registration per extension, so
+# Open VSX publishing has to live in whichever single top-level workflow file the caller also
+# uses for its other release channels. The caller is expected to dispatch that file itself (via
+# `gh workflow run`, not `uses:`) after this workflow succeeds, for the version-tag path only --
+# source-run-id has no GitHub Release for a tag-based publish to target, so `prepare` hard-errors
+# that combination instead of silently never publishing to Open VSX.
+#
 # Usage from consuming repository:
 #   jobs:
 #     manual-publish:
@@ -22,7 +32,7 @@ name: Manual Publish VS Code Extension
 #       secrets: inherit
 #
 # Requirements - calling repository must have:
-#   - Secrets: IDEE_GH_TOKEN, VSCE_PERSONAL_ACCESS_TOKEN, IDEE_OVSX_PAT
+#   - Secrets: IDEE_GH_TOKEN, VSCE_PERSONAL_ACCESS_TOKEN
 #   - For CBWeb: MARKETPLACE_DEPLOY_TOKEN and MARKETPLACE_URL variable
 #   - The package manager and lockfile inputs must match the caller repository.
 #   - The shared actions in this repository are resolved from the workflow branch.
@@ -315,6 +325,14 @@ jobs:
           if [ -n "$SOURCE_RUN_ID" ]; then
             if [ "$SKIP_QC" != "true" ]; then
               echo "ERROR: source-run-id path requires skip-quality-checks=true (branch CI profiles differ from main)."
+              exit 1
+            fi
+            # Open VSX publishing is tag-based (the caller dispatches publishOpenVSXTrusted.yml
+            # with a release tag -- see this workflow's header) and there is no GitHub Release,
+            # and therefore no tag, for a branch CI run artifact. Failing loudly here beats the
+            # alternative of silently never publishing to Open VSX for this combination.
+            if [ "$REGISTRIES" = "ovsx" ] || [ "$REGISTRIES" = "all" ]; then
+              echo "ERROR: source-run-id has no GitHub Release for Open VSX's tag-based trusted-publishing dispatch to target. Use registries=vsce for this path."
               exit 1
             fi
           fi
@@ -794,7 +812,17 @@ jobs:
           fi
           echo "VSIX_PATH=$VSIX_FILE" >> $GITHUB_ENV
 
+      # Open VSX is NOT published here -- see this file's header. The caller dispatches
+      # publishOpenVSXTrusted.yml itself afterward instead, so this leg of the matrix (still
+      # present when registries is ovsx/all, so the job's own success/skip status -- and every
+      # downstream needs.publish.result == 'success' check -- stays exactly as it was) is a
+      # deliberate no-op rather than a removed step.
+      - name: Open VSX is published by the caller, not here
+        if: matrix.publish-tool == 'ovsx'
+        run: echo "Skipping -- the caller dispatches publishOpenVSXTrusted.yml for Open VSX. See this file's header comment."
+
       - name: Publish to ${{ matrix.registry }}
+        if: matrix.publish-tool != 'ovsx'
         uses: salesforcecli/github-workflows/.github/actions/publish-vsix@main
         with:
           vsix-path: ${{ env.VSIX_PATH }}
@@ -803,7 +831,6 @@ jobs:
           dry-run: ${{ inputs.dry-run || 'false' }}
         env:
           VSCE_PERSONAL_ACCESS_TOKEN: ${{ secrets.VSCE_PERSONAL_ACCESS_TOKEN }}
-          OVSX_PAT: ${{ secrets.IDEE_OVSX_PAT }}
 
   publish-to-cbweb-marketplace:
     name: Publish to CBWeb Internal Marketplace
