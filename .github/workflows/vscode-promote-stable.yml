@@ -1,6 +1,17 @@
 name: Promote Pre-release to Stable
 
-# Reusable workflow for promoting a pre-release VS Code extension to stable.
+# Reusable workflow for promoting a pre-release VS Code extension to stable. Publishes to the VS
+# Code Marketplace only -- Open VSX is NOT published from here, see the note below.
+#
+# NOTE on Open VSX: Open VSX's trusted-publisher match keys off the OIDC token's workflow_ref
+# claim (the run's initiating workflow), and allows only one trusted-publisher registration per
+# extension. A caller whose prerelease publishes Open VSX from a different top-level workflow
+# file than this one would get two different workflow_ref values for the same extension, which
+# can't both be registered. So Open VSX publishing is each caller's own responsibility -- publish
+# it from whichever single top-level workflow file you also use for your prerelease's Open VSX
+# publish, using this workflow's `release-tag` output to know which tag to publish (dispatched via
+# `gh workflow run`, not `uses:`, so it's a genuinely new, independently initiated run and not
+# nested inside this one).
 #
 # Usage from consuming repository:
 #   jobs:
@@ -15,12 +26,20 @@ name: Promote Pre-release to Stable
 #         dry-run: 'false'
 #       secrets: inherit
 #
+#     publish-openvsx:
+#       needs: promote
+#       runs-on: ubuntu-latest
+#       env:
+#         GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
+#       steps:
+#         - run: gh workflow run publishOpenVSXTrusted.yml --repo "${{ github.repository }}" -f release-tag="${{ needs.promote.outputs.release-tag }}"
+#
 # Requirements - calling repository must have:
 #   - marketplace-prerelease-* tracking tags
 #   - Nightly tags matching v{version}-nightly.* pattern
 #   - GitHub releases for each nightly tag with VSIX file(s) attached
 #   - Passing CI checks on the nightly candidate commit
-#   - Secrets: IDEE_GH_TOKEN, VSCE_PERSONAL_ACCESS_TOKEN, IDEE_OVSX_PAT
+#   - Secrets: IDEE_GH_TOKEN, VSCE_PERSONAL_ACCESS_TOKEN
 #   - The shared actions in this repository are resolved from the workflow branch.
 #   - The package manager and lockfile inputs must match the caller repository.
 #
@@ -28,7 +47,7 @@ name: Promote Pre-release to Stable
 # resolved from this repository so callers do not need duplicate composite actions.
 #
 # Workflow: finds latest pre-release → verifies quality gate → repackages VSIX
-#           → publishes to both marketplaces → creates GitHub release → tags stable
+#           → publishes to VS Code Marketplace → creates GitHub release → tags stable
 #           → commits stable version back to main
 
 on:
@@ -93,6 +112,10 @@ on:
         required: false
         default: 'npm ci'
         type: string
+    outputs:
+      release-tag:
+        description: 'The stable GitHub release tag this run created (e.g. apex-language-server-extension-v1.2.3). Use this to dispatch your own Open VSX trusted-publishing workflow afterward -- see the header comment above.'
+        value: ${{ jobs.create-github-release.outputs.release-tag }}
   workflow_dispatch:
     inputs:
       extension-name:
@@ -336,16 +359,13 @@ jobs:
           name: stable-vsix
           path: ${{ steps.repack.outputs.vsix-path }}
 
+  # Open VSX is NOT published from here -- see this file's header for why (trusted-publisher
+  # match keys off workflow_ref, the run's initiating workflow, and allows only one registration
+  # per extension, so it has to live in whichever single top-level workflow file the caller also
+  # uses for its prerelease's Open VSX publish).
   publish:
     needs: [find-prerelease-candidate, repackage]
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - registry: vsce
-            publish-tool: vsce
-          - registry: ovsx
-            publish-tool: ovsx
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -379,20 +399,21 @@ jobs:
           fi
           echo "VSIX_PATH=$VSIX_FILE" >> $GITHUB_ENV
 
-      - name: Publish to ${{ matrix.registry }}
+      - name: Publish to Visual Studio Marketplace
         uses: salesforcecli/github-workflows/.github/actions/publish-vsix@main
         with:
           vsix-path: ${{ env.VSIX_PATH }}
-          publish-tool: ${{ matrix.publish-tool }}
+          publish-tool: vsce
           pre-release: 'false'
           dry-run: ${{ inputs.dry-run || 'false' }}
         env:
           VSCE_PERSONAL_ACCESS_TOKEN: ${{ secrets.VSCE_PERSONAL_ACCESS_TOKEN }}
-          OVSX_PAT: ${{ secrets.IDEE_OVSX_PAT }}
 
   create-github-release:
     needs: [find-prerelease-candidate, repackage, publish]
     runs-on: ubuntu-latest
+    outputs:
+      release-tag: ${{ steps.release.outputs.release-tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -407,6 +428,7 @@ jobs:
           path: ./vsix-artifacts
 
       - name: Create GitHub release for stable version
+        id: release
         env:
           GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN }}
           STABLE_VERSION: ${{ needs.find-prerelease-candidate.outputs.stable-version }}
@@ -427,6 +449,7 @@ jobs:
           # e.g., apex-language-server-extension-1.2.3.vsix -> apex-language-server-extension
           BASE_NAME=$(basename "$VSIX_FILE" .vsix | sed -E 's/-[0-9]+\.[0-9]+\.[0-9]+$//')
           RELEASE_TAG="${BASE_NAME}-v${STABLE_VERSION}"
+          echo "release-tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           RELEASE_TITLE="${BASE_NAME} v${STABLE_VERSION} (stable)"
           RELEASE_NOTES="## Stable Release v${STABLE_VERSION}
 
