@@ -12,10 +12,19 @@ on:
         required: false
         default: false
         type: boolean
+      oidc:
+        description: >
+          Publish via OIDC trusted publishing (vsce --oidc) instead of a PAT. Requires a Trusted
+          Publishing policy registered for this caller's repo/workflow on the Marketplace
+          publisher management page, and the caller job must grant `id-token: write`.
+          TEMPORARY/experimental while this is being validated end-to-end -- see W-24756661.
+        required: false
+        default: false
+        type: boolean
     secrets:
       VSCE_PERSONAL_ACCESS_TOKEN:
-        description: VS Code Marketplace publishing token
-        required: true
+        description: VS Code Marketplace publishing token. Not used when `oidc` is true.
+        required: false
 
 permissions:
   contents: read
@@ -23,6 +32,10 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Only exchanged for a Marketplace token when `oidc` is true; otherwise unused.
+      id-token: write
     steps:
       - name: Download release VSIXs
         id: release
@@ -34,6 +47,7 @@ jobs:
         env:
           DRY_RUN: ${{ inputs.dry-run }}
           PRE_RELEASE: ${{ steps.release.outputs.pre-release }}
+          OIDC: ${{ inputs.oidc }}
           VSCE_PERSONAL_ACCESS_TOKEN: ${{ secrets.VSCE_PERSONAL_ACCESS_TOKEN }}
         run: |
           # Marketplace gallery requests can sit until typed-rest-client's 180s
@@ -59,13 +73,21 @@ jobs:
             if [ "$PRE_RELEASE" = true ]; then
               args+=(--pre-release)
             fi
+            if [ "$OIDC" = true ]; then
+              args+=(--oidc)
+            fi
 
             if [ "$DRY_RUN" = true ]; then
               echo "Would publish $vsix to the VS Code Marketplace: @vscode/vsce publish ${args[*]}"
               continue
             fi
 
-            if ! VSCE_PAT="$VSCE_PERSONAL_ACCESS_TOKEN" publish_with_retry npx @vscode/vsce publish "${args[@]}"; then
+            if [ "$OIDC" = true ]; then
+              if ! publish_with_retry npx @vscode/vsce publish "${args[@]}"; then
+                echo "::error::Failed to publish $vsix after 3 attempts"
+                exit 1
+              fi
+            elif ! VSCE_PAT="$VSCE_PERSONAL_ACCESS_TOKEN" publish_with_retry npx @vscode/vsce publish "${args[@]}"; then
               echo "::error::Failed to publish $vsix after 3 attempts"
               exit 1
             fi
