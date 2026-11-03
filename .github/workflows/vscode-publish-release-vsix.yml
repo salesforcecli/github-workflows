@@ -12,15 +12,6 @@ on:
         required: false
         default: false
         type: boolean
-      oidc:
-        description: >
-          Publish via OIDC trusted publishing (vsce --oidc) instead of a PAT. Requires a Trusted
-          Publishing policy registered for this caller's repo/workflow on the Marketplace
-          publisher management page, and the caller job must grant `id-token: write`.
-          TEMPORARY/experimental while this is being validated end-to-end -- see W-24756661.
-        required: false
-        default: false
-        type: boolean
       vsix-name-pattern:
         description: Glob of downloaded VSIX file names to publish
         required: false
@@ -31,10 +22,6 @@ on:
         required: false
         default: 'false'
         type: string
-    secrets:
-      VSCE_PERSONAL_ACCESS_TOKEN:
-        description: VS Code Marketplace publishing token. Not used when `oidc` is true.
-        required: false
 
 permissions:
   contents: read
@@ -44,7 +31,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      # Only exchanged for a Marketplace token when `oidc` is true; otherwise unused.
+      # vsce exchanges this job's OIDC ID token for a short-lived Marketplace publishing token
+      # (--oidc below) -- without this, there is no token to exchange.
       id-token: write
     steps:
       - name: Download release VSIXs
@@ -57,10 +45,8 @@ jobs:
         env:
           DRY_RUN: ${{ inputs.dry-run }}
           PRE_RELEASE: ${{ steps.release.outputs.pre-release }}
-          OIDC: ${{ inputs.oidc }}
           VSIX_PATTERN: ${{ inputs.vsix-name-pattern }}
           EXCLUDE_WEB: ${{ inputs.exclude-web-vsix }}
-          VSCE_PERSONAL_ACCESS_TOKEN: ${{ secrets.VSCE_PERSONAL_ACCESS_TOKEN }}
         run: |
           # Marketplace gallery requests can sit until typed-rest-client's 180s
           # socket timeout. vsce has no timeout flag; retry per VSIX.
@@ -81,25 +67,17 @@ jobs:
           }
 
           while IFS= read -r -d '' vsix; do
-            args=(--packagePath "$vsix" --skip-duplicate)
+            args=(--packagePath "$vsix" --oidc --skip-duplicate)
             if [ "$PRE_RELEASE" = true ]; then
               args+=(--pre-release)
             fi
-            if [ "$OIDC" = true ]; then
-              args+=(--oidc)
-            fi
 
             if [ "$DRY_RUN" = true ]; then
-              echo "Would publish $vsix to the VS Code Marketplace: @vscode/vsce publish ${args[*]}"
+              echo "Would publish $vsix to the VS Code Marketplace with --skip-duplicate: @vscode/vsce publish ${args[*]}"
               continue
             fi
 
-            if [ "$OIDC" = true ]; then
-              if ! publish_with_retry npx @vscode/vsce publish "${args[@]}"; then
-                echo "::error::Failed to publish $vsix after 3 attempts"
-                exit 1
-              fi
-            elif ! VSCE_PAT="$VSCE_PERSONAL_ACCESS_TOKEN" publish_with_retry npx @vscode/vsce publish "${args[@]}"; then
+            if ! publish_with_retry npx @vscode/vsce publish "${args[@]}"; then
               echo "::error::Failed to publish $vsix after 3 attempts"
               exit 1
             fi
