@@ -4,7 +4,6 @@
 1. Please create a new issue [here](https://github.com/forcedotcom/cli/issues) before starting any work so that we can also offer suggestions or let you know if there is already an effort in progress.
 1. Sign the Salesforce [CLA](#cla).
 1. The CLI team will review your pull request and provide feedback.
-1. Once merged, a new release of `@salesforcecli/github-workflows` will be published to [npm](https://www.npmjs.com/package/@salesforcecli/github-workflows).
 
 ### CLA
 
