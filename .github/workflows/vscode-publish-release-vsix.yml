@@ -21,6 +21,16 @@ on:
         required: false
         default: false
         type: boolean
+      vsix-name-pattern:
+        description: Glob of downloaded VSIX file names to publish
+        required: false
+        default: '*.vsix'
+        type: string
+      exclude-web-vsix:
+        description: Exclude *-web-* VSIXs from publishing
+        required: false
+        default: 'false'
+        type: string
     secrets:
       VSCE_PERSONAL_ACCESS_TOKEN:
         description: VS Code Marketplace publishing token. Not used when `oidc` is true.
@@ -48,6 +58,8 @@ jobs:
           DRY_RUN: ${{ inputs.dry-run }}
           PRE_RELEASE: ${{ steps.release.outputs.pre-release }}
           OIDC: ${{ inputs.oidc }}
+          VSIX_PATTERN: ${{ inputs.vsix-name-pattern }}
+          EXCLUDE_WEB: ${{ inputs.exclude-web-vsix }}
           VSCE_PERSONAL_ACCESS_TOKEN: ${{ secrets.VSCE_PERSONAL_ACCESS_TOKEN }}
         run: |
           # Marketplace gallery requests can sit until typed-rest-client's 180s
@@ -91,4 +103,10 @@ jobs:
               echo "::error::Failed to publish $vsix after 3 attempts"
               exit 1
             fi
-          done < <(find extensions -type f -name '*.vsix' -print0)
+          done < <(
+            if [ "$EXCLUDE_WEB" = "true" ]; then
+              find extensions -type f -name "$VSIX_PATTERN" ! -iname '*-web-*' -print0
+            else
+              find extensions -type f -name "$VSIX_PATTERN" -print0
+            fi
+          )
