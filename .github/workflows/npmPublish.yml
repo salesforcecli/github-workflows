@@ -141,9 +141,6 @@ jobs:
     with:
       githubTag: ${{ inputs.githubTag }}
       nodeVersion: ${{ inputs.nodeVersion }}
-      package-manager: ${{ inputs.packageManager }}
-      package-manager-version: ${{ inputs.packageManagerVersion }}
-      cache-dependency-path: ${{ inputs.cacheDependencyPath || (inputs.packageManager == 'yarn' && 'yarn.lock' || (inputs.packageManager == 'pnpm' && 'pnpm-lock.yaml' || 'package-lock.json')) }}
     secrets: inherit
 
   npm-publish:
@@ -246,9 +243,6 @@ jobs:
     with:
       changeCaseId: ${{needs.ctc-open.outputs.changeCaseId}}
       nodeVersion: ${{ inputs.nodeVersion }}
-      package-manager: ${{ inputs.packageManager }}
-      package-manager-version: ${{ inputs.packageManagerVersion }}
-      cache-dependency-path: ${{ inputs.cacheDependencyPath || (inputs.packageManager == 'yarn' && 'yarn.lock' || (inputs.packageManager == 'pnpm' && 'pnpm-lock.yaml' || 'package-lock.json')) }}
 
   ctcCloseFail:
     needs: [ctc-open, npm-publish]
@@ -259,6 +253,3 @@ jobs:
       changeCaseId: ${{ needs.ctc-open.outputs.changeCaseId }}
       nodeVersion: ${{ inputs.nodeVersion }}
       status: Not Implemented
-      package-manager: ${{ inputs.packageManager }}
-      package-manager-version: ${{ inputs.packageManagerVersion }}
-      cache-dependency-path: ${{ inputs.cacheDependencyPath || (inputs.packageManager == 'yarn' && 'yarn.lock' || (inputs.packageManager == 'pnpm' && 'pnpm-lock.yaml' || 'package-lock.json')) }}
