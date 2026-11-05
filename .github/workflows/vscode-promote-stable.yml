@@ -1,17 +1,9 @@
 name: Promote Pre-release to Stable
 
 # Reusable workflow for promoting a pre-release VS Code extension to stable. Publishes to the VS
-# Code Marketplace only -- Open VSX is NOT published from here, see the note below.
-#
-# NOTE on Open VSX: Open VSX's trusted-publisher match keys off the OIDC token's workflow_ref
-# claim (the run's initiating workflow), and allows only one trusted-publisher registration per
-# extension. A caller whose prerelease publishes Open VSX from a different top-level workflow
-# file than this one would get two different workflow_ref values for the same extension, which
-# can't both be registered. So Open VSX publishing is each caller's own responsibility -- publish
-# it from whichever single top-level workflow file you also use for your prerelease's Open VSX
-# publish, using this workflow's `release-tag` output to know which tag to publish (dispatched via
-# `gh workflow run`, not `uses:`, so it's a genuinely new, independently initiated run and not
-# nested inside this one).
+# Code Marketplace only -- Open VSX is NOT published from here. See "Open VSX Trusted Publishing"
+# in this repo's README for why, and use this workflow's `release-tag` output to dispatch your
+# own Open VSX publish afterward.
 #
 # Usage from consuming repository:
 #   jobs:

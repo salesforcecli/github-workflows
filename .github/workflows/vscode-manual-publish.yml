@@ -5,15 +5,9 @@ name: Manual Publish VS Code Extension
 #   - A nightly GitHub Release (version-tag path — normal workflow)
 #   - A branch CI build artifact (source-run-id path — out-of-band, bypass mandatory)
 #
-# NOTE on Open VSX: this workflow does NOT publish Open VSX itself, even when registries is
-# ovsx/all -- its `publish` job's ovsx leg is a deliberate no-op (see that job's comment). Open
-# VSX's trusted-publisher match keys off the OIDC token's workflow_ref claim (the run's
-# initiating workflow), and allows only one trusted-publisher registration per extension, so
-# Open VSX publishing has to live in whichever single top-level workflow file the caller also
-# uses for its other release channels. The caller is expected to dispatch that file itself (via
-# `gh workflow run`, not `uses:`) after this workflow succeeds, for the version-tag path only --
-# source-run-id has no GitHub Release for a tag-based publish to target, so `prepare` hard-errors
-# that combination instead of silently never publishing to Open VSX.
+# This workflow does NOT publish Open VSX itself -- its `publish` job's ovsx leg is a
+# deliberate no-op (see that job's comment). See "Open VSX Trusted Publishing" in this repo's
+# README for why, and dispatch your own Open VSX publish after this workflow succeeds.
 #
 # Usage from consuming repository:
 #   jobs:
