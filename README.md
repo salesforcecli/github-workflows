@@ -516,6 +516,36 @@ The VS Code workflows follow a modular design:
 3. **Publishing** (`vscode-publish-extensions.yml`) - Complete release pipeline with version bumping and marketplace publishing
 4. **Promotion** (`vscode-promote-prerelease.yml`, `vscode-promote-stable.yml`) - Promotes vetted builds between release channels
 
+### Open VSX Trusted Publishing
+
+Open VSX's trusted-publisher match keys off the OIDC token's `workflow_ref` claim -- the run's
+*initiating* workflow -- not `job_workflow_ref` (the reusable workflow actually executing a job,
+which can be nested arbitrarily deep via `uses:`, even cross-repo, without changing
+`workflow_ref`). Open VSX also allows exactly one trusted-publisher registration per extension,
+enforced server-side, not just a UI limitation.
+
+Because of this, `vscode-promote-prerelease.yml`, `vscode-promote-stable.yml`, and
+`vscode-manual-publish.yml` do **not** publish to Open VSX themselves, even when a caller asks
+for `ovsx`/`all` registries -- publishing from inside a `uses:`-nested reusable workflow would
+mint a different `workflow_ref` than whatever top-level workflow the caller already uses for its
+other release channels, and an extension can't have two trusted-publisher registrations.
+
+Instead, each caller designates **one** top-level workflow file per extension for Open VSX
+publishing, dispatched directly (e.g. via `gh workflow run`, never nested behind another `uses:`
+call) so every Open VSX publish for that extension shares the same `workflow_ref`. That file
+should delegate the actual publish step to [`openvsx-publish-release-vsix`](#openvsx-publish-release-vsix). The pattern:
+
+- `vscode-promote-prerelease.yml` takes the tag to promote as a `release-tag` input, so the
+  caller already has it and can dispatch its Open VSX workflow with the same value afterward.
+  `vscode-promote-stable.yml` creates the stable tag itself, so it exposes that tag back out
+  via a `release-tag` output instead.
+- `vscode-manual-publish.yml`'s `publish` job keeps its `ovsx` matrix leg as a deliberate no-op
+  (so job status and every downstream `needs.publish.result == 'success'` check are unaffected)
+  and expects the caller to dispatch its Open VSX workflow itself, for the `version-tag` source
+  path only -- `source-run-id` has no GitHub Release for a tag-based trusted-publishing dispatch
+  to target, so `prepare` hard-errors that combination (`registries: ovsx` or `all`) instead of
+  silently never publishing.
+
 ### Versioning Strategy
 
 These workflows use an **odd/even minor version convention** to distinguish release types:

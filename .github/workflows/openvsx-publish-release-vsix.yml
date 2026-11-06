@@ -12,10 +12,16 @@ on:
         required: false
         default: false
         type: boolean
-    secrets:
-      IDEE_OVSX_PAT:
-        description: Open VSX publishing token
-        required: true
+      vsix-name-pattern:
+        description: Glob of downloaded VSIX file names to publish
+        required: false
+        default: '*.vsix'
+        type: string
+      exclude-web-vsix:
+        description: Exclude *-web-* VSIXs from publishing
+        required: false
+        default: 'false'
+        type: string
 
 permissions:
   contents: read
@@ -23,6 +29,11 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # ovsx exchanges this job's OIDC ID token for a short-lived Open VSX publishing token
+      # (--trusted-publishing below) -- without this, there is no token to exchange.
+      id-token: write
     steps:
       - name: Download release VSIXs
         id: release
@@ -33,8 +44,9 @@ jobs:
       - name: Publish VSIXs
         env:
           DRY_RUN: ${{ inputs.dry-run }}
-          IDEE_OVSX_PAT: ${{ secrets.IDEE_OVSX_PAT }}
           PRE_RELEASE: ${{ steps.release.outputs.pre-release }}
+          VSIX_PATTERN: ${{ inputs.vsix-name-pattern }}
+          EXCLUDE_WEB: ${{ inputs.exclude-web-vsix }}
         run: |
           # Open VSX can hang the same way as vsce; retry per VSIX.
           # --skip-duplicate makes a retry a no-op if the first attempt committed.
@@ -54,7 +66,7 @@ jobs:
           }
 
           while IFS= read -r -d '' vsix; do
-            args=("$vsix" -p "$IDEE_OVSX_PAT" --skip-duplicate)
+            args=("$vsix" --trusted-publishing --skip-duplicate)
             pre_release_suffix=''
             if [ "$PRE_RELEASE" = true ]; then
               args+=(--pre-release)
@@ -70,4 +82,10 @@ jobs:
               echo "::error::Failed to publish $vsix after 3 attempts"
               exit 1
             fi
-          done < <(find extensions -type f -name '*.vsix' -print0)
+          done < <(
+            if [ "$EXCLUDE_WEB" = "true" ]; then
+              find extensions -type f -name "$VSIX_PATTERN" ! -iname '*-web-*' -print0
+            else
+              find extensions -type f -name "$VSIX_PATTERN" -print0
+            fi
+          )
