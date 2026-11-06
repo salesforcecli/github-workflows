@@ -12,10 +12,16 @@ on:
         required: false
         default: false
         type: boolean
-    secrets:
-      VSCE_PERSONAL_ACCESS_TOKEN:
-        description: VS Code Marketplace publishing token
-        required: true
+      vsix-name-pattern:
+        description: Glob of downloaded VSIX file names to publish
+        required: false
+        default: '*.vsix'
+        type: string
+      exclude-web-vsix:
+        description: Exclude *-web-* VSIXs from publishing
+        required: false
+        default: 'false'
+        type: string
 
 permissions:
   contents: read
@@ -23,6 +29,11 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # vsce exchanges this job's OIDC ID token for a short-lived Marketplace publishing token
+      # (--oidc below) -- without this, there is no token to exchange.
+      id-token: write
     steps:
       - name: Download release VSIXs
         id: release
@@ -34,7 +45,8 @@ jobs:
         env:
           DRY_RUN: ${{ inputs.dry-run }}
           PRE_RELEASE: ${{ steps.release.outputs.pre-release }}
-          VSCE_PERSONAL_ACCESS_TOKEN: ${{ secrets.VSCE_PERSONAL_ACCESS_TOKEN }}
+          VSIX_PATTERN: ${{ inputs.vsix-name-pattern }}
+          EXCLUDE_WEB: ${{ inputs.exclude-web-vsix }}
         run: |
           # Marketplace gallery requests can sit until typed-rest-client's 180s
           # socket timeout. vsce has no timeout flag; retry per VSIX.
@@ -55,18 +67,24 @@ jobs:
           }
 
           while IFS= read -r -d '' vsix; do
-            args=(--packagePath "$vsix" --skip-duplicate)
+            args=(--packagePath "$vsix" --oidc --skip-duplicate)
             if [ "$PRE_RELEASE" = true ]; then
               args+=(--pre-release)
             fi
 
             if [ "$DRY_RUN" = true ]; then
-              echo "Would publish $vsix to the VS Code Marketplace: @vscode/vsce publish ${args[*]}"
+              echo "Would publish $vsix to the VS Code Marketplace with --skip-duplicate: @vscode/vsce publish ${args[*]}"
               continue
             fi
 
-            if ! VSCE_PAT="$VSCE_PERSONAL_ACCESS_TOKEN" publish_with_retry npx @vscode/vsce publish "${args[@]}"; then
+            if ! publish_with_retry npx @vscode/vsce publish "${args[@]}"; then
               echo "::error::Failed to publish $vsix after 3 attempts"
               exit 1
             fi
-          done < <(find extensions -type f -name '*.vsix' -print0)
+          done < <(
+            if [ "$EXCLUDE_WEB" = "true" ]; then
+              find extensions -type f -name "$VSIX_PATTERN" ! -iname '*-web-*' -print0
+            else
+              find extensions -type f -name "$VSIX_PATTERN" -print0
+            fi
+          )
