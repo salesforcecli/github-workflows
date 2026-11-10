@@ -767,7 +767,7 @@ jobs:
 
 ### vscode-publish-release-vsix
 
-Downloads every VSIX asset from a GitHub release in the calling repository and publishes it to the VS Code Marketplace. VSIX files are found recursively, the release's pre-release state is preserved, and already-published versions are skipped.
+Downloads every VSIX asset from a GitHub release in the calling repository and publishes it to the VS Code Marketplace using a `VSCE_PERSONAL_ACCESS_TOKEN` PAT. VSIX files are found recursively, the release's pre-release state is preserved, and already-published versions are skipped.
 
 ```yaml
 jobs:
@@ -778,6 +778,24 @@ jobs:
       dry-run: true # Download and inspect without publishing
     secrets: inherit
 ```
+
+**Publishing via Marketplace OIDC trusted publishing instead of a PAT?** Use the `vscode/publish-release-vsix` composite action directly in your own job instead of this reusable workflow. The Marketplace's OIDC trust check keys off `job_workflow_ref`, which for a nested reusable *workflow* always points at this repo rather than the caller's -- so OIDC publishing only works when the publish step runs inside the caller's own job:
+
+```yaml
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # vsce exchanges this job's OIDC token for a Marketplace publishing token
+    steps:
+      - uses: salesforcecli/github-workflows/.github/actions/vscode/publish-release-vsix@main
+        with:
+          release-tag: v67.10.0
+          dry-run: true # Download and inspect without publishing
+```
+
+This requires a Trusted Publishing policy registered for the calling repo + this exact workflow filename on the Marketplace publisher management page.
 
 ### openvsx-publish-release-vsix
 
