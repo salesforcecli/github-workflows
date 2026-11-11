@@ -30,7 +30,8 @@ name: Manual Publish VS Code Extension
 #   - For CBWeb: MARKETPLACE_DEPLOY_TOKEN and MARKETPLACE_URL variable
 #   - The package manager and lockfile inputs must match the caller repository.
 #   - The shared actions in this repository are resolved from the workflow branch.
-#   - Environment: manual-publish-gate (with required reviewers for approval)
+#   - Environment: manual-publish-gate (with required reviewers for approval),
+#     unless require-approval is set to false by the caller.
 #
 # The caller supplies credentials and repository-specific paths; action implementations are
 # resolved from this repository so callers do not need duplicate composite actions.
@@ -109,6 +110,11 @@ on:
         description: "Run in dry-run mode (no actual publishing or tagging)"
         required: false
         default: "false"
+        type: string
+      require-approval:
+        description: "Require the manual-publish-gate environment approval before publishing"
+        required: false
+        default: "true"
         type: string
       node-version:
         description: "Node.js version to use"
@@ -225,6 +231,14 @@ on:
         options:
           - "false"
           - "true"
+      require-approval:
+        description: "Require manual-publish-gate approval before publishing"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
       node-version:
         description: "Node.js version to use"
         required: false
@@ -694,17 +708,26 @@ jobs:
   # ── gate ───────────────────────────────────────────────────────────────────
   gate:
     needs: [prepare, preview, quality-gate]
-    if: always() && needs.prepare.result == 'success' && needs.preview.result == 'success' && (needs.quality-gate.result == 'success' || needs.quality-gate.result == 'skipped')
+    if: always() && inputs.require-approval != 'false' && needs.prepare.result == 'success' && needs.preview.result == 'success' && (needs.quality-gate.result == 'success' || needs.quality-gate.result == 'skipped')
     runs-on: ubuntu-latest
     environment: manual-publish-gate
     steps:
       - name: Approved — proceeding with publish
         run: echo "Manual publish approved by ${{ github.actor }} at $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
+  # ── publish-ready ──────────────────────────────────────────────────────────
+  publish-ready:
+    needs: [prepare, preview, quality-gate, gate]
+    if: always() && needs.prepare.result == 'success' && needs.preview.result == 'success' && (needs.quality-gate.result == 'success' || needs.quality-gate.result == 'skipped') && (needs.gate.result == 'success' || needs.gate.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ready — proceeding with publish
+        run: echo "Manual publish checks completed for ${{ github.actor }} at $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
   # ── repackage ──────────────────────────────────────────────────────────────
   repackage:
-    needs: [prepare, gate]
-    if: always() && needs.prepare.result == 'success' && needs.gate.result == 'success'
+    needs: [prepare, publish-ready]
+    if: always() && needs.prepare.result == 'success' && needs.publish-ready.result == 'success'
     runs-on: ubuntu-latest
     outputs:
       vsix-path: ${{ steps.resolve-vsix.outputs.vsix-path }}
@@ -828,8 +851,8 @@ jobs:
 
   publish-to-cbweb-marketplace:
     name: Publish to CBWeb Internal Marketplace
-    needs: [prepare, gate]
-    if: always() && inputs.publish-web-vsix == 'true' && needs.prepare.result == 'success' && needs.gate.result == 'success'
+    needs: [prepare, publish-ready]
+    if: always() && inputs.publish-web-vsix == 'true' && needs.prepare.result == 'success' && needs.publish-ready.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Download source VSIX artifacts
@@ -944,8 +967,8 @@ jobs:
 
   # ── tag-published ──────────────────────────────────────────────────────────
   tag-published:
-    needs: [prepare, gate, publish, publish-to-cbweb-marketplace, create-github-release]
-    if: always() && inputs.registries != 'none' && needs.prepare.result == 'success' && needs.gate.result == 'success' && needs.publish.result == 'success' && (needs.publish-to-cbweb-marketplace.result == 'success' || needs.publish-to-cbweb-marketplace.result == 'skipped') && (inputs.slot == 'pre-release' || needs.create-github-release.result == 'success')
+    needs: [prepare, publish-ready, publish, publish-to-cbweb-marketplace, create-github-release]
+    if: always() && inputs.registries != 'none' && needs.prepare.result == 'success' && needs.publish-ready.result == 'success' && needs.publish.result == 'success' && (needs.publish-to-cbweb-marketplace.result == 'success' || needs.publish-to-cbweb-marketplace.result == 'skipped') && (inputs.slot == 'pre-release' || needs.create-github-release.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
