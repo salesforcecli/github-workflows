@@ -4,6 +4,8 @@
   "description": "Shared GitHub Actions workflows and scripts for Salesforce CLI projects",
   "type": "module",
   "scripts": {
+    "check:actions": "node scripts/validateActions.mts",
+    "test:actions": "node --test scripts/validateActions.test.mts",
     "ext-change-detector": "tsx .github/scripts/ext-change-detector.ts"
   },
   "keywords": [
@@ -21,7 +23,9 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@action-validator/core": "^0.6.0",
     "@types/node": "^22.10.2",
-    "@types/semver": "^7.5.8"
+    "@types/semver": "^7.5.8",
+    "yaml": "^2.9.1"
   }
 }
