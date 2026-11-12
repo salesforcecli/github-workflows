@@ -94,9 +94,16 @@ jobs:
           cache: ${{ steps.detect.outputs.package-manager }}
           cache-dependency-path: ${{ steps.detect.outputs.cache-dependency-path }}
 
-      - name: Ensure pnpm store exists
-        if: steps.detect.outputs.package-manager == 'pnpm'
-        run: mkdir -p "$(pnpm store path --silent)"
+      - name: Ensure package-manager cache exists
+        env:
+          PACKAGE_MANAGER: ${{ steps.detect.outputs.package-manager }}
+        run: |
+          case "$PACKAGE_MANAGER" in
+            npm) cache_path="$(npm config get cache)" ;;
+            pnpm) cache_path="$(pnpm store path --silent)" ;;
+            yarn) cache_path="$(yarn cache dir)" ;;
+          esac
+          mkdir -p "$cache_path"
 
       - run: npm install -g @salesforce/plugin-release-management --omit=dev
 
