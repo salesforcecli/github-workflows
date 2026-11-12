@@ -56,6 +56,12 @@ runs:
         cache: ${{ inputs.package-manager }}
         cache-dependency-path: ${{ inputs.cache-dependency-path }}
 
+    - name: Ensure package-manager cache exists
+      uses: salesforcecli/github-workflows/.github/actions/ensurePackageManagerCache@main
+      with:
+        package-manager: ${{ inputs.package-manager }}
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
+
     - run: npm install -g @salesforce/change-case-management --omit=dev
       shell: bash
 

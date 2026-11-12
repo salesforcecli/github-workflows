@@ -1,0 +1,32 @@
+name: Ensure package-manager cache
+description: Creates the npm, pnpm, or Yarn cache directory before setup-node saves it.
+inputs:
+  package-manager:
+    description: Package manager whose cache directory should exist.
+    required: true
+  cache-dependency-path:
+    description: Path to the package manager lockfile.
+    required: false
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        PACKAGE_MANAGER: ${{ inputs.package-manager }}
+        CACHE_DEPENDENCY_PATH: ${{ inputs.cache-dependency-path }}
+      run: |
+        case "$PACKAGE_MANAGER" in
+          npm) cache_path="$(npm config get cache)" ;;
+          pnpm) cache_path="$(pnpm store path --silent)" ;;
+          yarn)
+            cache_directory="$(dirname "$CACHE_DEPENDENCY_PATH")"
+            yarn_version="$(cd "$cache_directory" && yarn --version)"
+            if [ "$(printf '%s' "$yarn_version" | cut -d. -f1)" -lt 2 ]; then
+              cache_path="$(cd "$cache_directory" && yarn cache dir)"
+            else
+              cache_path="$(cd "$cache_directory" && yarn config get cacheFolder)"
+            fi
+            ;;
+          *) echo "Unsupported package manager: $PACKAGE_MANAGER"; exit 1 ;;
+        esac
+        mkdir -p "$cache_path"

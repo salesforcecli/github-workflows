@@ -94,6 +94,12 @@ jobs:
           cache: ${{ steps.detect.outputs.package-manager }}
           cache-dependency-path: ${{ steps.detect.outputs.cache-dependency-path }}
 
+      - name: Ensure package-manager cache exists
+        uses: salesforcecli/github-workflows/.github/actions/ensurePackageManagerCache@main
+        with:
+          package-manager: ${{ steps.detect.outputs.package-manager }}
+          cache-dependency-path: ${{ steps.detect.outputs.cache-dependency-path }}
+
       - run: npm install -g @salesforce/plugin-release-management --omit=dev
 
       - name: run automerge command
