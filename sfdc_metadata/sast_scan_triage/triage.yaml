@@ -1,0 +1,6 @@
+false_positive:
+  - id: .github/actions/ctcOpen/action.yml:6d2f59ad38437368cc1daa3e3bf88db529650c7832c0989857f96b050a280283
+    justification: Same-repo action reference (salesforcecli/github-workflows), not a third-party action. The full owner/repo ref is required because callers run these as reusable workflows, so ./ paths would resolve to the caller's repo.
+  - id: .github/workflows/automerge.yml:6d2f59ad38437368cc1daa3e3bf88db529650c7832c0989857f96b050a280283
+    justification: Same-repo action reference (salesforcecli/github-workflows), not a third-party action. The full owner/repo ref is required because callers run these as reusable workflows, so ./ paths would resolve to the caller's repo.
+not_exploitable: []
