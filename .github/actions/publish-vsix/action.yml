@@ -22,44 +22,61 @@ runs:
   steps:
     - name: Validate inputs
       shell: bash
+      env:
+        VSIX_PATH: ${{ inputs.vsix-path }}
+        PUBLISH_TOOL: ${{ inputs.publish-tool }}
+        PRE_RELEASE: ${{ inputs.pre-release }}
+        DRY_RUN: ${{ inputs.dry-run }}
       run: |
         # Validate VSIX path exists
-        if [ ! -f "${{ inputs.vsix-path }}" ]; then
-          echo "❌ Error: VSIX file not found at ${{ inputs.vsix-path }}"
+        if [ ! -f "$VSIX_PATH" ]; then
+          echo "❌ Error: VSIX file not found at $VSIX_PATH"
           exit 1
         fi
 
         # Validate VSIX file extension
-        if [[ ! "${{ inputs.vsix-path }}" =~ \.vsix$ ]]; then
+        if [[ ! "$VSIX_PATH" =~ \.vsix$ ]]; then
           echo "❌ Error: File must have .vsix extension"
           exit 1
         fi
 
         # Validate publish tool
-        if [[ ! "${{ inputs.publish-tool }}" =~ ^(ovsx|vsce)$ ]]; then
-          echo "❌ Error: Invalid publish tool: ${{ inputs.publish-tool }}"
+        if [[ ! "$PUBLISH_TOOL" =~ ^(ovsx|vsce)$ ]]; then
+          echo "❌ Error: Invalid publish tool: $PUBLISH_TOOL"
           exit 1
         fi
+
+        for value in "$PRE_RELEASE" "$DRY_RUN"; do
+          case "$value" in
+            true|false) ;;
+            *) echo "❌ Error: pre-release and dry-run must be true or false"; exit 1 ;;
+          esac
+        done
 
         echo "✅ Input validation passed"
 
     - name: Audit publish attempt
       shell: bash
+      env:
+        VSIX_PATH: ${{ inputs.vsix-path }}
+        PUBLISH_TOOL: ${{ inputs.publish-tool }}
+        PRE_RELEASE: ${{ inputs.pre-release }}
+        DRY_RUN: ${{ inputs.dry-run }}
+        ACTOR: ${{ github.actor }}
+        REPO: ${{ github.repository }}
+        RUN_ID: ${{ github.run_id }}
+        WORKFLOW: ${{ github.workflow }}
       run: |
         # Create audit log entry
         AUDIT_LOG="/tmp/publish_audit.log"
         TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-        ACTOR="${{ github.actor }}"
-        REPO="${{ github.repository }}"
-        RUN_ID="${{ github.run_id }}"
-        WORKFLOW="${{ github.workflow }}"
 
         # Get file info for audit
-        FILE_SIZE=$(stat -c%s "${{ inputs.vsix-path }}" 2>/dev/null || stat -f%z "${{ inputs.vsix-path }}" 2>/dev/null || echo "unknown")
-        FILE_HASH=$(sha256sum "${{ inputs.vsix-path }}" 2>/dev/null | cut -d' ' -f1 || echo "unknown")
+        FILE_SIZE=$(stat -c%s "$VSIX_PATH" 2>/dev/null || stat -f%z "$VSIX_PATH" 2>/dev/null || echo "unknown")
+        FILE_HASH=$(sha256sum "$VSIX_PATH" 2>/dev/null | cut -d' ' -f1 || echo "unknown")
 
         # Log audit information
-        echo "[$TIMESTAMP] PUBLISH_ATTEMPT: actor=$ACTOR, repo=$REPO, run_id=$RUN_ID, workflow=$WORKFLOW, tool=${{ inputs.publish-tool }}, file=${{ inputs.vsix-path }}, size=$FILE_SIZE, hash=$FILE_HASH, pre_release=${{ inputs.pre-release }}, dry_run=${{ inputs.dry-run }}" >> "$AUDIT_LOG"
+        echo "[$TIMESTAMP] PUBLISH_ATTEMPT: actor=$ACTOR, repo=$REPO, run_id=$RUN_ID, workflow=$WORKFLOW, tool=$PUBLISH_TOOL, file=$VSIX_PATH, size=$FILE_SIZE, hash=$FILE_HASH, pre_release=$PRE_RELEASE, dry_run=$DRY_RUN" >> "$AUDIT_LOG"
 
         # Also log to GitHub Actions output for visibility
         echo "🔍 AUDIT: Publish attempt logged - $TIMESTAMP"
@@ -67,21 +84,26 @@ runs:
         echo "  Repository: $REPO"
         echo "  Run ID: $RUN_ID"
         echo "  Workflow: $WORKFLOW"
-        echo "  Tool: ${{ inputs.publish-tool }}"
-        echo "  File: ${{ inputs.vsix-path }}"
+        echo "  Tool: $PUBLISH_TOOL"
+        echo "  File: $VSIX_PATH"
         echo "  Size: $FILE_SIZE bytes"
         echo "  Hash: $FILE_HASH"
-        echo "  Pre-release: ${{ inputs.pre-release }}"
-        echo "  Dry-run: ${{ inputs.dry-run }}"
+        echo "  Pre-release: $PRE_RELEASE"
+        echo "  Dry-run: $DRY_RUN"
 
     - name: Publish VSIX
       id: publish
       shell: bash
+      env:
+        VSIX_PATH: ${{ inputs.vsix-path }}
+        PUBLISH_TOOL: ${{ inputs.publish-tool }}
+        PRE_RELEASE: ${{ inputs.pre-release }}
+        DRY_RUN: ${{ inputs.dry-run }}
       run: |
-        echo "Publishing ${{ inputs.vsix-path }}"
+        echo "Publishing $VSIX_PATH"
 
         # Calculate marketplace name based on publish tool
-        if [ "${{ inputs.publish-tool }}" = "ovsx" ]; then
+        if [ "$PUBLISH_TOOL" = "ovsx" ]; then
           MARKETPLACE_NAME="Open VSX Registry"
           TOKEN_ENV="OVSX_PAT"
         else
@@ -90,7 +112,7 @@ runs:
         fi
 
         PRE_RELEASE_FLAG=""
-        if [ "${{ inputs.pre-release }}" = "true" ]; then
+        if [ "$PRE_RELEASE" = "true" ]; then
           PRE_RELEASE_FLAG="--pre-release"
           echo "Would publish as pre-release version"
         fi
@@ -98,20 +120,20 @@ runs:
         # Mask token in logs for security
         TOKEN_MASK="***"
 
-        if [ "${{ inputs.dry-run }}" = "true" ]; then
+        if [ "$DRY_RUN" = "true" ]; then
           echo "🔍 DRY RUN MODE - Would publish to $MARKETPLACE_NAME:"
-          echo "  VSIX: ${{ inputs.vsix-path }}"
-          echo "  Pre-release: ${{ inputs.pre-release }}"
+          echo "  VSIX: $VSIX_PATH"
+          echo "  Pre-release: $PRE_RELEASE"
 
-          if [ "${{ inputs.publish-tool }}" = "ovsx" ]; then
-            echo "  Command: npx ovsx publish \"${{ inputs.vsix-path }}\" -p $TOKEN_MASK $PRE_RELEASE_FLAG"
+          if [ "$PUBLISH_TOOL" = "ovsx" ]; then
+            echo "  Command: npx ovsx publish \"$VSIX_PATH\" -p $TOKEN_MASK $PRE_RELEASE_FLAG"
           else
-            echo "  Command: npx @vscode/vsce publish --packagePath \"${{ inputs.vsix-path }}\" --skip-duplicate $PRE_RELEASE_FLAG"
+            echo "  Command: npx @vscode/vsce publish --packagePath \"$VSIX_PATH\" --skip-duplicate $PRE_RELEASE_FLAG"
           fi
           echo "✅ Dry run completed - no actual publish performed"
           echo "result=success" >> $GITHUB_OUTPUT
         else
-          echo "Publishing VSIX: ${{ inputs.vsix-path }}"
+          echo "Publishing VSIX: $VSIX_PATH"
 
           # Verify token is available
           if [ -z "${!TOKEN_ENV}" ]; then
@@ -135,11 +157,11 @@ runs:
             return 1
           }
 
-          if [ "${{ inputs.publish-tool }}" = "vsce" ]; then
+          if [ "$PUBLISH_TOOL" = "vsce" ]; then
             export VSCE_PAT="${!TOKEN_ENV}"  # ensure the expected env var is set
-            publish_with_retry npx @vscode/vsce publish --packagePath "${{ inputs.vsix-path }}" --skip-duplicate $PRE_RELEASE_FLAG
+            publish_with_retry npx @vscode/vsce publish --packagePath "$VSIX_PATH" --skip-duplicate $PRE_RELEASE_FLAG
           else
-            publish_with_retry npx ovsx publish "${{ inputs.vsix-path }}" -p "${!TOKEN_ENV}" --skip-duplicate $PRE_RELEASE_FLAG
+            publish_with_retry npx ovsx publish "$VSIX_PATH" -p "${!TOKEN_ENV}" --skip-duplicate $PRE_RELEASE_FLAG
           fi
 
           PUBLISH_EXIT_CODE=$?
@@ -156,19 +178,22 @@ runs:
     - name: Audit publish result
       shell: bash
       if: always() && inputs.dry-run != 'true'
+      env:
+        VSIX_PATH: ${{ inputs.vsix-path }}
+        PUBLISH_TOOL: ${{ inputs.publish-tool }}
+        ACTOR: ${{ github.actor }}
+        REPO: ${{ github.repository }}
+        RUN_ID: ${{ github.run_id }}
+        PUBLISH_RESULT: ${{ steps.publish.outputs.result }}
       run: |
         # Log the result of the publish attempt
         AUDIT_LOG="/tmp/publish_audit.log"
         TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-        ACTOR="${{ github.actor }}"
-        REPO="${{ github.repository }}"
-        RUN_ID="${{ github.run_id }}"
-        PUBLISH_RESULT="${{ steps.publish.outputs.result }}"
 
         if [ "$PUBLISH_RESULT" = "success" ]; then
-          echo "[$TIMESTAMP] PUBLISH_SUCCESS: actor=$ACTOR, repo=$REPO, run_id=$RUN_ID, tool=${{ inputs.publish-tool }}, file=${{ inputs.vsix-path }}" >> "$AUDIT_LOG"
+          echo "[$TIMESTAMP] PUBLISH_SUCCESS: actor=$ACTOR, repo=$REPO, run_id=$RUN_ID, tool=$PUBLISH_TOOL, file=$VSIX_PATH" >> "$AUDIT_LOG"
           echo "✅ AUDIT: Publish successful - $TIMESTAMP"
         else
-          echo "[$TIMESTAMP] PUBLISH_FAILURE: actor=$ACTOR, repo=$REPO, run_id=$RUN_ID, tool=${{ inputs.publish-tool }}, file=${{ inputs.vsix-path }}" >> "$AUDIT_LOG"
+          echo "[$TIMESTAMP] PUBLISH_FAILURE: actor=$ACTOR, repo=$REPO, run_id=$RUN_ID, tool=$PUBLISH_TOOL, file=$VSIX_PATH" >> "$AUDIT_LOG"
           echo "❌ AUDIT: Publish failed - $TIMESTAMP"
         fi

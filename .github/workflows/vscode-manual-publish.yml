@@ -30,7 +30,8 @@ name: Manual Publish VS Code Extension
 #   - For CBWeb: MARKETPLACE_DEPLOY_TOKEN and MARKETPLACE_URL variable
 #   - The package manager and lockfile inputs must match the caller repository.
 #   - The shared actions in this repository are resolved from the workflow branch.
-#   - Environment: manual-publish-gate (with required reviewers for approval)
+#   - Environment: manual-publish-gate (with required reviewers for approval),
+#     unless require-approval is set to false by the caller.
 #
 # The caller supplies credentials and repository-specific paths; action implementations are
 # resolved from this repository so callers do not need duplicate composite actions.
@@ -109,6 +110,11 @@ on:
         description: "Run in dry-run mode (no actual publishing or tagging)"
         required: false
         default: "false"
+        type: string
+      require-approval:
+        description: "Require the manual-publish-gate environment approval before publishing"
+        required: false
+        default: "true"
         type: string
       node-version:
         description: "Node.js version to use"
@@ -225,6 +231,14 @@ on:
         options:
           - "false"
           - "true"
+      require-approval:
+        description: "Require manual-publish-gate approval before publishing"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
       node-version:
         description: "Node.js version to use"
         required: false
@@ -272,6 +286,10 @@ jobs:
   # uploads VSIX as artifact for downstream jobs.
   prepare:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      checks: read
     outputs:
       source-type: ${{ steps.resolve.outputs.source-type }}
       prerelease-version: ${{ steps.resolve.outputs.prerelease-version }}
@@ -281,14 +299,40 @@ jobs:
       ci-commit-sha: ${{ steps.ci-commit.outputs.ci-commit-sha }}
     steps:
       - name: Validate inputs — mutual exclusivity and bypass rules
+        env:
+          VERSION_TAG: ${{ inputs.version-tag }}
+          SOURCE_RUN_ID: ${{ inputs.source-run-id }}
+          SKIP_QC: ${{ inputs.skip-quality-checks }}
+          BYPASS: ${{ inputs.confirm-bypass }}
+          REGISTRIES: ${{ inputs.registries }}
+          PUBLISH_WEB_VSIX: ${{ inputs.publish-web-vsix }}
+          SLOT: ${{ inputs.slot }}
+          EXCLUDE_WEB_VSIX: ${{ inputs.exclude-web-vsix }}
+          DRY_RUN: ${{ inputs.dry-run || 'false' }}
+          REQUIRE_APPROVAL: ${{ inputs.require-approval || 'true' }}
         run: |
-          VERSION_TAG="${{ inputs.version-tag }}"
-          SOURCE_RUN_ID="${{ inputs.source-run-id }}"
-          SKIP_QC="${{ inputs.skip-quality-checks }}"
-          BYPASS="${{ inputs.confirm-bypass }}"
-          REGISTRIES="${{ inputs.registries }}"
-          PUBLISH_WEB_VSIX="${{ inputs.publish-web-vsix }}"
-          SLOT="${{ inputs.slot }}"
+          if [ -n "$VERSION_TAG" ] && [[ ! "$VERSION_TAG" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]]; then
+            echo "ERROR: version-tag must be a safe git tag name."
+            exit 1
+          fi
+          if [ -n "$VERSION_TAG" ] && ! git check-ref-format "refs/tags/$VERSION_TAG"; then
+            echo "ERROR: version-tag must be a valid git tag name."
+            exit 1
+          fi
+          if [ -n "$SOURCE_RUN_ID" ] && [[ ! "$SOURCE_RUN_ID" =~ ^[0-9]+$ ]]; then
+            echo "ERROR: source-run-id must be numeric."
+            exit 1
+          fi
+          case "$SLOT" in
+            pre-release|stable) ;;
+            *) echo "ERROR: slot must be pre-release or stable."; exit 1 ;;
+          esac
+          for value in "$SKIP_QC" "$PUBLISH_WEB_VSIX" "$EXCLUDE_WEB_VSIX" "$DRY_RUN" "$REQUIRE_APPROVAL"; do
+            case "$value" in
+              true|false) ;;
+              *) echo "ERROR: boolean inputs must be true or false."; exit 1 ;;
+            esac
+          done
 
           case "$REGISTRIES" in
             all|vsce|ovsx|none) ;;
@@ -339,14 +383,14 @@ jobs:
               echo "You provided: '$BYPASS'"
               exit 1
             fi
-            echo "WARNING: CI quality gate bypassed by ${{ github.actor }} for run ${{ github.run_id }}"
+            echo "WARNING: CI quality gate bypassed by $GITHUB_ACTOR for run $GITHUB_RUN_ID"
           fi
 
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          token: ${{ secrets.IDEE_GH_TOKEN || github.token }}
+          persist-credentials: false
 
       - name: Setup Node.js and install dependencies
         uses: salesforcecli/github-workflows/.github/actions/setupNodeAndInstall@main
@@ -360,7 +404,8 @@ jobs:
       - name: Resolve source and compute versions
         id: resolve
         env:
-          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN || github.token }}
+          # gh requires authentication for run artifacts and CI check API queries.
+          GH_TOKEN: ${{ github.token }}
           VERSION_TAG: ${{ inputs.version-tag }}
           SOURCE_RUN_ID: ${{ inputs.source-run-id }}
           SLOT: ${{ inputs.slot }}
@@ -370,6 +415,18 @@ jobs:
           EXTENSION_NAME: ${{ inputs.extension-name }}
           VSIX_ARTIFACT_NAME: ${{ inputs.vsix-artifact-name }}
         run: |
+          if [[ ! "$EXTENSION_NAME" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]]; then
+            echo "ERROR: extension-name must be a package directory name."
+            exit 1
+          fi
+          if [[ ! "$VSIX_NAME_PATTERN" =~ ^[A-Za-z0-9][A-Za-z0-9.*?_-]*\.vsix$ ]]; then
+            echo "ERROR: vsix-name-pattern must be a filename pattern ending in .vsix."
+            exit 1
+          fi
+          if [ -n "$SOURCE_RUN_ID" ] && [[ ! "$VSIX_ARTIFACT_NAME" =~ ^[A-Za-z0-9][A-Za-z0-9._\ -]*$ ]]; then
+            echo "ERROR: vsix-artifact-name must be a safe artifact name."
+            exit 1
+          fi
           mkdir -p ./vsix-artifacts
 
           # ── Resolve VSIX and pre-release version ─────────────────────────
@@ -378,7 +435,7 @@ jobs:
             echo "source-type=tag" >> $GITHUB_OUTPUT
 
             # Get commit SHA from tag
-            git fetch --tags origin
+            # Full-history checkout supplies tags without persisting credentials.
             COMMIT_SHA=$(git rev-list -n 1 "$VERSION_TAG" 2>/dev/null || echo "")
             if [ -z "$COMMIT_SHA" ]; then
               echo "ERROR: Could not resolve commit SHA for tag: $VERSION_TAG"
@@ -443,6 +500,11 @@ jobs:
             echo "Extracted version from VSIX: $PRERELEASE_VERSION"
           fi
 
+          export PRERELEASE_VERSION
+          if ! node -e "process.exit(require('semver').valid(process.env.PRERELEASE_VERSION) ? 0 : 1);"; then
+            echo "ERROR: Source pre-release version is not valid semver."
+            exit 1
+          fi
           echo "prerelease-version=$PRERELEASE_VERSION" >> $GITHUB_OUTPUT
 
           # Find VSIX, excluding web variants if requested
@@ -474,28 +536,27 @@ jobs:
             exit 0
           fi
 
-          git fetch --tags origin
-
           if [ -n "$TARGET_STABLE" ]; then
             # User-supplied override — safeguards
 
             # 1. Valid semver
-            VALID=$(node -e "const semver = require('semver'); console.log(semver.valid('$TARGET_STABLE') ? 'yes' : 'no');")
+            VALID=$(node -e "const semver = require('semver'); console.log(semver.valid(process.env.TARGET_STABLE) ? 'yes' : 'no');")
             if [ "$VALID" != "yes" ]; then
               echo "ERROR: target-stable-version '$TARGET_STABLE' is not valid semver"
               exit 1
             fi
 
             # 2. Minor must be even
-            MINOR=$(node -e "const semver = require('semver'); console.log(semver.minor('$TARGET_STABLE'));")
+            MINOR=$(node -e "const semver = require('semver'); console.log(semver.minor(process.env.TARGET_STABLE));")
             if [ $(( MINOR % 2 )) -ne 0 ]; then
               echo "ERROR: target-stable-version '$TARGET_STABLE' has odd minor ($MINOR). Stable versions require even minor."
               exit 1
             fi
 
             # 3. Must be >= auto-computed floor (no downgrade)
-            AUTO_STABLE=$(node -e "const semver = require('semver'); console.log(semver.inc('$PRERELEASE_VERSION', 'minor'));")
-            IS_GTE=$(node -e "const semver = require('semver'); console.log(semver.gte('$TARGET_STABLE', '$AUTO_STABLE') ? 'yes' : 'no');")
+            AUTO_STABLE=$(node -e "const semver = require('semver'); console.log(semver.inc(process.env.PRERELEASE_VERSION, 'minor'));")
+            export AUTO_STABLE
+            IS_GTE=$(node -e "const semver = require('semver'); console.log(semver.gte(process.env.TARGET_STABLE, process.env.AUTO_STABLE) ? 'yes' : 'no');")
             if [ "$IS_GTE" != "yes" ]; then
               echo "ERROR: target-stable-version '$TARGET_STABLE' is below the floor '$AUTO_STABLE' for pre-release series $PRERELEASE_VERSION."
               exit 1
@@ -517,7 +578,7 @@ jobs:
               exit 1
             fi
 
-            STABLE_VERSION=$(node -e "const semver = require('semver'); console.log(semver.inc('$PRERELEASE_VERSION', 'minor'));")
+            STABLE_VERSION=$(node -e "const semver = require('semver'); console.log(semver.inc(process.env.PRERELEASE_VERSION, 'minor'));")
             if [ -z "$STABLE_VERSION" ] || [ "$STABLE_VERSION" = "null" ]; then
               echo "ERROR: Could not compute stable version from $PRERELEASE_VERSION"
               exit 1
@@ -541,11 +602,15 @@ jobs:
         id: ci-commit
         if: inputs.skip-quality-checks != 'true'
         env:
-          GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           START_SHA: ${{ steps.resolve.outputs.commit-sha }}
           REQUIRED_CHECKS: ${{ inputs.required-ci-checks }}
         run: |
+          if ! jq -e 'type == "array" and length > 0 and all(.[]; type == "string" and length > 0 and (test("[\\r\\n]") | not))' <<< "$REQUIRED_CHECKS" >/dev/null; then
+            echo "ERROR: required-ci-checks must be a nonempty JSON array of single-line check names."
+            exit 1
+          fi
           MAX_DEPTH=20
           SHA="$START_SHA"
           CI_SHA=""
@@ -587,6 +652,7 @@ jobs:
         with:
           name: source-vsix
           path: ./vsix-artifacts/*.vsix
+          overwrite: true
 
   # ── preview ────────────────────────────────────────────────────────────────
   # Summarises every planned action — shown to the reviewer in the gate step.
@@ -603,9 +669,13 @@ jobs:
           PRERELEASE_FLAG: ${{ needs.prepare.outputs.prerelease-flag }}
           EXTENSION_NAME: ${{ inputs.extension-name }}
           VSIX_NAME_PATTERN: ${{ inputs.vsix-name-pattern }}
+          SLOT: ${{ inputs.slot }}
+          DRY_RUN: ${{ inputs.dry-run || 'false' }}
+          SOURCE_RUN_ID: ${{ inputs.source-run-id }}
+          VERSION_TAG: ${{ inputs.version-tag }}
+          REGISTRIES: ${{ inputs.registries }}
+          SKIP_QC: ${{ inputs.skip-quality-checks }}
         run: |
-          SLOT="${{ inputs.slot }}"
-          DRY_RUN="${{ inputs.dry-run }}"
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
           if [ "$SLOT" = "stable" ]; then
@@ -622,15 +692,15 @@ jobs:
           fi
 
           if [ "$SOURCE_TYPE" = "run" ]; then
-            SOURCE_LABEL="Branch CI run ${{ inputs.source-run-id }}"
+            SOURCE_LABEL="Branch CI run $SOURCE_RUN_ID"
           else
-            SOURCE_LABEL="Nightly GH release tag ${{ inputs.version-tag }}"
+            SOURCE_LABEL="Nightly GH release tag $VERSION_TAG"
           fi
 
-          if [ "${{ inputs.registries }}" = "all" ]; then
+          if [ "$REGISTRIES" = "all" ]; then
             REGISTRY_LABEL="VS Code Marketplace (vsce) + Open VSX (ovsx)"
           else
-            REGISTRY_LABEL="${{ inputs.registries }}"
+            REGISTRY_LABEL="$REGISTRIES"
           fi
 
           echo "╔══════════════════════════════════════════════════════════════════╗"
@@ -647,7 +717,7 @@ jobs:
           echo "  Pre-release ver  : $PRERELEASE_VERSION"
           echo ""
           echo "── Publish target ──────────────────────────────────────────────────"
-          echo "  Extension        : ${{ inputs.extension-name }}"
+          echo "  Extension        : $EXTENSION_NAME"
           echo "  Slot             : $SLOT_LABEL"
           if [ "$SLOT" = "stable" ]; then
           echo "  Stable version   : $STABLE_VERSION"
@@ -664,7 +734,7 @@ jobs:
           fi
           echo ""
           echo "── Quality gate ─────────────────────────────────────────────────────"
-          if [ "${{ inputs.skip-quality-checks }}" = "true" ]; then
+          if [ "$SKIP_QC" = "true" ]; then
           echo "  ⚠️  BYPASSED by ${{ github.actor }} (confirm-bypass=BYPASS)"
           else
           echo "  ✅  Will run against commit $COMMIT_SHA"
@@ -694,17 +764,26 @@ jobs:
   # ── gate ───────────────────────────────────────────────────────────────────
   gate:
     needs: [prepare, preview, quality-gate]
-    if: always() && needs.prepare.result == 'success' && needs.preview.result == 'success' && (needs.quality-gate.result == 'success' || needs.quality-gate.result == 'skipped')
+    if: always() && inputs.require-approval != 'false' && needs.prepare.result == 'success' && needs.preview.result == 'success' && (needs.quality-gate.result == 'success' || needs.quality-gate.result == 'skipped')
     runs-on: ubuntu-latest
     environment: manual-publish-gate
     steps:
       - name: Approved — proceeding with publish
         run: echo "Manual publish approved by ${{ github.actor }} at $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
+  # ── publish-ready ──────────────────────────────────────────────────────────
+  publish-ready:
+    needs: [prepare, preview, quality-gate, gate]
+    if: always() && needs.prepare.result == 'success' && needs.preview.result == 'success' && (needs.quality-gate.result == 'success' || needs.quality-gate.result == 'skipped') && (needs.gate.result == 'success' || needs.gate.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ready — proceeding with publish
+        run: echo "Manual publish checks completed for ${{ github.actor }} at $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
   # ── repackage ──────────────────────────────────────────────────────────────
   repackage:
-    needs: [prepare, gate]
-    if: always() && needs.prepare.result == 'success' && needs.gate.result == 'success'
+    needs: [prepare, publish-ready]
+    if: always() && needs.prepare.result == 'success' && needs.publish-ready.result == 'success'
     runs-on: ubuntu-latest
     outputs:
       vsix-path: ${{ steps.resolve-vsix.outputs.vsix-path }}
@@ -758,11 +837,15 @@ jobs:
 
       - name: Resolve publish-ready VSIX path
         id: resolve-vsix
+        env:
+          SLOT: ${{ inputs.slot }}
+          REPACKED_VSIX_PATH: ${{ steps.repack.outputs.vsix-path }}
+          SOURCE_VSIX_PATH: ${{ steps.source-vsix.outputs.vsix-file }}
         run: |
-          if [ "${{ inputs.slot }}" = "stable" ]; then
-            echo "vsix-path=${{ steps.repack.outputs.vsix-path }}" >> $GITHUB_OUTPUT
+          if [ "$SLOT" = "stable" ]; then
+            echo "vsix-path=$REPACKED_VSIX_PATH" >> "$GITHUB_OUTPUT"
           else
-            echo "vsix-path=${{ steps.source-vsix.outputs.vsix-file }}" >> $GITHUB_OUTPUT
+            echo "vsix-path=$SOURCE_VSIX_PATH" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Upload publish-ready VSIX
@@ -770,6 +853,7 @@ jobs:
         with:
           name: publish-vsix
           path: ${{ steps.resolve-vsix.outputs.vsix-path }}
+          overwrite: true
 
   # ── publish ────────────────────────────────────────────────────────────────
   publish:
@@ -828,8 +912,8 @@ jobs:
 
   publish-to-cbweb-marketplace:
     name: Publish to CBWeb Internal Marketplace
-    needs: [prepare, gate]
-    if: always() && inputs.publish-web-vsix == 'true' && needs.prepare.result == 'success' && needs.gate.result == 'success'
+    needs: [prepare, publish-ready]
+    if: always() && inputs.publish-web-vsix == 'true' && needs.prepare.result == 'success' && needs.publish-ready.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Download source VSIX artifacts
@@ -894,6 +978,8 @@ jobs:
           STABLE_VERSION: ${{ needs.prepare.outputs.stable-version }}
           PRERELEASE_VERSION: ${{ needs.prepare.outputs.prerelease-version }}
           SOURCE_TYPE: ${{ needs.prepare.outputs.source-type }}
+          SOURCE_RUN_ID: ${{ inputs.source-run-id }}
+          VERSION_TAG: ${{ inputs.version-tag }}
           DRY_RUN: ${{ inputs.dry-run || 'false' }}
           VSIX_NAME_PATTERN: ${{ inputs.vsix-name-pattern }}
           EXCLUDE_WEB_VSIX: ${{ inputs.exclude-web-vsix }}
@@ -909,9 +995,9 @@ jobs:
           RELEASE_TITLE="${BASE_NAME} v${STABLE_VERSION} (stable)"
 
           if [ "$SOURCE_TYPE" = "run" ]; then
-            SOURCE_DESC="branch CI run ${{ inputs.source-run-id }}"
+            SOURCE_DESC="branch CI run $SOURCE_RUN_ID"
           else
-            SOURCE_DESC="nightly tag ${{ inputs.version-tag }}"
+            SOURCE_DESC="nightly tag $VERSION_TAG"
           fi
 
           RELEASE_NOTES="## Stable Release v${STABLE_VERSION}
@@ -944,8 +1030,8 @@ jobs:
 
   # ── tag-published ──────────────────────────────────────────────────────────
   tag-published:
-    needs: [prepare, gate, publish, publish-to-cbweb-marketplace, create-github-release]
-    if: always() && inputs.registries != 'none' && needs.prepare.result == 'success' && needs.gate.result == 'success' && needs.publish.result == 'success' && (needs.publish-to-cbweb-marketplace.result == 'success' || needs.publish-to-cbweb-marketplace.result == 'skipped') && (inputs.slot == 'pre-release' || needs.create-github-release.result == 'success')
+    needs: [prepare, publish-ready, publish, publish-to-cbweb-marketplace, create-github-release]
+    if: always() && inputs.registries != 'none' && needs.prepare.result == 'success' && needs.publish-ready.result == 'success' && needs.publish.result == 'success' && (needs.publish-to-cbweb-marketplace.result == 'success' || needs.publish-to-cbweb-marketplace.result == 'skipped') && (inputs.slot == 'pre-release' || needs.create-github-release.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -1014,10 +1100,19 @@ jobs:
           GH_TOKEN: ${{ secrets.IDEE_GH_TOKEN || github.token }}
           EXTENSION_NAME: ${{ inputs.extension-name }}
           EXTENSIONS_ROOT: ${{ inputs.extensions-root }}
+          LOCKFILE_PATH: ${{ inputs.lockfile-path }}
         run: |
           set -euo pipefail
+          if [[ ! "$EXTENSIONS_ROOT" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ "/$EXTENSIONS_ROOT/" == *"/../"* ]] || [[ "$EXTENSIONS_ROOT" == /* ]]; then
+            echo "ERROR: extensions-root must be a relative directory path without parent traversal."
+            exit 1
+          fi
+          if [[ ! "$LOCKFILE_PATH" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ "/$LOCKFILE_PATH/" == *"/../"* ]] || [[ "$LOCKFILE_PATH" == /* ]]; then
+            echo "ERROR: lockfile-path must be a relative file path without parent traversal."
+            exit 1
+          fi
           PKG_DIR="${EXTENSIONS_ROOT}/${EXTENSION_NAME}"
-          CURRENT_VERSION=$(node -p "require('./$PKG_DIR/package.json').version")
+          CURRENT_VERSION=$(PKG_DIR="$PKG_DIR" node -e 'console.log(require("./" + process.env.PKG_DIR + "/package.json").version);')
           echo "main version: $CURRENT_VERSION -> stable version: $STABLE_VERSION"
 
           if [ -z "$STABLE_VERSION" ]; then
