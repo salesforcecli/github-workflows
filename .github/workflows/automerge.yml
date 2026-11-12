@@ -94,6 +94,10 @@ jobs:
           cache: ${{ steps.detect.outputs.package-manager }}
           cache-dependency-path: ${{ steps.detect.outputs.cache-dependency-path }}
 
+      - name: Ensure pnpm store exists
+        if: steps.detect.outputs.package-manager == 'pnpm'
+        run: mkdir -p "$(pnpm store path --silent)"
+
       - run: npm install -g @salesforce/plugin-release-management --omit=dev
 
       - name: run automerge command
