@@ -95,7 +95,7 @@ jobs:
           cache-dependency-path: ${{ steps.detect.outputs.cache-dependency-path }}
 
       - name: Ensure package-manager cache exists
-        uses: salesforcecli/github-workflows/.github/actions/ensurePackageManagerCache@97d81bbad27321e9679034bb3719dd7a41f5a15a
+        uses: salesforcecli/github-workflows/.github/actions/ensurePackageManagerCache@main
         with:
           package-manager: ${{ steps.detect.outputs.package-manager }}
           cache-dependency-path: ${{ steps.detect.outputs.cache-dependency-path }}
