@@ -1,0 +1,86 @@
+name: Publish Release VSIXs (OIDC)
+description: >-
+  Downloads every VSIX asset from a GitHub release and publishes it to the VS Code
+  Marketplace via vsce --oidc trusted publishing, with per-VSIX retry. Composite action
+  (not a reusable workflow) -- the Marketplace's OIDC trust check keys off
+  job_workflow_ref, which for a nested reusable *workflow* always points at this repo
+  rather than the caller's, so OIDC publishing only works when this logic runs as a step
+  inside the caller's own job. The calling job must declare `permissions: id-token:
+  write` and have a Trusted Publishing policy registered for its repo + workflow
+  filename on the Marketplace. Use vscode-publish-release-vsix.yml instead when
+  publishing with a VSCE_PERSONAL_ACCESS_TOKEN PAT, where job_workflow_ref doesn't matter.
+
+inputs:
+  release-tag:
+    description: GitHub release tag containing the VSIX assets
+    required: true
+  dry-run:
+    description: Download and inspect VSIXs without publishing
+    required: false
+    default: 'false'
+  vsix-name-pattern:
+    description: Glob of downloaded VSIX file names to publish
+    required: false
+    default: '*.vsix'
+  exclude-web-vsix:
+    description: Exclude *-web-* VSIXs from publishing
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Download release VSIXs
+      id: release
+      uses: salesforcecli/github-workflows/.github/actions/vscode/download-release-vsix@main
+      with:
+        release-tag: ${{ inputs.release-tag }}
+
+    - name: Publish VSIXs
+      shell: bash
+      env:
+        DRY_RUN: ${{ inputs.dry-run }}
+        PRE_RELEASE: ${{ steps.release.outputs.pre-release }}
+        VSIX_PATTERN: ${{ inputs.vsix-name-pattern }}
+        EXCLUDE_WEB: ${{ inputs.exclude-web-vsix }}
+      run: |
+        # Marketplace gallery requests can sit until typed-rest-client's 180s
+        # socket timeout. vsce has no timeout flag; retry per VSIX.
+        # --skip-duplicate makes a retry a no-op if the first attempt committed.
+        publish_with_retry() {
+          local attempt
+          for attempt in 1 2 3; do
+            echo "Publish attempt ${attempt}/3"
+            if "$@"; then
+              return 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "Publish failed; retrying in 15s..."
+              sleep 15
+            fi
+          done
+          return 1
+        }
+
+        while IFS= read -r -d '' vsix; do
+          args=(--packagePath "$vsix" --oidc --skip-duplicate)
+          if [ "$PRE_RELEASE" = true ]; then
+            args+=(--pre-release)
+          fi
+
+          if [ "$DRY_RUN" = true ]; then
+            echo "Would publish $vsix to the VS Code Marketplace with --skip-duplicate: @vscode/vsce publish ${args[*]}"
+            continue
+          fi
+
+          if ! publish_with_retry npx @vscode/vsce publish "${args[@]}"; then
+            echo "::error::Failed to publish $vsix after 3 attempts"
+            exit 1
+          fi
+        done < <(
+          if [ "$EXCLUDE_WEB" = "true" ]; then
+            find extensions -type f -name "$VSIX_PATTERN" ! -iname '*-web-*' -print0
+          else
+            find extensions -type f -name "$VSIX_PATTERN" -print0
+          fi
+        )
