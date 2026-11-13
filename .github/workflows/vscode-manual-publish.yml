@@ -5,9 +5,10 @@ name: Manual Publish VS Code Extension
 #   - A nightly GitHub Release (version-tag path — normal workflow)
 #   - A branch CI build artifact (source-run-id path — out-of-band, bypass mandatory)
 #
-# This workflow does NOT publish Open VSX itself -- its `publish` job's ovsx leg is a
-# deliberate no-op (see that job's comment). See "Open VSX Trusted Publishing" in this repo's
-# README for why, and dispatch your own Open VSX publish after this workflow succeeds.
+# This workflow does NOT publish to the VS Code Marketplace or Open VSX itself -- its `publish`
+# job's registry legs are both deliberate no-ops (see that job's comment). Dispatch your own
+# OIDC-trusted publish workflow for each registry after this workflow succeeds. See "Open VSX
+# Trusted Publishing" in this repo's README for the Open VSX case.
 #
 # Usage from consuming repository:
 #   jobs:
@@ -26,7 +27,7 @@ name: Manual Publish VS Code Extension
 #       secrets: inherit
 #
 # Requirements - calling repository must have:
-#   - Secrets: IDEE_GH_TOKEN, VSCE_PERSONAL_ACCESS_TOKEN
+#   - Secrets: IDEE_GH_TOKEN
 #   - For CBWeb: MARKETPLACE_DEPLOY_TOKEN and MARKETPLACE_URL variable
 #   - The package manager and lockfile inputs must match the caller repository.
 #   - The shared actions in this repository are resolved from the workflow branch.
@@ -890,25 +891,21 @@ jobs:
           fi
           echo "VSIX_PATH=$VSIX_FILE" >> $GITHUB_ENV
 
-      # Open VSX is NOT published here -- see this file's header. The caller dispatches
-      # publishOpenVSXTrusted.yml itself afterward instead, so this leg of the matrix (still
-      # present when registries is ovsx/all, so the job's own success/skip status -- and every
-      # downstream needs.publish.result == 'success' check -- stays exactly as it was) is a
-      # deliberate no-op rather than a removed step.
+      # Neither registry is published here -- see this file's header. The caller dispatches its
+      # own trusted-publishing workflow for each afterward instead (this leg of the matrix stays
+      # present when registries includes ovsx/vsce/all, so the job's own success/skip status --
+      # and every downstream needs.publish.result == 'success' check -- stays exactly as it was).
+      # Open VSX's trust check keys off workflow_ref and allows exactly one trusted-publisher
+      # registration per extension; the Marketplace's keys off job_workflow_ref, which a job
+      # defined in this reusable workflow can never match the caller's own workflow filename.
+      # Both are deliberate no-ops rather than removed steps.
       - name: Open VSX is published by the caller, not here
         if: matrix.publish-tool == 'ovsx'
         run: echo "Skipping -- the caller dispatches publishOpenVSXTrusted.yml for Open VSX. See this file's header comment."
 
-      - name: Publish to ${{ matrix.registry }}
-        if: matrix.publish-tool != 'ovsx'
-        uses: salesforcecli/github-workflows/.github/actions/publish-vsix@main
-        with:
-          vsix-path: ${{ env.VSIX_PATH }}
-          publish-tool: ${{ matrix.publish-tool }}
-          pre-release: ${{ needs.prepare.outputs.prerelease-flag }}
-          dry-run: ${{ inputs.dry-run || 'false' }}
-        env:
-          VSCE_PERSONAL_ACCESS_TOKEN: ${{ secrets.VSCE_PERSONAL_ACCESS_TOKEN }}
+      - name: VS Code Marketplace is published by the caller via OIDC, not here
+        if: matrix.publish-tool == 'vsce'
+        run: echo "Skipping -- the caller dispatches its own OIDC-trusted publish workflow for the VS Code Marketplace. See this file's header comment."
 
   publish-to-cbweb-marketplace:
     name: Publish to CBWeb Internal Marketplace
