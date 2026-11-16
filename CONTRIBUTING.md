@@ -21,6 +21,7 @@ Agreement. You can do so by going to https://cla.salesforce.com/sign-cla.
 
 ## Pull Requests
 
+- Run `npm ci`, then `npm run check:actions` (Node.js 24+) to validate workflow/action YAML and reusable-workflow inputs. Self-references, including `salesforcecli/github-workflows/...@main`, are checked against this checkout. Run `npm run test:actions` for validator regression tests. Both checks run on PRs.
 - Develop features and bug fixes in _topic_ branches off main, or forks.
 - _Topic_ branches can live in forks (external contributors) or within this repository (internal contributors).
   - When creating _topic_ branches in this repository please prefix with `<initials>/`. For example: `mb/refactor-tests`.
