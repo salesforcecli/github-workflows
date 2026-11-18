@@ -491,7 +491,7 @@ Before using these workflows, ensure your repository has:
 
 1. **Required Secrets** (configured as GitHub Actions secrets):
    - `IDEE_GH_TOKEN` - Personal Access Token with repo permissions for creating releases and pushing tags
-   - `VSCE_PERSONAL_ACCESS_TOKEN` - VS Code Marketplace Personal Access Token ([create one](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#get-a-personal-access-token))
+   - `VSCE_PERSONAL_ACCESS_TOKEN` - VS Code Marketplace Personal Access Token for PAT-based publishing (not needed with OIDC; [create one](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#get-a-personal-access-token))
    - `IDEE_OVSX_PAT` - Open VSX Personal Access Token ([create one](https://open-vsx.org/user-settings/tokens))
 
 2. **Repository Structure**:
@@ -795,7 +795,7 @@ jobs:
           dry-run: true # Download and inspect without publishing
 ```
 
-This requires a Trusted Publishing policy registered for the calling repo + this exact workflow filename on the Marketplace publisher management page.
+This requires a Trusted Publishing policy registered for the calling repo + the calling workflow's filename (e.g., `publishVSCode.yml`) on the Marketplace publisher management page.
 
 ### openvsx-publish-release-vsix
 
