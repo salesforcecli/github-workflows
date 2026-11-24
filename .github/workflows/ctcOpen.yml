@@ -9,6 +9,13 @@ on:
         type: string
         default: lts/*
         required: false
+    secrets:
+      SF_CHANGE_CASE_SFDX_AUTH_URL:
+        required: true
+      SF_CHANGE_CASE_TEMPLATE_ID:
+        required: true
+      SF_CHANGE_CASE_CONFIGURATION_ITEM:
+        required: true
     outputs:
       changeCaseId:
         description: Id for the change case created
